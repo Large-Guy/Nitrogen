@@ -207,29 +207,24 @@ static struct ast_node* expression(struct parser* parser) {
 // prefix
 
 static struct ast_node* variable(struct parser* parser) {
-    struct token token = parser->current;
+    struct token token = parser->previous;
     //TODO: proper type handling
-    advance(parser);
     return ast_node_new(AST_NODE_TYPE_I32, token);
 }
 
 static struct ast_node* number(struct parser* parser) { //TODO: floating point numbers
-    struct token token = parser->current;
-    advance(parser);
+    struct token token = parser->previous;
     return ast_node_new(AST_NODE_TYPE_INTEGER, token);
 }
 
 static struct ast_node* grouping(struct parser* parser) {
-    advance(parser);
     struct ast_node* node = expression(parser);
     consume(parser, TOKEN_TYPE_RIGHT_PAREN, "expected ')' after grouping");
     return node;
 }
 
 static struct ast_node* unary(struct parser* parser) {
-    struct token token = parser->current;
-
-    advance(parser);
+    struct token token = parser->previous;
 
     struct ast_node* operand = parse_precedence(parser, PRECEDENCE_UNARY);
     
@@ -285,7 +280,8 @@ static struct ast_node* binary(struct parser* parser, struct ast_node* left) {
 }
 
 static struct ast_node* parse_precedence(struct parser* parser, enum precedence precedence) {
-    prefix_fn prefix_rule = get_rule(parser->current.type)->prefix; //NOTE: this has been changed from the tutorial, keep in mind!
+    advance(parser);
+    prefix_fn prefix_rule = get_rule(parser->previous.type)->prefix; //NOTE: this has been changed from the tutorial, keep in mind!
     if (prefix_rule == NULL) {
         fprintf(stderr, "Expect expression."); //TODO: proper error handling
         return NULL;

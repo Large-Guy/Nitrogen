@@ -268,6 +268,7 @@ struct token lexer_scan(struct lexer* lexer) {
         case '+': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_PLUS_EQUAL : TOKEN_TYPE_PLUS);
         case '-': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_MINUS_EQUAL : TOKEN_TYPE_MINUS);
         case '*': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_STAR_EQUAL : TOKEN_TYPE_STAR);
+        case '%': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_PERCENT_EQUAL : TOKEN_TYPE_PERCENT);
         case '/': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_SLASH_EQUAL : TOKEN_TYPE_SLASH);
         case '=': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_EQUAL_EQUAL : TOKEN_TYPE_EQUAL);
         case '!': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_BANG_EQUAL : TOKEN_TYPE_BANG);

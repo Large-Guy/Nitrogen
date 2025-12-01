@@ -125,10 +125,12 @@ static struct ast_node* or(struct parser* parser, struct ast_node* left, bool ca
 
 static struct ast_node* literal(struct parser* parser, bool canAssign);
 
+static struct ast_node* call(struct parser* parser, struct ast_node* left, bool canAssign);
+
 struct parse_rule rules[] = {
     [TOKEN_TYPE_ERROR] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_EOF] = {NULL, NULL, PRECEDENCE_NONE},
-    [TOKEN_TYPE_LEFT_PAREN] = {grouping, NULL, PRECEDENCE_NONE},
+    [TOKEN_TYPE_LEFT_PAREN] = {grouping, call, PRECEDENCE_CALL},
     [TOKEN_TYPE_RIGHT_PAREN] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_LEFT_BRACE] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_RIGHT_BRACE] = {NULL, NULL, PRECEDENCE_NONE},
@@ -161,6 +163,8 @@ struct parse_rule rules[] = {
     [TOKEN_TYPE_AND_AND] = {NULL, and, PRECEDENCE_AND},
     [TOKEN_TYPE_PIPE] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_PIPE_PIPE] = {NULL, or, PRECEDENCE_OR},
+    [TOKEN_TYPE_PERCENT] = {NULL, binary, PRECEDENCE_TERM},
+    [TOKEN_TYPE_PERCENT_EQUAL] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_TILDE] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_MOVE] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_COPY] = {NULL, NULL, PRECEDENCE_NONE},
@@ -217,7 +221,7 @@ static struct ast_node* expression(struct parser* parser) {
 static struct ast_node* variable(struct parser* parser, bool canAssign) {
     struct token token = parser->previous;
     //TODO: proper type handling
-    struct ast_node* variable = ast_node_new(AST_NODE_TYPE_I32, token);
+    struct ast_node* variable = ast_node_new(AST_NODE_TYPE_NAME, token);
     
     if (canAssign && match(parser, TOKEN_TYPE_EQUAL)) {
         struct ast_node* assignment = ast_node_new(AST_NODE_TYPE_ASSIGN, parser->previous);
@@ -304,6 +308,10 @@ static struct ast_node* binary(struct parser* parser, struct ast_node* left, boo
             operator = ast_node_new(AST_NODE_TYPE_DIVIDE, op_token);
             break;
         }
+        case TOKEN_TYPE_PERCENT: {
+            operator = ast_node_new(AST_NODE_TYPE_MODULO, op_token);
+            break;
+        }
         case TOKEN_TYPE_EQUAL_EQUAL: {
             operator = ast_node_new(AST_NODE_TYPE_EQUAL, op_token);
             break;
@@ -354,11 +362,25 @@ static struct ast_node* or(struct parser* parser, struct ast_node* left, bool ca
     return node;
 }
 
+static struct ast_node* call(struct parser* parser, struct ast_node* left, bool canAssign) {
+    struct token op_token = parser->previous;
+    struct ast_node* node = ast_node_new(AST_NODE_TYPE_CALL, op_token);
+    ast_node_append_child(node, left);
+    if (!check(parser, TOKEN_TYPE_RIGHT_PAREN)) {
+        do {
+            ast_node_append_child(node, expression(parser));
+        } while (match(parser, TOKEN_TYPE_COMMA));
+    }
+    consume(parser, TOKEN_TYPE_RIGHT_PAREN, "Expect ')' after arguments");
+
+    return node;
+}
+
 static struct ast_node* parse_precedence(struct parser* parser, enum precedence precedence) {
     advance(parser);
     prefix_fn prefix_rule = get_rule(parser->previous.type)->prefix; //NOTE: this has been changed from the tutorial, keep in mind!
     if (prefix_rule == NULL) {
-        fprintf(stderr, "Expect expression."); //TODO: proper error handling
+        fprintf(stderr, "Expect expression.\n"); //TODO: proper error handling
         return NULL;
     }
 
@@ -386,10 +408,68 @@ static struct ast_node* return_statement(struct parser* parser) {
     return node;
 }
 
-static struct ast_node* declare_variable(struct parser* parser, enum ast_node_type type) {
-    ensure(parser, TOKEN_TYPE_IDENTIFIER, "expected variable name");
-    struct token token = parser->current;
-    return ast_node_new(type, token);
+static enum ast_node_type token_to_type(struct token token) {
+    switch (token.type) {
+        case TOKEN_TYPE_VOID:
+            return AST_NODE_TYPE_VOID;
+        case TOKEN_TYPE_I8:
+            return AST_NODE_TYPE_I8;
+        case TOKEN_TYPE_I16:
+            return AST_NODE_TYPE_I16;
+        case TOKEN_TYPE_I32:
+            return AST_NODE_TYPE_I32;
+        case TOKEN_TYPE_I64:
+            return AST_NODE_TYPE_I64;
+        case TOKEN_TYPE_U8:
+            return AST_NODE_TYPE_U8;
+        case TOKEN_TYPE_U16:
+            return AST_NODE_TYPE_U16;
+        case TOKEN_TYPE_U32:
+            return AST_NODE_TYPE_U32;
+        case TOKEN_TYPE_U64:
+            return AST_NODE_TYPE_U64;
+        default:
+            fprintf(stderr, "unimplemented or unknown node type");    
+    }
+}
+
+static struct ast_node* statement(struct parser* parser);
+static struct ast_node* declaration(struct parser* parser);
+
+static struct ast_node* definition(struct parser* parser, bool statement) {
+    struct token type = parser->previous;
+    consume(parser, TOKEN_TYPE_IDENTIFIER, "expected variable name");
+    struct token name = parser->previous;
+    if (match(parser, TOKEN_TYPE_LEFT_PAREN)) {
+        //function
+        struct ast_node* node = ast_node_new(AST_NODE_TYPE_FUNCTION_DECLARATION, type);
+        ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
+        //parameters
+        if (!check(parser, TOKEN_TYPE_RIGHT_PAREN)) {
+            do {
+                advance(parser);
+                ast_node_append_child(node, definition(parser, false));
+            } while (match(parser, TOKEN_TYPE_COMMA));
+        }
+        consume(parser, TOKEN_TYPE_RIGHT_PAREN, "expected ')' after declaration");
+        ast_node_append_child(node, declaration(parser));
+        return node;
+    }
+
+    //variable
+    struct ast_node* node = ast_node_new(AST_NODE_TYPE_VARIABLE_DECLARATION, type);
+    ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
+    if (match(parser, TOKEN_TYPE_EQUAL)) {
+        ast_node_append_child(node, expression(parser));
+    }
+    if (statement)
+        consume(parser, TOKEN_TYPE_SEMICOLON, "expected ';' after variable definition");
+    return node;
+}
+
+static struct ast_node* definition_statement(struct parser* parser) {
+    struct ast_node* node = definition(parser, true);
+    return node;
 }
 
 static struct ast_node* expression_statement(struct parser* parser) {
@@ -397,9 +477,6 @@ static struct ast_node* expression_statement(struct parser* parser) {
     consume(parser, TOKEN_TYPE_SEMICOLON, "expected ';' after expression");
     return node;
 }
-
-static struct ast_node* statement(struct parser* parser);
-static struct ast_node* declaration(struct parser* parser);
 
 static struct ast_node* block(struct parser* parser) {
     struct token token = parser->previous;
@@ -448,6 +525,14 @@ static struct ast_node* do_while_statement(struct parser* parser) {
     return loop;
 }
 
+static struct ast_node* module_statement(struct parser* parser) {
+    struct ast_node* node = ast_node_new(AST_NODE_TYPE_MODULE_STATEMENT, parser->previous);
+    consume(parser, TOKEN_TYPE_IDENTIFIER, "expected module name");
+    ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_MODULE_NAME, parser->previous));
+    consume(parser, TOKEN_TYPE_SEMICOLON, "expected ';' after module");
+    return node;
+}
+
 static struct ast_node* statement(struct parser* parser) {
     if (match(parser, TOKEN_TYPE_RETURN)) {
         return return_statement(parser);
@@ -460,6 +545,9 @@ static struct ast_node* statement(struct parser* parser) {
     }
     if (match(parser, TOKEN_TYPE_DO)) {
         return do_while_statement(parser);
+    }
+    if (match(parser, TOKEN_TYPE_MODULE)) {
+        return module_statement(parser);
     }
     if (match(parser, TOKEN_TYPE_LEFT_BRACE)) {
         return block(parser);
@@ -478,6 +566,9 @@ static struct ast_node* declaration(struct parser* parser) {
     else if (match(parser, TOKEN_TYPE_INTERFACE)) {
         
     } //Types
+    else if (match(parser, TOKEN_TYPE_VOID)) {
+        return definition_statement(parser);
+    }
     else if (match(parser, TOKEN_TYPE_I8)) {
         
     }
@@ -485,7 +576,7 @@ static struct ast_node* declaration(struct parser* parser) {
         
     }
     else if (match(parser, TOKEN_TYPE_I32)) {
-        return declare_variable(parser, AST_NODE_TYPE_I32_DECLARE);
+        return definition_statement(parser);
     }
     else if (match(parser, TOKEN_TYPE_I64)) {
         
@@ -517,7 +608,7 @@ static struct ast_node* declaration(struct parser* parser) {
 }
 
 struct ast_node* ast_node_build(struct lexer* lexer) {
-    struct ast_node* sequence = ast_node_new(AST_NODE_TYPE_SEQUENCE, token_null);
+    struct ast_node* sequence = ast_node_new(AST_NODE_TYPE_TRANSLATION_UNIT, token_null);
     struct parser parser;
     parser.lexer = lexer;
     advance(&parser);

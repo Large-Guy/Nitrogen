@@ -274,6 +274,9 @@ struct token lexer_scan(struct lexer* lexer) {
         case '<': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_LESS_EQUAL : TOKEN_TYPE_LESS);
         case '>': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_GREATER_EQUAL : TOKEN_TYPE_GREATER);
 
+        case '&': return make_token(lexer, match(lexer, '&') ? TOKEN_TYPE_AND_AND : TOKEN_TYPE_AND);
+        case '|': return make_token(lexer, match(lexer, '|') ? TOKEN_TYPE_PIPE_PIPE : TOKEN_TYPE_PIPE);
+
         case '"': return string(lexer);
         default: break;
     }

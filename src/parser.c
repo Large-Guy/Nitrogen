@@ -376,99 +376,98 @@ static struct ast_node* parse_precedence(struct parser* parser, enum precedence 
     return result;
 }
 
-static void return_statement(struct parser* parser, struct ast_node* current) {
+static struct ast_node* return_statement(struct parser* parser) {
     struct ast_node* node = ast_node_new(AST_NODE_TYPE_RETURN_STATEMENT, parser->previous);
-    ast_node_append_child(current, node);
     if (match(parser, TOKEN_TYPE_SEMICOLON)) {
-        return;
+        return node;
     }
     ast_node_append_child(node, expression(parser));
     consume(parser, TOKEN_TYPE_SEMICOLON, "expected ';' after return");
+    return node;
 }
 
-static void declare_variable(struct parser* parser, struct ast_node* current, enum ast_node_type type) {
+static struct ast_node* declare_variable(struct parser* parser, enum ast_node_type type) {
     ensure(parser, TOKEN_TYPE_IDENTIFIER, "expected variable name");
     struct token token = parser->current;
-    ast_node_append_child(current, ast_node_new(type, token));
+    return ast_node_new(type, token);
 }
 
-static void expression_statement(struct parser* parser, struct ast_node* current) {
-    ast_node_append_child(current,  expression(parser));
+static struct ast_node* expression_statement(struct parser* parser) {
+    struct ast_node* node = expression(parser);
     consume(parser, TOKEN_TYPE_SEMICOLON, "expected ';' after expression");
+    return node;
 }
 
-static void statement(struct parser* parser, struct ast_node* current);
-static void declaration(struct parser* parser, struct ast_node* current);
+static struct ast_node* statement(struct parser* parser);
+static struct ast_node* declaration(struct parser* parser);
 
-static void block(struct parser* parser, struct ast_node* current) {
+static struct ast_node* block(struct parser* parser) {
     struct token token = parser->previous;
     struct ast_node* sequence = ast_node_new(AST_NODE_TYPE_SEQUENCE, token);
     while (!check(parser, TOKEN_TYPE_RIGHT_BRACE) && !check(parser, TOKEN_TYPE_EOF)) {
-        declaration(parser, sequence);
+        ast_node_append_child(sequence, declaration(parser));
     }
 
-    ast_node_append_child(current, sequence);
-
     consume(parser, TOKEN_TYPE_RIGHT_BRACE, "expected '}' after block");
+    return sequence;
 }
 
-static void if_statement(struct parser* parser, struct ast_node* current) {
+static struct ast_node* if_statement(struct parser* parser) {
     struct token op_token = parser->previous;
     struct ast_node* branch = ast_node_new(AST_NODE_TYPE_IF, op_token);
     consume(parser, TOKEN_TYPE_LEFT_PAREN, "expected '(' after if");
     ast_node_append_child(branch, expression(parser));
     consume(parser, TOKEN_TYPE_RIGHT_PAREN, "expected ')' after if");
-    declaration(parser, branch);
+    ast_node_append_child(branch, declaration(parser));
     if (match(parser, TOKEN_TYPE_ELSE)) {
-        declaration(parser, branch);
+        ast_node_append_child(branch, declaration(parser));
     }
     
-    ast_node_append_child(current, branch);
+    return branch;
 }
 
-static void while_statement(struct parser* parser, struct ast_node* current) {
+static struct ast_node* while_statement(struct parser* parser) {
     struct token op_token = parser->previous;
     struct ast_node* loop = ast_node_new(AST_NODE_TYPE_WHILE, op_token);
     consume(parser, TOKEN_TYPE_LEFT_PAREN, "expected '(' after while");
     ast_node_append_child(loop, expression(parser));
     consume(parser, TOKEN_TYPE_RIGHT_PAREN, "expected ')' after while");
-    declaration(parser, loop);
+    ast_node_append_child(loop, declaration(parser));
     
-    ast_node_append_child(current, loop);
+    return loop;
 }
 
-static void do_while_statement(struct parser* parser, struct ast_node* current) {
+static struct ast_node* do_while_statement(struct parser* parser) {
     struct token op_token = parser->previous;
     struct ast_node* loop = ast_node_new(AST_NODE_TYPE_DO_WHILE, op_token);
-    declaration(parser, loop);
+    ast_node_append_child(loop, declaration(parser));
     consume(parser, TOKEN_TYPE_WHILE, "expected 'while' statement after do block");
     consume(parser, TOKEN_TYPE_LEFT_PAREN, "expected '(' after while");
     ast_node_append_child(loop, expression(parser));
     consume(parser, TOKEN_TYPE_RIGHT_PAREN, "expected ')' after while");
+    return loop;
 }
 
-static void statement(struct parser* parser, struct ast_node* current) {
+static struct ast_node* statement(struct parser* parser) {
     if (match(parser, TOKEN_TYPE_RETURN)) {
-        return_statement(parser, current);
+        return return_statement(parser);
     }
-    else if (match(parser, TOKEN_TYPE_IF)) {
-        if_statement(parser, current);
+    if (match(parser, TOKEN_TYPE_IF)) {
+        return if_statement(parser);
     }
-    else if (match(parser, TOKEN_TYPE_WHILE)) {
-        while_statement(parser, current);
+    if (match(parser, TOKEN_TYPE_WHILE)) {
+        return while_statement(parser);
     }
-    else if (match(parser, TOKEN_TYPE_DO)) {
-        do_while_statement(parser, current);
+    if (match(parser, TOKEN_TYPE_DO)) {
+        return do_while_statement(parser);
     }
-    else if (match(parser, TOKEN_TYPE_LEFT_BRACE)) {
-        block(parser, current);
+    if (match(parser, TOKEN_TYPE_LEFT_BRACE)) {
+        return block(parser);
     }
-    else {
-        expression_statement(parser, current);
-    }
+    return expression_statement(parser);
 }
 
-static void declaration(struct parser* parser, struct ast_node* current) {
+static struct ast_node* declaration(struct parser* parser) {
     //TODO: Implement all of this
     if (match(parser, TOKEN_TYPE_STRUCT)) {
         
@@ -486,7 +485,7 @@ static void declaration(struct parser* parser, struct ast_node* current) {
         
     }
     else if (match(parser, TOKEN_TYPE_I32)) {
-        declare_variable(parser, current, AST_NODE_TYPE_I32_DECLARE);
+        return declare_variable(parser, AST_NODE_TYPE_I32_DECLARE);
     }
     else if (match(parser, TOKEN_TYPE_I64)) {
         
@@ -513,7 +512,7 @@ static void declaration(struct parser* parser, struct ast_node* current) {
         
     }
     else {
-        statement(parser, current);
+        return statement(parser);
     }
 }
 
@@ -524,7 +523,7 @@ struct ast_node* ast_node_build(struct lexer* lexer) {
     advance(&parser);
 
     while (!match(&parser, TOKEN_TYPE_EOF)) {
-        declaration(&parser, sequence);
+        ast_node_append_child(sequence, declaration(&parser));
     }
 
     return sequence;

@@ -1,32 +1,13 @@
 module program;
 
-i32 fibonacci(i32 n) {
-    if (n <= 1) {
-        return n;
-    }
-    return fibonacci(n - 1) + fibonacci(n - 2);
-}
-
-i32 sum_even(i32 n) {
-    i32 sum = 0;
+struct Vector2
+{
+    i32 x;
+    i32 y;
     
-    i32 i = 0;
-    while (i <= n) {
-        if (i % 2 == 0) {
-            sum = sum + i;
-        }
-        i = i + 1;
-    }
-    return sum;
-}
-
-i32 combined(i32 n) {
-    i32 fib = fibonacci(n);
-    i32 evenSum = sum_even(n);
-    if (fib % 2 == 0) {
-        return fib + evenSum;
-    } else {
-        return fib - evenSum;
+    i32 square_length()
+    {
+        return x * x + y * y;
     }
 }
 

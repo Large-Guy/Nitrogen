@@ -436,7 +436,7 @@ static enum ast_node_type token_to_type(struct token token) {
 static struct ast_node* statement(struct parser* parser);
 static struct ast_node* declaration(struct parser* parser);
 
-static struct ast_node* definition(struct parser* parser, bool statement) {
+static struct ast_node* definition(struct parser* parser, bool statement, bool canAssign) {
     struct token type = parser->previous;
     consume(parser, TOKEN_TYPE_IDENTIFIER, "expected variable name");
     struct token name = parser->previous;
@@ -448,7 +448,7 @@ static struct ast_node* definition(struct parser* parser, bool statement) {
         if (!check(parser, TOKEN_TYPE_RIGHT_PAREN)) {
             do {
                 advance(parser);
-                ast_node_append_child(node, definition(parser, false));
+                ast_node_append_child(node, definition(parser, false, true));
             } while (match(parser, TOKEN_TYPE_COMMA));
         }
         consume(parser, TOKEN_TYPE_RIGHT_PAREN, "expected ')' after declaration");
@@ -459,7 +459,7 @@ static struct ast_node* definition(struct parser* parser, bool statement) {
     //variable
     struct ast_node* node = ast_node_new(AST_NODE_TYPE_VARIABLE_DECLARATION, type);
     ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
-    if (match(parser, TOKEN_TYPE_EQUAL)) {
+    if (canAssign && match(parser, TOKEN_TYPE_EQUAL)) {
         ast_node_append_child(node, expression(parser));
     }
     if (statement)
@@ -468,7 +468,22 @@ static struct ast_node* definition(struct parser* parser, bool statement) {
 }
 
 static struct ast_node* definition_statement(struct parser* parser) {
-    struct ast_node* node = definition(parser, true);
+    struct ast_node* node = definition(parser, true, true);
+    return node;
+}
+
+static struct ast_node* struct_statement(struct parser* parser) {
+    struct token type = parser->previous;
+    consume(parser, TOKEN_TYPE_IDENTIFIER, "expected struct name");
+    struct token name = parser->previous;
+    consume(parser, TOKEN_TYPE_LEFT_BRACE, "expected '{' after struct definition");
+    struct ast_node* node = ast_node_new(AST_NODE_TYPE_STRUCT_DECLARATION, type);
+    ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
+    while (!check(parser,TOKEN_TYPE_RIGHT_BRACE)) {
+        advance(parser);
+        ast_node_append_child(node, definition(parser, true, false));
+    }
+    consume(parser, TOKEN_TYPE_RIGHT_BRACE, "expected '}' after struct statement");
     return node;
 }
 
@@ -558,7 +573,7 @@ static struct ast_node* statement(struct parser* parser) {
 static struct ast_node* declaration(struct parser* parser) {
     //TODO: Implement all of this
     if (match(parser, TOKEN_TYPE_STRUCT)) {
-        
+        return struct_statement(parser);
     }
     else if (match(parser, TOKEN_TYPE_UNION)) {
         
@@ -652,6 +667,13 @@ static void debug(struct ast_node* node, int32_t depth) {
 
     for (int i = 0; i < node->children_count; i++) {
         debug(node->children[i], depth + 1);
+    }
+
+    if (node->children_count > 0) {
+        for (int i = 0; i < depth; i++) {
+            printf("%s| ", colors[i % (sizeof(colors) / sizeof(colors[0]))]);
+        }
+        printf("\n");
     }
 }
 

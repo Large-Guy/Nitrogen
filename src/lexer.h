@@ -93,6 +93,9 @@ enum token_type {
     TOKEN_TYPE_U32,
     TOKEN_TYPE_U64,
 
+    TOKEN_TYPE_F32,
+    TOKEN_TYPE_F64,
+
     TOKEN_TYPE_ISIZE,
     TOKEN_TYPE_USIZE,
 

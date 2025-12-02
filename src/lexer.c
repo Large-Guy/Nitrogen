@@ -215,8 +215,11 @@ static enum token_type type(struct lexer* lexer) { //TODO: Test if this actually
         case 'f': {
             if (lexer->current - lexer->start > 1) {
                 switch (lexer->start[1]) {
-                    case 'a': return check_keyword(lexer, 1, 3, "lse", TOKEN_TYPE_FALSE);
-                    case 'o': return check_keyword(lexer, 1, 1, "r", TOKEN_TYPE_FOR);
+                    case 'a': return check_keyword(lexer, 2, 3, "lse", TOKEN_TYPE_FALSE);
+                    case 'o': return check_keyword(lexer, 2, 1, "r", TOKEN_TYPE_FOR);
+                    case '3': return check_keyword(lexer, 2, 1, "2", TOKEN_TYPE_F32);
+                    case '6': return check_keyword(lexer, 2, 1, "4", TOKEN_TYPE_F64);
+                    default: break;
                 }
             }
         }
@@ -265,8 +268,8 @@ struct token lexer_scan(struct lexer* lexer) {
         case ',': return make_token(lexer, TOKEN_TYPE_COMMA);
             
         case ':' : return make_token(lexer, match(lexer, ':') ? TOKEN_TYPE_COLON_COLON : TOKEN_TYPE_COLON);
-        case '+': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_PLUS_EQUAL : TOKEN_TYPE_PLUS);
-        case '-': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_MINUS_EQUAL : TOKEN_TYPE_MINUS);
+        case '+': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_PLUS_EQUAL : match(lexer, '+') ? TOKEN_TYPE_PLUS_PLUS : TOKEN_TYPE_PLUS);
+        case '-': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_MINUS_EQUAL : match(lexer, '-') ? TOKEN_TYPE_MINUS_MINUS : TOKEN_TYPE_MINUS);
         case '*': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_STAR_EQUAL : TOKEN_TYPE_STAR);
         case '%': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_PERCENT_EQUAL : TOKEN_TYPE_PERCENT);
         case '/': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_SLASH_EQUAL : TOKEN_TYPE_SLASH);
@@ -355,6 +358,8 @@ const char* token_type_to_string(enum token_type e) {
         case TOKEN_TYPE_U16: return "TOKEN_TYPE_U16";
         case TOKEN_TYPE_U32: return "TOKEN_TYPE_U32";
         case TOKEN_TYPE_U64: return "TOKEN_TYPE_U64";
+        case TOKEN_TYPE_F32: return "TOKEN_TYPE_F32";
+        case TOKEN_TYPE_F64: return "TOKEN_TYPE_F64";
         case TOKEN_TYPE_ISIZE: return "TOKEN_TYPE_ISIZE";
         case TOKEN_TYPE_USIZE: return "TOKEN_TYPE_USIZE";
         case TOKEN_TYPE_STRING: return "TOKEN_TYPE_STRING";

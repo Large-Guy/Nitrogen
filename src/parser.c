@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 
 struct ast_node* ast_node_new(enum ast_node_type type, struct token token) {
     struct ast_node* node = malloc(sizeof(struct ast_node));
@@ -32,11 +33,83 @@ void ast_node_append_child(struct ast_node* node, struct ast_node* child) {
     node->children[node->children_count++] = child;
 }
 
+enum parser_mode {
+    PARSER_MODE_FORWARD_PASS,
+    PARSER_MODE_TREE_GENERATION,
+};
+
+struct module {
+    struct token name;
+    
+    struct lexer** lexers;
+    size_t lexer_count;
+    size_t lexer_capacity;
+    
+    struct token* symbols;
+    size_t symbols_count;
+    size_t symbols_capacity;
+};
+
+struct module* module_new(struct token name) {
+    struct module* module = malloc(sizeof(struct module));
+    assert(module);
+    module->name = name;
+    module->lexers = malloc(sizeof(struct lexer*));
+    assert(module->lexers);
+    module->lexer_count = 0;
+    module->lexer_capacity = 1;
+    module->symbols = malloc(sizeof(struct token));
+    assert(module->symbols);
+    module->symbols_count = 0;
+    module->symbols_capacity = 1;
+    return module;
+}
+
+void module_free(struct module* module) {
+    free(module->lexers);
+    free(module->symbols);
+    free(module);
+}
+
+void module_add_source(struct module* module, struct lexer* lexer) {
+    if (module->lexer_count >= module->lexer_capacity) {
+        module->lexer_capacity *= 2;
+        module->lexers = realloc(module->lexers, module->lexer_capacity * sizeof(struct lexer*));
+        assert(module->lexers);
+    }
+
+    module->lexers[module->lexer_count++] = lexer;
+}
+
 struct parser {
+    enum parser_mode mode;
+    struct module* module;
     struct lexer* lexer;
     struct token current;
     struct token previous;
 };
+
+static void declare_type(struct parser* parser, struct token name) {
+    if (parser->module->symbols_count >= parser->module->symbols_capacity) {
+        parser->module->symbols_capacity *= 2;
+        parser->module->symbols = realloc(parser->module->symbols, sizeof(struct token) * parser->module->symbols_capacity);
+        assert(parser->module->symbols);
+    }
+    parser->module->symbols[parser->module->symbols_count++] = name;
+}
+
+static bool type_exists(struct parser* parser, struct token name) {
+    if (name.type != TOKEN_TYPE_IDENTIFIER) {
+        return false;
+    }
+    for (size_t i = 0; i < parser->module->symbols_count; i++) {
+        if (name.length == parser->module->symbols[i].length &&
+            memcmp(name.start, parser->module->symbols[i].start, parser->module->symbols[i].length) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
 
 static void advance(struct parser* parser) {
     parser->previous = parser->current;
@@ -128,6 +201,8 @@ static struct ast_node* literal(struct parser* parser, bool canAssign);
 
 static struct ast_node* call(struct parser* parser, struct ast_node* left, bool canAssign);
 
+static struct ast_node* field(struct parser* parser, struct ast_node* left, bool canAssign);
+
 struct parse_rule rules[] = {
     [TOKEN_TYPE_ERROR] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_EOF] = {NULL, NULL, PRECEDENCE_NONE},
@@ -138,7 +213,7 @@ struct parse_rule rules[] = {
     [TOKEN_TYPE_LEFT_BRACKET] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_RIGHT_BRACKET] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_SEMICOLON] = {NULL, NULL, PRECEDENCE_NONE},
-    [TOKEN_TYPE_DOT] = {NULL, NULL, PRECEDENCE_NONE},
+    [TOKEN_TYPE_DOT] = {NULL, field, PRECEDENCE_CALL},
     [TOKEN_TYPE_COMMA] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_PLUS] = {NULL, binary, PRECEDENCE_TERM},
     [TOKEN_TYPE_PLUS_PLUS] = {NULL, NULL, PRECEDENCE_NONE},
@@ -463,6 +538,25 @@ static struct ast_node* call(struct parser* parser, struct ast_node* left, bool 
     return node;
 }
 
+static struct ast_node* field(struct parser* parser, struct ast_node* left, bool canAssign) {
+    struct token op_token = parser->previous;
+    consume(parser, TOKEN_TYPE_IDENTIFIER, "expected identifier");
+    struct token field_name = parser->previous;
+    if (canAssign) {
+        if (match(parser, TOKEN_TYPE_EQUAL)) {
+            struct ast_node* node = ast_node_new(AST_NODE_TYPE_SET_FIELD, op_token);
+            ast_node_append_child(node, left);
+            ast_node_append_child(node, expression(parser));
+            return node;
+        }    
+    }
+    
+    struct ast_node* node = ast_node_new(AST_NODE_TYPE_GET_FIELD, op_token);
+    ast_node_append_child(node, left);
+    ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, field_name));
+    return node;
+}
+
 static struct ast_node* parse_precedence(struct parser* parser, enum precedence precedence) {
     advance(parser);
     prefix_fn prefix_rule = get_rule(parser->previous.type)->prefix; //NOTE: this has been changed from the tutorial, keep in mind!
@@ -523,7 +617,7 @@ static enum ast_node_type token_to_type(struct token token) {
 static struct ast_node* statement(struct parser* parser);
 static struct ast_node* declaration(struct parser* parser);
 
-static struct ast_node* definition(struct parser* parser, bool statement, bool canAssign) {
+static struct ast_node* definition(struct parser* parser, bool statement, bool canAssign, bool inlineDeclaration) {
     struct token type = parser->previous;
     consume(parser, TOKEN_TYPE_IDENTIFIER, "expected variable name");
     struct token name = parser->previous;
@@ -535,11 +629,14 @@ static struct ast_node* definition(struct parser* parser, bool statement, bool c
         if (!check(parser, TOKEN_TYPE_RIGHT_PAREN)) {
             do {
                 advance(parser);
-                ast_node_append_child(node, definition(parser, false, true));
+                ast_node_append_child(node, definition(parser, false, true, true));
             } while (match(parser, TOKEN_TYPE_COMMA));
         }
         consume(parser, TOKEN_TYPE_RIGHT_PAREN, "expected ')' after declaration");
-        ast_node_append_child(node, declaration(parser));
+        if (inlineDeclaration)
+            ast_node_append_child(node, declaration(parser));
+        else
+            consume(parser, TOKEN_TYPE_SEMICOLON, "expected ';' after variable definition");
         return node;
     }
 
@@ -555,7 +652,7 @@ static struct ast_node* definition(struct parser* parser, bool statement, bool c
 }
 
 static struct ast_node* definition_statement(struct parser* parser) {
-    struct ast_node* node = definition(parser, true, true);
+    struct ast_node* node = definition(parser, true, true, true);
     return node;
 }
 
@@ -563,15 +660,56 @@ static struct ast_node* struct_statement(struct parser* parser) {
     struct token type = parser->previous;
     consume(parser, TOKEN_TYPE_IDENTIFIER, "expected struct name");
     struct token name = parser->previous;
-    consume(parser, TOKEN_TYPE_LEFT_BRACE, "expected '{' after struct definition");
-    struct ast_node* node = ast_node_new(AST_NODE_TYPE_STRUCT_DECLARATION, type);
-    ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
-    while (!check(parser,TOKEN_TYPE_RIGHT_BRACE)) {
-        advance(parser);
-        ast_node_append_child(node, definition(parser, true, false));
+    if (parser->mode == PARSER_MODE_TREE_GENERATION) {
+        struct ast_node* node = ast_node_new(AST_NODE_TYPE_STRUCT_DECLARATION, type);
+        ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
+
+        if (match(parser, TOKEN_TYPE_COLON)) {
+            do {
+                consume(parser, TOKEN_TYPE_IDENTIFIER, "expected identifier");
+                struct token interface = parser->previous;
+                ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_INTERFACE, interface));
+            } while (match(parser, TOKEN_TYPE_COMMA));
+        }
+
+        consume(parser, TOKEN_TYPE_LEFT_BRACE, "expected '{' after struct definition");
+        
+        while (!check(parser,TOKEN_TYPE_RIGHT_BRACE)) {
+            advance(parser);
+            ast_node_append_child(node, definition(parser, true, false, true));
+        }
+        
+        consume(parser, TOKEN_TYPE_RIGHT_BRACE, "expected '}' after struct statement");
+        return node;
     }
-    consume(parser, TOKEN_TYPE_RIGHT_BRACE, "expected '}' after struct statement");
-    return node;
+
+    //this is a forward declaration pass
+    declare_type(parser, name);
+    printf("Type declaration: %.*s\n", (int32_t)name.length, name.start);
+    return NULL;
+}
+
+static struct ast_node* interface_statement(struct parser* parser) {
+    struct token type = parser->previous;
+    consume(parser, TOKEN_TYPE_IDENTIFIER, "expected interface name");
+    struct token name = parser->previous;
+    consume(parser, TOKEN_TYPE_LEFT_BRACE, "expected '{' after interface definition");
+    if (parser->mode == PARSER_MODE_TREE_GENERATION) {
+        struct ast_node* node = ast_node_new(AST_NODE_TYPE_INTERFACE_DECLARATION, type);
+        ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
+    
+        while (!check(parser,TOKEN_TYPE_RIGHT_BRACE)) {
+            advance(parser);
+            ast_node_append_child(node, definition(parser, true, false, false));
+        }
+        
+        consume(parser, TOKEN_TYPE_RIGHT_BRACE, "expected '}' after struct statement");
+        return node;
+    }
+
+    declare_type(parser, name);
+    printf("Interface declaration: %.*s\n", (int32_t)name.length, name.start);
+    return NULL;
 }
 
 static struct ast_node* expression_statement(struct parser* parser) {
@@ -683,13 +821,13 @@ static struct ast_node* declaration(struct parser* parser) {
     if (match(parser, TOKEN_TYPE_STRUCT)) {
         return struct_statement(parser);
     }
-    else if (match(parser, TOKEN_TYPE_UNION)) {
+    if (match(parser, TOKEN_TYPE_UNION)) {
         
     }
-    else if (match(parser, TOKEN_TYPE_INTERFACE)) {
-        
+    if (match(parser, TOKEN_TYPE_INTERFACE)) {
+        return interface_statement(parser);
     } //Types
-    else if (match(parser, TOKEN_TYPE_I8) ||
+    if (match(parser, TOKEN_TYPE_I8) ||
         match(parser, TOKEN_TYPE_I16) ||
         match(parser, TOKEN_TYPE_I32) ||
         match(parser, TOKEN_TYPE_I64) ||
@@ -706,21 +844,77 @@ static struct ast_node* declaration(struct parser* parser) {
         ) {
         return definition_statement(parser);
     }
-    else {
-        return statement(parser);
+    if (type_exists(parser, parser->current)) {
+        advance(parser);
+        return definition_statement(parser);
     }
+    return statement(parser);
+}
+
+static void type_pass(struct parser* parser) {
+    if (match(parser, TOKEN_TYPE_STRUCT)) {
+        struct_statement(parser);
+        return;
+    }
+    if (match(parser, TOKEN_TYPE_INTERFACE)) {
+        interface_statement(parser);
+    }
+    advance(parser);
+}
+
+static struct module** module_pass(struct lexer** lexers, uint32_t count) {
+    struct parser parser;
+    parser.module = NULL;
+    parser.mode = PARSER_MODE_FORWARD_PASS;
+    parser.lexer = NULL;
+    
+    struct module** modules = malloc(sizeof(struct module));
+    uint32_t modules_count = 0;
+    uint32_t modules_capacity = 1;
+
+    while (!match(&parser, TOKEN_TYPE_EOF)) {
+        advance(&parser);
+        if (match(&parser, TOKEN_TYPE_MODULE)) {
+            consume(&parser, TOKEN_TYPE_IDENTIFIER, "expected module name");
+            if (modules_count >= modules_capacity) {
+                modules_capacity *= 2;
+                modules = realloc(modules, modules_capacity);
+                assert(modules != NULL);
+            }
+            modules[modules_count++] = module_new(parser.previous);
+            break;
+        }
+    }
+    
+    return modules;
 }
 
 struct ast_node* ast_node_build(struct lexer* lexer) {
     struct ast_node* sequence = ast_node_new(AST_NODE_TYPE_TRANSLATION_UNIT, token_null);
+
+    
+    //resolve modules
+    //module_pass(&lexer, 1);
+
     struct parser parser;
     parser.lexer = lexer;
+    parser.mode = PARSER_MODE_FORWARD_PASS;
+    parser.module = module_new(token_null);
+    advance(&parser);
+   
+    while (!match(&parser, TOKEN_TYPE_EOF)) {
+        type_pass(&parser);
+    }
+
+    lexer_reset(lexer);
+    parser.mode = PARSER_MODE_TREE_GENERATION;
     advance(&parser);
 
     while (!match(&parser, TOKEN_TYPE_EOF)) {
         ast_node_append_child(sequence, declaration(&parser));
     }
 
+    free(parser.module);
     return sequence;
 }
 
@@ -732,6 +926,14 @@ struct chunk* ast_node_compile(struct ast_node* node) {
     if (node->type != AST_NODE_TYPE_TRANSLATION_UNIT) {
         fprintf(stderr, "expected translation unit type\n");
         return NULL;
+    }
+    for (int i = 0; i < node->children_count; i++) {
+        struct ast_node* child = node->children[i];
+        switch (child->type) {
+            case AST_NODE_TYPE_FUNCTION_DECLARATION: {
+                
+            }
+        }
     }
 }
 

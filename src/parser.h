@@ -79,6 +79,17 @@ struct ast_node {
     size_t children_capacity;
 };
 
+enum symbol_type {
+    SYMBOL_TYPE_STRUCT,
+    SYMBOL_TYPE_UNION,
+    SYMBOL_TYPE_INTERFACE,
+};
+
+struct symbol {
+    struct token name;
+    enum symbol_type type;
+};
+
 struct module {
     struct token name;
 
@@ -88,7 +99,7 @@ struct module {
     size_t lexer_count;
     size_t lexer_capacity;
     
-    struct token* symbols;
+    struct symbol* symbols;
     size_t symbols_count;
     size_t symbols_capacity;
 };

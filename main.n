@@ -1,4 +1,7 @@
+//nitrogen language
 module program;
+
+import math;
 
 void print()
 {

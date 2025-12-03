@@ -375,6 +375,10 @@ const char* token_type_to_string(enum token_type e) {
     }
 }
 
+void lexer_free(struct lexer* lexer) {
+    free(lexer);
+}
+
 void lexer_reset(struct lexer* lexer) {
     lexer->current = lexer->source;
     lexer->start = lexer->source;

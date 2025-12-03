@@ -50,7 +50,3 @@ struct Vector2
         return sqrt(square_length());
     }
 }
-
-i32 main() {
-    return 0;
-}

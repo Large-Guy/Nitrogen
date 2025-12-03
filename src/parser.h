@@ -4,8 +4,8 @@
 #include "lexer.h"
 
 enum ast_node_type {
+    
     AST_NODE_TYPE_MODULE,
-    AST_NODE_TYPE_TRANSLATION_UNIT,
     AST_NODE_TYPE_SEQUENCE,
 
     //statements
@@ -79,13 +79,34 @@ struct ast_node {
     size_t children_capacity;
 };
 
+struct module {
+    struct token name;
+
+    struct ast_node* root;
+    
+    struct lexer** lexers;
+    size_t lexer_count;
+    size_t lexer_capacity;
+    
+    struct token* symbols;
+    size_t symbols_count;
+    size_t symbols_capacity;
+};
+
+struct module_list {
+    struct module** modules;
+    uint32_t module_count;
+};
+
+void module_list_free(struct module_list* list);
+
 struct ast_node* ast_node_new(enum ast_node_type type, struct token token);
 
 void ast_node_free(struct ast_node* node);
 
 void ast_node_append_child(struct ast_node* node, struct ast_node* child);
 
-struct ast_node* ast_node_build(struct lexer* lexer);
+struct module_list ast_node_build(struct lexer** lexer, uint32_t count);
 
 struct chunk* ast_node_compile_sequence(struct ast_node* node);
 

@@ -3,7 +3,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "chunk.h"
 #include "lexer.h"
@@ -43,38 +42,35 @@ void file_close(struct file* file) {
     if (file->contents != NULL) {
         free(file->contents);
     }
+    fclose(file->file);
     free(file);
 }
 
-int main(void) {
-    struct file* input = file_read("main.cl");
+int main(int argc, char** argv) {
+    struct file** files = malloc(sizeof(struct file*) * (argc - 1));
+    struct lexer** lexers = malloc(sizeof(struct lexer*) * (argc - 1));
 
-    printf(input->contents);
-    printf("\n\n");
-
-    struct lexer* lexer = lexer_new(input->contents);
-
-    while (true) {
-        struct token token = lexer_scan(lexer);
-        if (token.type == TOKEN_TYPE_EOF) {
-            break;
-        }
-        printf("Token - type-id: %d, string-name: %s, contents: %.*s\n", token.type, token_type_to_string(token.type), (uint32_t)token.length, token.start);
+    printf("compiling... ");
+    
+    for (int i = 0; i < argc - 1; i++) {
+        printf("%s ", argv[i]);
+        files[i] = file_read(argv[i + 1]);
+        lexers[i] = lexer_new(files[i]->contents);
     }
 
     printf("\nbuilding ast...\n\n");
 
-    lexer_reset(lexer);
-
-    struct ast_node* root = ast_node_build(lexer);
+    struct module_list modules = ast_node_build(lexers, argc - 1);
 
     printf("\n");
 
-    ast_node_debug(root);
+    for (int i = 0; i < modules.module_count; i++) {
+        printf("--- MODULE %.*s ---\n", (int)modules.modules[i]->name.length, modules.modules[i]->name.start);
+        ast_node_debug(modules.modules[i]->root);
+        printf("\n");
+    }
 
     printf("\nfinished building ast...\n\n");
-    
-    file_close(input);
     
     struct chunk* chunk = chunk_new("main");
 
@@ -109,7 +105,15 @@ int main(void) {
 
     chunk_free(chunk);
 
-    ast_node_free(root);
+    module_list_free(&modules);
+
+    //close files
+    for (int i = 0; i < argc - 1; i++) {
+        file_close(files[i]);
+        lexer_free(lexers[i]);
+    }
+    free(files);
+    free(lexers);
     
     return 0;
 }

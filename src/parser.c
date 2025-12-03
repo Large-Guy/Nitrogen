@@ -33,27 +33,11 @@ void ast_node_append_child(struct ast_node* node, struct ast_node* child) {
     node->children[node->children_count++] = child;
 }
 
-enum parser_mode {
-    PARSER_MODE_FORWARD_PASS,
-    PARSER_MODE_TREE_GENERATION,
-};
-
-struct module {
-    struct token name;
-    
-    struct lexer** lexers;
-    size_t lexer_count;
-    size_t lexer_capacity;
-    
-    struct token* symbols;
-    size_t symbols_count;
-    size_t symbols_capacity;
-};
-
 struct module* module_new(struct token name) {
     struct module* module = malloc(sizeof(struct module));
     assert(module);
     module->name = name;
+    module->root = ast_node_new(AST_NODE_TYPE_MODULE, name);
     module->lexers = malloc(sizeof(struct lexer*));
     assert(module->lexers);
     module->lexer_count = 0;
@@ -81,8 +65,14 @@ void module_add_source(struct module* module, struct lexer* lexer) {
     module->lexers[module->lexer_count++] = lexer;
 }
 
+enum parser_stage {
+    PARSER_STAGE_MODULE_GENERATION,
+    PARSER_STAGE_SYMBOL_RESOLUTION_PASS,
+    PARSER_STAGE_TREE_GENERATION,
+};
+
 struct parser {
-    enum parser_mode mode;
+    enum parser_stage stage;
     struct module* module;
     struct lexer* lexer;
     struct token current;
@@ -660,7 +650,7 @@ static struct ast_node* struct_statement(struct parser* parser) {
     struct token type = parser->previous;
     consume(parser, TOKEN_TYPE_IDENTIFIER, "expected struct name");
     struct token name = parser->previous;
-    if (parser->mode == PARSER_MODE_TREE_GENERATION) {
+    if (parser->stage == PARSER_STAGE_TREE_GENERATION) {
         struct ast_node* node = ast_node_new(AST_NODE_TYPE_STRUCT_DECLARATION, type);
         ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
 
@@ -694,7 +684,7 @@ static struct ast_node* interface_statement(struct parser* parser) {
     consume(parser, TOKEN_TYPE_IDENTIFIER, "expected interface name");
     struct token name = parser->previous;
     consume(parser, TOKEN_TYPE_LEFT_BRACE, "expected '{' after interface definition");
-    if (parser->mode == PARSER_MODE_TREE_GENERATION) {
+    if (parser->stage == PARSER_STAGE_TREE_GENERATION) {
         struct ast_node* node = ast_node_new(AST_NODE_TYPE_INTERFACE_DECLARATION, type);
         ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
     
@@ -851,71 +841,113 @@ static struct ast_node* declaration(struct parser* parser) {
     return statement(parser);
 }
 
-static void type_pass(struct parser* parser) {
-    if (match(parser, TOKEN_TYPE_STRUCT)) {
-        struct_statement(parser);
-        return;
-    }
-    if (match(parser, TOKEN_TYPE_INTERFACE)) {
-        interface_statement(parser);
-    }
-    advance(parser);
-}
-
-static struct module** module_pass(struct lexer** lexers, uint32_t count) {
-    struct parser parser;
-    parser.module = NULL;
-    parser.mode = PARSER_MODE_FORWARD_PASS;
-    parser.lexer = NULL;
-    
-    struct module** modules = malloc(sizeof(struct module));
+static struct module_list module_pass(struct lexer** lexers, uint32_t count) {
+    struct module** modules = malloc(sizeof(struct module*));
     uint32_t modules_count = 0;
     uint32_t modules_capacity = 1;
 
-    while (!match(&parser, TOKEN_TYPE_EOF)) {
-        advance(&parser);
-        if (match(&parser, TOKEN_TYPE_MODULE)) {
-            consume(&parser, TOKEN_TYPE_IDENTIFIER, "expected module name");
-            if (modules_count >= modules_capacity) {
-                modules_capacity *= 2;
-                modules = realloc(modules, modules_capacity);
-                assert(modules != NULL);
+    for (uint32_t i = 0; i < count; i++) {
+        struct lexer* lexer = lexers[i];
+        
+        struct parser parser;
+        parser.module = NULL;
+        parser.stage = PARSER_STAGE_MODULE_GENERATION;
+        parser.lexer = lexers[i];
+        lexer_reset(lexer);
+        
+        while (!match(&parser, TOKEN_TYPE_EOF)) {
+            advance(&parser);
+            if (match(&parser, TOKEN_TYPE_MODULE)) {
+                consume(&parser, TOKEN_TYPE_IDENTIFIER, "expected module name");
+                struct token name = parser.previous;
+                struct module* module = NULL;
+                for (uint32_t j = 0; j < modules_count; j++) {
+                    if (modules[j]->name.length == name.length &&
+                        memcmp(modules[j]->name.start, name.start, name.length) == 0) {
+                        module = modules[j];
+                    }
+                }
+                if (module == NULL) {
+                    if (modules_count >= modules_capacity) {
+                        modules_capacity *= 2;
+                        modules = realloc(modules, modules_capacity * sizeof(struct module*));
+                        assert(modules != NULL);
+                    }
+                    module = module_new(parser.previous);
+                    modules[modules_count++] = module;
+                }
+                module_add_source(module, lexer);
+                break;
             }
-            modules[modules_count++] = module_new(parser.previous);
-            break;
         }
     }
-    
-    return modules;
+
+    struct module_list list = {modules, modules_count};
+    return list;
 }
 
-struct ast_node* ast_node_build(struct lexer* lexer) {
-    struct ast_node* sequence = ast_node_new(AST_NODE_TYPE_TRANSLATION_UNIT, token_null);
-
-    
-    //resolve modules
-    //module_pass(&lexer, 1);
-
-    struct parser parser;
-    parser.lexer = lexer;
-    parser.mode = PARSER_MODE_FORWARD_PASS;
-    parser.module = module_new(token_null);
-    advance(&parser);
+static void type_pass(struct module_list* list) {
+    for (int i = 0; i < list->module_count; i++) {
+        struct module* module = list->modules[i];
+        for (int y = 0; y < module->lexer_count; y++) {
+            struct lexer* lexer = module->lexers[y];
+            lexer_reset(lexer);
+            
+            struct parser parser;
+            parser.lexer = lexer;
+            parser.module = module;
+            parser.stage = PARSER_STAGE_SYMBOL_RESOLUTION_PASS;
+            advance(&parser);
    
-    while (!match(&parser, TOKEN_TYPE_EOF)) {
-        type_pass(&parser);
+            while (!match(&parser, TOKEN_TYPE_EOF)) {
+                if (match(&parser, TOKEN_TYPE_STRUCT)) {
+                    struct_statement(&parser);
+                    return;
+                }
+                if (match(&parser, TOKEN_TYPE_INTERFACE)) {
+                    interface_statement(&parser);
+                }
+                advance(&parser);
+            }
+        }
     }
+}
 
-    lexer_reset(lexer);
-    parser.mode = PARSER_MODE_TREE_GENERATION;
-    advance(&parser);
+static void tree_gen_pass(struct module_list* list) {
+    for (int i = 0; i < list->module_count; i++) {
+        struct module* module = list->modules[i];
 
-    while (!match(&parser, TOKEN_TYPE_EOF)) {
-        ast_node_append_child(sequence, declaration(&parser));
+        for (int y = 0; y < module->lexer_count; y++) {
+            struct lexer* lexer = module->lexers[y];
+            lexer_reset(lexer);
+            
+            struct ast_node* sequence = ast_node_new(AST_NODE_TYPE_SEQUENCE, token_null);
+
+            struct parser parser;
+            parser.lexer = lexer;
+            parser.module = module;
+            parser.stage = PARSER_STAGE_TREE_GENERATION;
+            advance(&parser);
+
+            while (!match(&parser, TOKEN_TYPE_EOF)) {
+                ast_node_append_child(sequence, declaration(&parser));
+            }
+
+            ast_node_append_child(module->root, sequence);
+        }
     }
+}
 
-    free(parser.module);
-    return sequence;
+struct module_list ast_node_build(struct lexer** lexer, uint32_t count) {
+    
+    //resolve modules and sort lexers
+    struct module_list modules = module_pass(lexer, count);
+
+    type_pass(&modules); //populate the modules symbols tables
+
+    tree_gen_pass(&modules);
+
+    return modules;
 }
 
 void recursive_compiler(struct chunk* chunk, struct ast_node* node) {
@@ -923,7 +955,7 @@ void recursive_compiler(struct chunk* chunk, struct ast_node* node) {
 }
 
 struct chunk* ast_node_compile(struct ast_node* node) {
-    if (node->type != AST_NODE_TYPE_TRANSLATION_UNIT) {
+    if (node->type != AST_NODE_TYPE_MODULE) {
         fprintf(stderr, "expected translation unit type\n");
         return NULL;
     }
@@ -970,4 +1002,11 @@ static void debug(struct ast_node* node, int32_t depth) {
 
 void ast_node_debug(struct ast_node* node) {
     debug(node, 0);
+}
+
+void module_list_free(struct module_list* list) {
+    for (int i = 0; i < list->module_count; i++) {
+        module_free(list->modules[i]);
+    }
+    free(list->modules);
 }

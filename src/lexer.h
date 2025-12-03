@@ -125,6 +125,8 @@ struct token {
 
 struct lexer* lexer_new(char* source);
 
+void lexer_free(struct lexer* lexer);
+
 struct token lexer_scan(struct lexer* lexer);
 
 void lexer_reset(struct lexer* lexer);

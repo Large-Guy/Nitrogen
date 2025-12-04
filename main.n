@@ -1,33 +1,32 @@
-//nitrogen language
 module program;
 
-import math;
-
-void print()
+interface ITest
 {
-    return; //no print functionality exists yet
+
 }
 
-interface IAnimal
+struct Outer
 {
-    void make_sound();
-}
-
-interface IDamage
-{
-    void deal_damage();
-}
-
-struct Dog : IAnimal, IDamage
-{
-    void make_sound()
+    struct Inner
     {
-        return;
+        struct WithinInner
+        {
+            i32 c;
+        }
+        i32 b;
     }
+    
+    i32 a;
 }
 
-void main()
+i32 main()
 {
-    Dog dog;
-    dog.make_sound();
+    //something like this should work
+    i32 inner_function()
+    {
+        return 0;
+    }
+    i32 a;
+    
+    Outer outer;
 }

@@ -32,6 +32,18 @@ struct chunk {
     size_t local_size;
 };
 
+struct chunk_list {
+    struct chunk** chunks;
+    size_t count;
+    size_t capacity;
+};
+
+struct chunk_list* chunk_list_new();
+
+void chunk_list_free(struct chunk_list* list);
+
+void chunk_list_append(struct chunk_list* list, struct chunk* chunk);
+
 struct chunk* chunk_new(char* symbol);
 
 void chunk_free(struct chunk* chunk);

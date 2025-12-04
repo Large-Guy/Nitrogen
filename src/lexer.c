@@ -379,6 +379,20 @@ void lexer_free(struct lexer* lexer) {
     free(lexer);
 }
 
+struct token lexer_peek(struct lexer* lexer) {
+    char* saved_start = lexer->start;
+    char* saved_current = lexer->current;
+    uint32_t saved_line = lexer->line;
+
+    struct token next = lexer_scan(lexer);
+
+    lexer->start = saved_start;
+    lexer->current = saved_current;
+    lexer->line = saved_line;
+
+    return next;
+}
+
 void lexer_reset(struct lexer* lexer) {
     lexer->current = lexer->source;
     lexer->start = lexer->source;

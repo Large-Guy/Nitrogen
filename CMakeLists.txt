@@ -12,4 +12,10 @@ add_executable(compiler src/main.c
         src/lexer.c
         src/lexer.h
         src/parser.c
-        src/parser.h)
+        src/parser.h
+        src/ast.c
+        src/ast.h
+        src/ir_gen.c
+        src/ir_gen.h
+        src/module.c
+        src/module.h)

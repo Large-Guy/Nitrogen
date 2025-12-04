@@ -53,20 +53,28 @@ int main(int argc, char** argv) {
     printf("compiling... ");
     
     for (int i = 0; i < argc - 1; i++) {
-        printf("%s ", argv[i]);
+        printf("%s ", argv[i + 1]);
         files[i] = file_read(argv[i + 1]);
         lexers[i] = lexer_new(files[i]->contents);
     }
 
     printf("\nbuilding ast...\n\n");
 
-    struct module_list modules = ast_node_build(lexers, argc - 1);
+    struct module_list modules = parse(lexers, argc - 1);
 
     printf("\n");
 
     for (int i = 0; i < modules.module_count; i++) {
-        printf("--- MODULE %.*s ---\n", (int)modules.modules[i]->name.length, modules.modules[i]->name.start);
-        ast_node_debug(modules.modules[i]->root);
+        struct module* module = modules.modules[i];
+        printf("--- MODULE %.*s ---\n", (int)module->name.length, module->name.start);
+        printf("SYMBOLS ---\n");
+        for (int j = 0; j < module->symbols_count; j++) {
+            struct ast_node* symbol = module->symbols[j];
+            ast_node_debug(symbol);
+            printf("\n");
+        }
+        printf("AST ---\n");
+        ast_node_debug(module->root);
         printf("\n");
     }
 

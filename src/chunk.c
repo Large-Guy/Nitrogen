@@ -22,6 +22,27 @@ struct chunk* chunk_new(char* symbol) {
     return chunk;
 }
 
+struct chunk_list* chunk_list_new() {
+    struct chunk_list* list = malloc(sizeof(struct chunk_list));
+    assert(list);
+    return list;
+}
+
+void chunk_list_free(struct chunk_list* list) {
+    assert(list);
+    free(list->chunks);
+    free(list);
+}
+
+void chunk_list_append(struct chunk_list* list, struct chunk* chunk) {
+    if (list->count >= chunk->capacity) {
+        chunk->capacity *= 2;
+        chunk->locals = realloc(chunk->locals, chunk->capacity * sizeof(size_t));
+        assert(chunk->locals);
+    }
+    chunk->locals[list->count++] = chunk->size;
+}
+
 void chunk_free(struct chunk* chunk) {
     assert(chunk != NULL);
     free(chunk->symbol);

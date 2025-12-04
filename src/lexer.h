@@ -129,6 +129,8 @@ void lexer_free(struct lexer* lexer);
 
 struct token lexer_scan(struct lexer* lexer);
 
+struct token lexer_peek(struct lexer* lexer);
+
 void lexer_reset(struct lexer* lexer);
 
 

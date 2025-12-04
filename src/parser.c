@@ -20,6 +20,7 @@ struct parser {
     struct lexer* lexer;
     struct token current;
     struct token previous;
+    uint32_t tp;
 };
 
 
@@ -27,12 +28,16 @@ static void advance(struct parser* parser) {
     parser->previous = parser->current;
 
     while (true) {
-        parser->current = lexer_scan(parser->lexer);
+        parser->current = lexer_read(parser->lexer, parser->tp++);
         if (parser->current.type != TOKEN_TYPE_ERROR)
             break;
 
         //TODO: error out
     }
+}
+
+static struct token peek(struct parser* parser, uint32_t offset) {
+    return lexer_read(parser->lexer, parser->tp + offset - 1);
 }
 
 static bool type_exists(struct parser* parser, struct token name) {
@@ -96,12 +101,13 @@ static bool match_type(struct parser* parser) {
             match(parser, TOKEN_TYPE_F32) ||
             match(parser, TOKEN_TYPE_F64) ||
             match(parser, TOKEN_TYPE_VOID);
+    
 
     if (t) {
         return true;
     }
     
-    if (check(parser, TOKEN_TYPE_IDENTIFIER) && lexer_peek(parser->lexer).type == TOKEN_TYPE_IDENTIFIER) {
+    if (module_get_symbol(parser->module, parser->current) && peek(parser, 1).type == TOKEN_TYPE_IDENTIFIER) {
         advance(parser);
         return true;
     }
@@ -824,12 +830,12 @@ static void import_pass(struct module_list* list) {
         struct module* module = list->modules[i];
         for (int y = 0; y < module->lexer_count; y++) {
             struct lexer* lexer = module->lexers[y];
-            lexer_reset(lexer);
             
             struct parser parser;
             parser.lexer = lexer;
             parser.module = module;
             parser.stage = PARSER_STAGE_SYMBOL_RESOLUTION_PASS;
+            parser.tp = 0;
             advance(&parser);
    
             while (!match(&parser, TOKEN_TYPE_EOF)) {
@@ -876,7 +882,7 @@ static struct module_list module_pass(struct lexer** lexers, uint32_t count) {
         parser.module = NULL;
         parser.stage = PARSER_STAGE_MODULE_GENERATION;
         parser.lexer = lexers[i];
-        lexer_reset(lexer);
+        parser.tp = 0;
         
         while (!match(&parser, TOKEN_TYPE_EOF)) {
             advance(&parser);
@@ -920,7 +926,6 @@ static void tree_gen_pass(struct module_list* list) {
 
         for (int y = 0; y < module->lexer_count; y++) {
             struct lexer* lexer = module->lexers[y];
-            lexer_reset(lexer);
             
             struct ast_node* sequence = ast_node_new(AST_NODE_TYPE_SEQUENCE, token_null);
 
@@ -928,6 +933,7 @@ static void tree_gen_pass(struct module_list* list) {
             parser.lexer = lexer;
             parser.module = module;
             parser.stage = PARSER_STAGE_TREE_GENERATION;
+            parser.tp = 0;
             advance(&parser);
 
             while (!match(&parser, TOKEN_TYPE_EOF)) {

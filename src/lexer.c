@@ -11,6 +11,10 @@ struct lexer {
     char* start;
     char* current;
     uint32_t line;
+
+    struct token* tokens;
+    size_t tokens_count;
+    size_t tokens_capacity;
 };
 
 static bool is_end(const struct lexer* lexer) {
@@ -238,7 +242,7 @@ static struct token identifier(struct lexer* lexer) {
     return make_token(lexer, type(lexer));
 }
 
-struct token lexer_scan(struct lexer* lexer) {
+static struct token lexer_scan(struct lexer* lexer) {
     skip_whitespace(lexer);
 
     lexer->start = lexer->current;
@@ -294,6 +298,28 @@ struct lexer* lexer_new(char* source) {
     lexer->start = source;
     lexer->current = source;
     lexer->line = 1;
+
+    lexer->tokens = malloc(sizeof(struct token));
+    assert(lexer->tokens != NULL);
+    lexer->tokens_count = 0;
+    lexer->tokens_capacity = 1;
+
+    bool loop = true;
+    while (loop) {
+        
+        struct token token = lexer_scan(lexer);
+        if (token.type == TOKEN_TYPE_EOF) {
+            loop = false;
+        }
+
+        if (lexer->tokens_count >= lexer->tokens_capacity) {
+            lexer->tokens_capacity *= 2;
+            lexer->tokens = realloc(lexer->tokens, sizeof(struct token) * lexer->tokens_capacity);
+            assert(lexer->tokens != NULL);
+        }
+        
+        lexer->tokens[lexer->tokens_count++] = token;
+    }
     return lexer;
 }
 
@@ -376,25 +402,18 @@ const char* token_type_to_string(enum token_type e) {
 }
 
 void lexer_free(struct lexer* lexer) {
+    free(lexer->tokens);
     free(lexer);
 }
 
-struct token lexer_peek(struct lexer* lexer) {
-    char* saved_start = lexer->start;
-    char* saved_current = lexer->current;
-    uint32_t saved_line = lexer->line;
-
-    struct token next = lexer_scan(lexer);
-
-    lexer->start = saved_start;
-    lexer->current = saved_current;
-    lexer->line = saved_line;
-
-    return next;
-}
-
-void lexer_reset(struct lexer* lexer) {
-    lexer->current = lexer->source;
-    lexer->start = lexer->source;
-    lexer->line = 1;
+struct token lexer_read(struct lexer* lexer, uint32_t index) {
+    if (index >= lexer->tokens_count) {
+        struct token token = {};
+        token.type = TOKEN_TYPE_EOF;
+        token.start = NULL;
+        token.length = 0;
+        token.line = 0;
+        return token;
+    }
+    return lexer->tokens[index];
 }

@@ -127,11 +127,6 @@ struct lexer* lexer_new(char* source);
 
 void lexer_free(struct lexer* lexer);
 
-struct token lexer_scan(struct lexer* lexer);
-
-struct token lexer_peek(struct lexer* lexer);
-
-void lexer_reset(struct lexer* lexer);
-
+struct token lexer_read(struct lexer* lexer, uint32_t index);
 
 #endif //COMPILER_LEXER_H

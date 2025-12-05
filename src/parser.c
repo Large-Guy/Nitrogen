@@ -44,7 +44,7 @@ static bool type_exists(struct parser* parser, struct token name) {
     if (name.type != TOKEN_TYPE_IDENTIFIER) {
         return false;
     }
-    bool has_symbol = module_get_symbol(parser->module, name);
+    bool has_symbol = module_get_symbol(parser->module->symbols, name);
     if (has_symbol) {
         advance(parser);
     }
@@ -107,7 +107,7 @@ static bool match_type(struct parser* parser) {
         return true;
     }
     
-    if (module_get_symbol(parser->module, parser->current) && peek(parser, 1).type == TOKEN_TYPE_IDENTIFIER) {
+    if (module_get_symbol(parser->module->symbols, parser->current)) {
         advance(parser);
         return true;
     }
@@ -578,10 +578,14 @@ static struct ast_node* get_type_node(struct parser* parser, struct token token)
             return ast_node_new(AST_NODE_TYPE_U32, token);
         case TOKEN_TYPE_U64:
             return ast_node_new(AST_NODE_TYPE_U64, token);
+        case TOKEN_TYPE_F32:
+            return ast_node_new(AST_NODE_TYPE_F32, token);
+        case TOKEN_TYPE_F64:
+            return ast_node_new(AST_NODE_TYPE_F64, token);
         case TOKEN_TYPE_VOID:
             return ast_node_new(AST_NODE_TYPE_VOID, token);
         case TOKEN_TYPE_IDENTIFIER:
-            return ast_node_new(AST_NODE_TYPE_TYPE, token);
+            return module_get_symbol(parser->module->symbols, token);
         default:
             return NULL;
     }
@@ -605,8 +609,7 @@ static struct ast_node* definition(struct parser* parser, bool field, bool state
     struct token type = parser->previous;
     struct ast_node* type_node = get_type_node(parser, type);
     while (match(parser, TOKEN_TYPE_DOT)) {
-        //TODO: implement accessing sub types
-        advance(parser); //move the dot out of the way
+        consume(parser, TOKEN_TYPE_IDENTIFIER, "expected sub type after '.'"); //move the dot out of the way
         type_node = get_sub_symbol(type_node, parser->previous);
     }
     consume(parser, TOKEN_TYPE_IDENTIFIER, "expected variable name");
@@ -825,6 +828,100 @@ static struct ast_node* declaration(struct parser* parser) {
 
 #pragma region passes
 
+static void skip_block(struct parser* parser) {
+    while (!check(parser, TOKEN_TYPE_RIGHT_BRACE)) {
+        advance(parser);
+    }
+
+    consume(parser, TOKEN_TYPE_RIGHT_BRACE, "expected '}' after block");
+}
+
+static struct ast_node* interface_symbol(struct parser* parser) {
+    struct token op_token = parser->previous;
+    consume(parser, TOKEN_TYPE_IDENTIFIER, "expected identifier after struct");
+    struct token name = parser->previous;
+    struct ast_node* node = ast_node_new(AST_NODE_TYPE_INTERFACE_DECLARATION, op_token);
+    ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
+   
+    consume(parser, TOKEN_TYPE_LEFT_BRACE, "expected '{' after struct definition");
+    
+    while (!check(parser,TOKEN_TYPE_RIGHT_BRACE)) {
+        if (match(parser, TOKEN_TYPE_LEFT_BRACE)) {
+            skip_block(parser);
+        }
+        else {
+            advance(parser);
+        }
+    }
+    
+    consume(parser, TOKEN_TYPE_RIGHT_BRACE, "expected '}' after struct statement");
+    return node;
+}
+
+static struct ast_node* struct_symbol(struct parser* parser) {
+    struct token op_token = parser->previous;
+    consume(parser, TOKEN_TYPE_IDENTIFIER, "expected identifier after struct");
+    struct token name = parser->previous;
+    struct ast_node* node = ast_node_new(AST_NODE_TYPE_STRUCT_DECLARATION, op_token);
+    ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
+    
+    if (match(parser, TOKEN_TYPE_COLON)) {
+        do {
+            consume(parser, TOKEN_TYPE_IDENTIFIER, "expected identifier");
+            struct token interface = parser->previous;
+            ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_INTERFACE, interface));
+        } while (match(parser, TOKEN_TYPE_COMMA));
+    }
+
+    consume(parser, TOKEN_TYPE_LEFT_BRACE, "expected '{' after struct definition");
+    
+    while (!check(parser,TOKEN_TYPE_RIGHT_BRACE)) {
+        if (match(parser, TOKEN_TYPE_STRUCT)) {
+            ast_node_append_child(node, struct_symbol(parser));
+        }
+        else if (match(parser, TOKEN_TYPE_LEFT_BRACE)) {
+            skip_block(parser);
+        }
+        else {
+            advance(parser);
+        }
+    }
+    
+    consume(parser, TOKEN_TYPE_RIGHT_BRACE, "expected '}' after struct statement");
+    return node;
+}
+
+static void type_pass(struct module_list* list) {
+    for (int i = 0; i < list->module_count; i++) {
+        struct module* module = list->modules[i];
+        for (int y = 0; y < module->lexer_count; y++) {
+            struct lexer* lexer = module->lexers[y];
+            
+            struct parser parser;
+            parser.lexer = lexer;
+            parser.module = module;
+            parser.stage = PARSER_STAGE_SYMBOL_RESOLUTION_PASS;
+            parser.tp = 0;
+            advance(&parser);
+
+            while (!match(&parser, TOKEN_TYPE_EOF)) {
+                if (match(&parser, TOKEN_TYPE_STRUCT)) {
+                    module_add_symbol(module, struct_symbol(&parser));
+                }
+                else if (match(&parser, TOKEN_TYPE_INTERFACE)) {
+                    module_add_symbol(module, interface_symbol(&parser));
+                }
+                else if (match(&parser, TOKEN_TYPE_LEFT_BRACE)) {
+                    skip_block(&parser);
+                }
+                else {
+                    advance(&parser);
+                }
+            }
+        }
+    }
+}
+
 static void import_pass(struct module_list* list) {
     for (int i = 0; i < list->module_count; i++) {
         struct module* module = list->modules[i];
@@ -853,14 +950,7 @@ static void import_pass(struct module_list* list) {
                         fprintf(stderr, "unable to find module to import\n");
                         return;
                     }
-                    int new_capacity = (int)pow(2, ceil(log2((double)module->symbols_count + (double)import->symbols_count)));
-                    if (new_capacity > module->symbols_capacity) {
-                        module->symbols = realloc(module->symbols, new_capacity * sizeof(struct token));
-                        assert(module->symbols != NULL);
-                        module->symbols_capacity = new_capacity;
-                    }
-                    memcpy(&module->symbols[module->symbols_count], import->symbols, import->symbols_count * sizeof(struct token));
-                    module->symbols_count += import->symbols_count;
+                    //TODO: import symbols
                     printf("imported module...\n");
                     consume(&parser, TOKEN_TYPE_SEMICOLON, "expected semi colon after import name");
                 }
@@ -955,6 +1045,8 @@ struct module_list parse(struct lexer** lexer, uint32_t count) {
     struct module_list modules = module_pass(lexer, count);
 
     import_pass(&modules); //merge symbol tables
+
+    type_pass(&modules);
 
     tree_gen_pass(&modules);
 

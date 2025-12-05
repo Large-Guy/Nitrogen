@@ -35,6 +35,9 @@ enum ast_node_type {
     AST_NODE_TYPE_U16,
     AST_NODE_TYPE_U32,
     AST_NODE_TYPE_U64,
+    
+    AST_NODE_TYPE_F32,
+    AST_NODE_TYPE_F64,
 
     //declarations
     AST_NODE_TYPE_VARIABLE_DECLARATION,

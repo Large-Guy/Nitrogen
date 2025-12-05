@@ -1,32 +1,31 @@
 module program;
 
-interface ITest
+struct Vec2
 {
-
+    f32 x;
+    f32 y;
 }
 
-struct Outer
+interface IDamage
 {
-    struct Inner
-    {
-        struct WithinInner
-        {
-            i32 c;
-        }
-        i32 b;
-    }
-    
-    i32 a;
+    void deal(i32 amount);
 }
 
-i32 main()
+struct Player : IDamage
 {
-    //something like this should work
-    i32 inner_function()
-    {
-        return 0;
-    }
-    i32 a;
+    i32 health;
+    Vec2 position;
     
-    Outer outer;
+    void deal(i32 amount)
+    {
+        health -= amount;
+    }
+}
+
+void main()
+{
+    Player player;
+    player.health = 3;
+    player.position.x = 0;
+    player.position.y = 0;
 }

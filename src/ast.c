@@ -9,6 +9,7 @@ struct ast_node* ast_node_new(enum ast_node_type type, struct token token) {
     assert(node);
     node->type = type;
     node->token = token;
+    node->parent = NULL;
     node->children_count = 0;
     node->children_capacity = 1;
     node->children = malloc(sizeof(struct ast_node*) * node->children_capacity);
@@ -30,6 +31,7 @@ void ast_node_append_child(struct ast_node* node, struct ast_node* child) {
         assert(node->children);
     }
     node->children[node->children_count++] = child;
+    child->parent = node;
 }
 
 static void debug(struct ast_node* node, int32_t depth) {

@@ -67,13 +67,9 @@ int main(int argc, char** argv) {
     for (int i = 0; i < modules.module_count; i++) {
         struct module* module = modules.modules[i];
         printf("--- MODULE %.*s ---\n", (int)module->name.length, module->name.start);
-        printf("SYMBOLS ---\n");
-        for (int j = 0; j < module->symbols_count; j++) {
-            struct ast_node* symbol = module->symbols[j];
-            ast_node_debug(symbol);
-            printf("\n");
-        }
-        printf("AST ---\n");
+        printf("\nSYMBOLS ---\n");
+        ast_node_debug(module->symbols);
+        printf("\nAST ---\n");
         ast_node_debug(module->root);
         printf("\n");
     }

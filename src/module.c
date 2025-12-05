@@ -9,20 +9,17 @@ struct module* module_new(struct token name) {
     assert(module);
     module->name = name;
     module->root = ast_node_new(AST_NODE_TYPE_MODULE, name);
+    module->symbols = ast_node_new(AST_NODE_TYPE_MODULE, name);
     module->lexers = malloc(sizeof(struct lexer*));
     assert(module->lexers);
     module->lexer_count = 0;
     module->lexer_capacity = 1;
-    module->symbols = malloc(sizeof(struct ast_node*));
-    assert(module->symbols);
-    module->symbols_count = 0;
-    module->symbols_capacity = 1;
     return module;
 }
 
 void module_free(struct module* module) {
     free(module->lexers);
-    free(module->symbols);
+    ast_node_free(module->root);
     free(module);
 }
 
@@ -37,23 +34,18 @@ void module_add_source(struct module* module, struct lexer* lexer) {
 }
 
 void module_add_symbol(struct module* module, struct ast_node* symbol) {
-    if (module->symbols_count >= module->symbols_capacity) {
-        module->symbols_capacity *= 2;
-        module->symbols = realloc(module->symbols, sizeof(struct ast_node*) * module->symbols_capacity);
-        assert(module->symbols);
-    }
-    module->symbols[module->symbols_count++] = symbol;
+    ast_node_append_child(module->symbols, symbol);
 }
 
-struct ast_node* module_get_symbol(struct module* module, struct token name) {
-    for (size_t i = 0; i < module->symbols_count; i++) {
-        struct token symbol_name = (*module->symbols[i]->children)->token;
+struct ast_node* module_get_symbol(struct ast_node* scope, struct token name) {
+    for (size_t i = 0; i < scope->children_count; i++) {
+        struct token symbol_name = (*scope->children[i]->children)->token;
         if (name.length == symbol_name.length &&
             memcmp(name.start, symbol_name.start, symbol_name.length) == 0) {
-            return module->symbols[i];
+            return scope->children[i];
         }
     }
-    return NULL;
+    return scope->parent ? module_get_symbol(scope->parent, name) : NULL;
 }
 
 void module_list_free(struct module_list* list) {

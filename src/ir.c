@@ -36,17 +36,21 @@ struct ir_module* ir_module_new(char* name) {
 void ir_module_free(struct ir_module* list) {
     assert(list);
     free(list->name);
+    for (int i = 0; i < list->count; i++)
+    {
+        ir_free(list->chunks[i]);
+    }
     free(list->chunks);
     free(list);
 }
 
 void ir_module_append(struct ir_module* list, struct ir* chunk) {
-    if (list->count >= chunk->capacity) {
-        chunk->capacity *= 2;
-        chunk->locals = realloc(chunk->locals, chunk->capacity * sizeof(size_t));
-        assert(chunk->locals);
+    if (list->count >= list->capacity) {
+        list->capacity *= 2;
+        list->chunks = realloc(list->chunks, list->capacity * sizeof(struct ir*));
+        assert(list->chunks);
     }
-    chunk->locals[list->count++] = chunk->size;
+    list->chunks[list->count++] = chunk;
 }
 
 void ir_free(struct ir* chunk) {
@@ -95,7 +99,9 @@ void ir_debug(struct ir* chunk) {
 void ir_module_debug(struct ir_module* module) {
     for (int i = 0; i < module->count; i++)
     {
+        printf("CHUNK [%s] ---\n", module->chunks[i]->symbol);
         ir_debug(module->chunks[i]);
+        printf("\n");
     }
 }
 

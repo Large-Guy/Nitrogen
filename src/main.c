@@ -67,7 +67,7 @@ int main(int argc, char** argv) {
 
     for (int i = 0; i < modules.module_count; i++) {
         struct module* module = modules.modules[i];
-        printf("--- MODULE %.*s ---\n", (int)module->name.length, module->name.start);
+        printf("--- MODULE %s ---\n", module->name);
         printf("\nSYMBOLS ---\n");
         ast_node_debug(module->symbols);
         printf("\nAST ---\n");
@@ -81,10 +81,11 @@ int main(int argc, char** argv) {
 
     for (int i = 0; i < modules.module_count; i++) {
         struct module* module = modules.modules[i];
-        printf("--- MODULE %.*s ---\n", (int)module->name.length, module->name.start);
+        printf("--- MODULE %s ---\n", module->name);
         struct ir_module* ir_module = ir_gen_module(module);
         ir_module_debug(ir_module);
         printf("\n");
+        ir_module_free(ir_module);
     }
 
     module_list_free(&modules);

@@ -13,6 +13,7 @@ struct ast_node* ast_node_new(enum ast_node_type type, struct token token) {
     node->children_count = 0;
     node->children_capacity = 1;
     node->children = malloc(sizeof(struct ast_node*) * node->children_capacity);
+    assert(node->children);
     return node;
 }
 
@@ -28,6 +29,7 @@ void ast_node_free(struct ast_node* node) {
 }
 
 void ast_node_append_child(struct ast_node* node, struct ast_node* child) {
+    assert(node->children_capacity != 0); // if this occurs, the node was not initialized properly
     if (node->children_count >= node->children_capacity) {
         node->children_capacity *= 2;
         node->children = realloc(node->children, node->children_capacity * sizeof(struct ast_node*));
@@ -45,10 +47,7 @@ void ast_node_remove_child(struct ast_node* node, struct ast_node* child) {
             }
             node->children_count--;
             child->parent = NULL;
-            if (node->children_count > 0) {
-                node->children = realloc(node->children, node->children_count * sizeof(struct ast_node*));
-                assert(node->children);
-            }
+            break;
         }
     }
 }

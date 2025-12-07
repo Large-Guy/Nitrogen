@@ -362,7 +362,6 @@ static struct ast_node* variable(struct parser* parser, bool canAssign) {
         if (match(parser, TOKEN_TYPE_CARET_EQUAL)) {
             return make_compound_assignment(parser, AST_NODE_TYPE_BITWISE_XOR, variable, left);
         }
-
         if (match(parser, TOKEN_TYPE_PLUS_PLUS)) {
             struct ast_node* assignment = ast_node_new(AST_NODE_TYPE_ASSIGN, parser->previous);
             ast_node_append_child(assignment, variable);
@@ -374,7 +373,6 @@ static struct ast_node* variable(struct parser* parser, bool canAssign) {
             ast_node_append_child(assignment, addition);
             return assignment;
         }
-
         if (match(parser, TOKEN_TYPE_MINUS_MINUS)) {
             struct ast_node* assignment = ast_node_new(AST_NODE_TYPE_ASSIGN, parser->previous);
             ast_node_append_child(assignment, variable);
@@ -676,7 +674,7 @@ static struct ast_node* get_sub_symbol(struct ast_node* parent_symbol, struct to
     return NULL;
 }
 
-static struct ast_node* definition(struct parser* parser, bool field, bool statement, bool canAssign, bool inlineDeclaration) {
+static struct ast_node* definition(struct parser* parser, bool statement, bool canAssign, bool inlineDeclaration) {
     struct token type = parser->previous;
     struct ast_node* type_node = get_type_node(parser, type);
     while (match(parser, TOKEN_TYPE_DOT)) {
@@ -688,13 +686,13 @@ static struct ast_node* definition(struct parser* parser, bool field, bool state
     if (match(parser, TOKEN_TYPE_LEFT_PAREN)) {
         //function
         struct ast_node* node = ast_node_new(AST_NODE_TYPE_FUNCTION, token_null);
-        ast_node_append_child(node, type_node);
         ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
+        ast_node_append_child(node, type_node);
         //parameters
         if (!check(parser, TOKEN_TYPE_RIGHT_PAREN)) {
             do {
                 advance(parser);
-                ast_node_append_child(node, definition(parser, false, false, true, true));
+                ast_node_append_child(node, definition(parser, false, true, true));
             } while (match(parser, TOKEN_TYPE_COMMA));
         }
         consume(parser, TOKEN_TYPE_RIGHT_PAREN, "expected ')' after declaration");
@@ -706,10 +704,10 @@ static struct ast_node* definition(struct parser* parser, bool field, bool state
     }
 
     //variable
-    struct ast_node* node = ast_node_new(field ? AST_NODE_TYPE_VARIABLE : AST_NODE_TYPE_VARIABLE, token_null);
-    ast_node_append_child(node, type_node);
+    struct ast_node* node = ast_node_new(AST_NODE_TYPE_VARIABLE, token_null);
     ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
-    if (canAssign && !field && match(parser, TOKEN_TYPE_EQUAL)) {
+    ast_node_append_child(node, type_node);
+    if (canAssign && match(parser, TOKEN_TYPE_EQUAL)) {
         ast_node_append_child(node, expression(parser));
     }
     if (statement)
@@ -718,7 +716,7 @@ static struct ast_node* definition(struct parser* parser, bool field, bool state
 }
 
 static struct ast_node* definition_statement(struct parser* parser) {
-    struct ast_node* node = definition(parser, false, true, true, true);
+    struct ast_node* node = definition(parser, true, true, true);
     return node;
 }
 
@@ -748,7 +746,7 @@ static struct ast_node* struct_statement(struct parser* parser) {
         }
         else if (match_type(parser)) {
             printf("matched type");
-            ast_node_append_child(node, definition(parser, true, true, false, true));
+            ast_node_append_child(node, definition(parser, true, false, true));
         }
         else {
             advance(parser);
@@ -774,7 +772,7 @@ static struct ast_node* interface_statement(struct parser* parser) {
 
     while (!check(parser,TOKEN_TYPE_RIGHT_BRACE)) {
         advance(parser);
-        ast_node_append_child(node, definition(parser, true, true, false, false));
+        ast_node_append_child(node, definition(parser, true, false, false));
     }
     
     consume(parser, TOKEN_TYPE_RIGHT_BRACE, "expected '}' after struct statement");
@@ -1223,17 +1221,13 @@ static void tree_gen_pass(struct module_list* list) {
         for (int y = 0; y < module->lexer_count; y++) {
             struct lexer* lexer = module->lexers[y];
             
-            struct ast_node* sequence = ast_node_new(AST_NODE_TYPE_SEQUENCE, token_null);
-
             struct parser* parser = parser_new(PARSER_STAGE_TREE_GENERATION, module, lexer);
 
             while (!match(parser, TOKEN_TYPE_EOF)) {
                 struct ast_node* node = declaration(parser);
                 if (node != NULL)
-                    ast_node_append_child(sequence, node);
+                    ast_node_append_child(module->root, node);
             }
-
-            ast_node_append_child(module->root, sequence);
 
             parser_free(parser);
         }

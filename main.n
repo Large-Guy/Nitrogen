@@ -1,9 +1,6 @@
 module program;
 
-struct Outer
+i32 main()
 {
-    struct Inner
-    {
-    }
-    Inner inner;
+    return 0;
 }

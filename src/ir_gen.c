@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 struct chunk_list* compile_module(struct module* node) {
-    struct chunk_list* chunks = malloc(sizeof(struct chunk_list));
+    struct chunk_list* chunks = chunk_list_new();
 
     for (int i = 0; i < node->root->children_count; i++) {
         

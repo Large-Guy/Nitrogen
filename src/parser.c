@@ -427,6 +427,7 @@ static struct ast_node* unary(struct parser* parser, bool canAssign) {
             return node;
         }
         default: {
+            //TODO: error out
             fprintf(stderr, "unary unexpected token type, this should never happen: %i\n", token.type);
             return NULL;
         }
@@ -442,6 +443,7 @@ static struct ast_node* literal(struct parser* parser, bool canAssign) {
         case TOKEN_TYPE_FALSE:
             return ast_node_new(AST_NODE_TYPE_INTEGER, token);
         default:
+            //TODO: error out
             fprintf(stderr, "unexpected literal token type, this should never happen: %i\n", token.type);
     }
     return NULL;
@@ -750,6 +752,7 @@ static struct ast_node* struct_statement(struct parser* parser) {
         }
         else {
             advance(parser);
+            //TODO: error out
             fprintf(stderr, "expected type\n");
         }
     }
@@ -981,7 +984,6 @@ static struct ast_node* variable_symbol(struct parser* parser) {
     consume(parser, TOKEN_TYPE_IDENTIFIER, "expected identifier after field symbol");
     struct token name = parser->previous;
     if (match(parser, TOKEN_TYPE_LEFT_PAREN)) {
-        //TODO: impl function symbols
         struct ast_node* node = ast_node_new(AST_NODE_TYPE_FUNCTION, type);
         ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
 
@@ -1007,6 +1009,7 @@ static void struct_symbol_resolve(struct parser* parser) {
     struct token name = parser->previous;
     struct ast_node* symbol = module_get_symbol(scope(parser), name);
     if (symbol == NULL) {
+        //TODO: error out
         fprintf(stderr, "new symbol discovered during resolution pass");
     }
     if (match(parser, TOKEN_TYPE_COLON)) {
@@ -1041,6 +1044,7 @@ static void interface_symbol_resolve(struct parser* parser) {
     struct token name = parser->previous;
     struct ast_node* symbol = module_get_symbol(scope(parser), name);
     if (symbol == NULL) {
+        //TODO: error out
         fprintf(stderr, "new symbol discovered during resolution pass");
     }
     if (match(parser, TOKEN_TYPE_COLON)) {
@@ -1146,8 +1150,9 @@ static void import_pass(struct module_list* list) {
                         }
                     }
                     if (import == NULL) {
+                        //TODO error out
                         fprintf(stderr, "unable to find module to import\n");
-                        return;
+                        goto exit;
                     }
                     //TODO: import symbols
                     printf("imported module...\n");
@@ -1155,7 +1160,8 @@ static void import_pass(struct module_list* list) {
                 }
                 advance(parser);
             }
-            
+
+            exit:
             parser_free(parser);
         }
     }
@@ -1170,6 +1176,8 @@ static struct module_list module_pass(struct lexer** lexers, uint32_t count) {
         struct lexer* lexer = lexers[i];
         
         struct parser* parser = parser_new(PARSER_STAGE_MODULE_GENERATION, NULL, lexer);
+
+        bool found = false;
         
         while (!match(parser, TOKEN_TYPE_EOF)) {
             if (match(parser, TOKEN_TYPE_MODULE)) {
@@ -1192,16 +1200,16 @@ static struct module_list module_pass(struct lexer** lexers, uint32_t count) {
                     modules[modules_count++] = module;
                 }
                 module_add_source(module, lexer);
-                goto determined;
+                found = true;
+                break;
             }
             advance(parser);
         }
 
-        fprintf(stderr, "failed to find module name in source file");
+        if (!found) //todo: error out
+            fprintf(stderr, "failed to find module name in source file");
 
-        determined:
         parser_free(parser);
-        continue;
     }
 
     struct module_list list = {modules, modules_count};

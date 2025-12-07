@@ -2,11 +2,23 @@
 
 #include <stdlib.h>
 
-struct chunk_list* compile_module(struct module* node) {
-    struct chunk_list* chunks = chunk_list_new();
+static struct ir* statement(struct ast_node* node)
+{
+    switch (node->type) {
+        case AST_NODE_TYPE_FUNCTION: {
 
-    for (int i = 0; i < node->root->children_count; i++) {
-        
+        }
+        default: {
+            return NULL;
+        }
+    }
+}
+
+struct ir_module* ir_gen_module(struct module* module) {
+    struct ir_module* chunks = ir_module_new(module->name);
+
+    for (int i = 0; i < module->root->children_count; i++) {
+        ir_module_append(chunks, statement(module->root->children[i]));
     }
     
     return chunks;

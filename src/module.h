@@ -14,7 +14,7 @@ enum symbol_type {
 };
 
 struct module {
-    struct token name;
+    char* name;
 
     struct ast_node* root;
     struct ast_node* symbols;

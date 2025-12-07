@@ -1144,8 +1144,8 @@ static void import_pass(struct module_list* list) {
                     struct token name = parser->previous;
                     struct module* import = NULL;
                     for (int j = 0; j < list->module_count; j++) {
-                        if (list->modules[j]->name.length == name.length &&
-                            memcmp(list->modules[j]->name.start, name.start, name.length) == 0) {
+                        if (strlen(list->modules[j]->name) == name.length &&
+                            memcmp(list->modules[j]->name, name.start, name.length) == 0) {
                             import = list->modules[j];
                         }
                     }
@@ -1185,8 +1185,8 @@ static struct module_list module_pass(struct lexer** lexers, uint32_t count) {
                 struct token name = parser->previous;
                 struct module* module = NULL;
                 for (uint32_t j = 0; j < modules_count; j++) {
-                    if (modules[j]->name.length == name.length &&
-                        memcmp(modules[j]->name.start, name.start, name.length) == 0) {
+                    if (strlen(modules[j]->name) == name.length &&
+                        memcmp(modules[j]->name, name.start, name.length) == 0) {
                         module = modules[j];
                     }
                 }

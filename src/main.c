@@ -4,7 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "chunk.h"
+#include "ir.h"
+#include "ir_gen.h"
 #include "lexer.h"
 #include "parser.h"
 
@@ -75,39 +76,16 @@ int main(int argc, char** argv) {
     }
 
     printf("\nfinished building ast...\n\n");
-    
-    struct chunk* chunk = chunk_new("main");
 
-    int a = chunk_declare(chunk, 4);
-    int b = chunk_declare(chunk, 4);
-    
-    chunk_push(chunk, OP_IMM_32);
-    chunk_push32(chunk, 32);
-    chunk_push(chunk, OP_SET);
-    chunk_push(chunk, a);
+    printf("building ir...\n\n");
 
-    chunk_push(chunk, OP_IMM_32);
-    chunk_push32(chunk, 16);
-    chunk_push(chunk, OP_SET);
-    chunk_push(chunk, b);
-
-    chunk_push(chunk, OP_GET);
-    chunk_push(chunk, a);
-    
-    chunk_push(chunk, OP_GET);
-    chunk_push(chunk, b);
-
-    chunk_push(chunk, OP_ADD_32);
-    
-    chunk_push(chunk, OP_RETURN);
-
-    FILE* file = fopen("output.s", "w");
-    
-    chunk_compile(chunk, file);
-
-    fclose(file);
-
-    chunk_free(chunk);
+    for (int i = 0; i < modules.module_count; i++) {
+        struct module* module = modules.modules[i];
+        printf("--- MODULE %.*s ---\n", (int)module->name.length, module->name.start);
+        struct ir_module* ir_module = ir_gen_module(module);
+        ir_module_debug(ir_module);
+        printf("\n");
+    }
 
     module_list_free(&modules);
 

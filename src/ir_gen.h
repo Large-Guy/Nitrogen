@@ -1,9 +1,9 @@
 #ifndef COMPILER_IR_GEN_H
 #define COMPILER_IR_GEN_H
 
-#include "chunk.h"
+#include "ir.h"
 #include "module.h"
 
-struct chunk_list* compile_module(struct module* module);
+struct ir_module* ir_gen_module(struct module* module);
 
 #endif //COMPILER_IR_GEN_H

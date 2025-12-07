@@ -7,7 +7,9 @@
 struct module* module_new(struct token name) {
     struct module* module = malloc(sizeof(struct module));
     assert(module);
-    module->name = name;
+    module->name = malloc(name.length + 1);
+    memcpy(module->name, name.start, name.length);
+    module->name[name.length] = '\0';
     module->root = ast_node_new(AST_NODE_TYPE_MODULE, name);
     module->symbols = ast_node_new(AST_NODE_TYPE_MODULE, name);
     module->lexers = malloc(sizeof(struct lexer*));

@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "chunk.h"
+#include "ir.h"
 
 
 enum token_type {

@@ -1,4 +1,4 @@
-#include "chunk.h"
+#include "ir.h"
 
 #include <assert.h>
 #include <math.h>
@@ -6,8 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct chunk* chunk_new(char* symbol) {
-    struct chunk* chunk = malloc(sizeof(struct chunk));
+struct ir* ir_new(char* symbol) {
+    struct ir* chunk = malloc(sizeof(struct ir));
     assert(chunk);
     chunk->symbol = malloc(strlen(symbol) + 1);
     assert(chunk->symbol);
@@ -22,19 +22,25 @@ struct chunk* chunk_new(char* symbol) {
     return chunk;
 }
 
-struct chunk_list* chunk_list_new() {
-    struct chunk_list* list = malloc(sizeof(struct chunk_list));
+struct ir_module* ir_module_new(char* name) {
+    struct ir_module* list = malloc(sizeof(struct ir_module));
     assert(list);
+    list->name = malloc(strlen(name) + 1);
+    memcpy(list->name, name, strlen(name) + 1);
+    list->chunks = malloc(sizeof(struct ir*));
+    list->count = 0;
+    list->capacity = 1;
     return list;
 }
 
-void chunk_list_free(struct chunk_list* list) {
+void ir_module_free(struct ir_module* list) {
     assert(list);
+    free(list->name);
     free(list->chunks);
     free(list);
 }
 
-void chunk_list_append(struct chunk_list* list, struct chunk* chunk) {
+void ir_module_append(struct ir_module* list, struct ir* chunk) {
     if (list->count >= chunk->capacity) {
         chunk->capacity *= 2;
         chunk->locals = realloc(chunk->locals, chunk->capacity * sizeof(size_t));
@@ -43,7 +49,7 @@ void chunk_list_append(struct chunk_list* list, struct chunk* chunk) {
     chunk->locals[list->count++] = chunk->size;
 }
 
-void chunk_free(struct chunk* chunk) {
+void ir_free(struct ir* chunk) {
     assert(chunk != NULL);
     free(chunk->symbol);
     free(chunk->code);
@@ -51,7 +57,7 @@ void chunk_free(struct chunk* chunk) {
     free(chunk);
 }
 
-void chunk_push(struct chunk* chunk, uint8_t byte) {
+void ir_push(struct ir* chunk, uint8_t byte) {
     if (chunk->size >= chunk->capacity) {
         chunk->capacity *= 2;
         chunk->code = realloc(chunk->code, chunk->capacity);
@@ -60,14 +66,14 @@ void chunk_push(struct chunk* chunk, uint8_t byte) {
     chunk->code[chunk->size++] = byte;
 }
 
-void chunk_push32(struct chunk* chunk, uint32_t value) {
-    chunk_push(chunk, (value) & 0xff);
-    chunk_push(chunk, (value >> 8) & 0xff);
-    chunk_push(chunk, (value >> 16) & 0xff);
-    chunk_push(chunk, (value >> 24) & 0xff);
+void ir_push32(struct ir* chunk, uint32_t value) {
+    ir_push(chunk, (value) & 0xff);
+    ir_push(chunk, (value >> 8) & 0xff);
+    ir_push(chunk, (value >> 16) & 0xff);
+    ir_push(chunk, (value >> 24) & 0xff);
 }
 
-uint8_t chunk_declare(struct chunk* chunk, uint8_t size) {
+uint8_t ir_declare(struct ir* chunk, uint8_t size) {
     if (chunk->local_size > chunk->local_capacity) {
         chunk->capacity *= 2;
         chunk->code = realloc(chunk->code, chunk->capacity);
@@ -78,11 +84,18 @@ uint8_t chunk_declare(struct chunk* chunk, uint8_t size) {
     return chunk->local_size - 1;
 }
 
-void chunk_debug(struct chunk* chunk) {
+void ir_debug(struct ir* chunk) {
     assert(chunk != NULL);
     assert(chunk->code != NULL);
     for (size_t i = 0; i < chunk->size; i++) {
         printf("Byte: %lu, %d\n", i, chunk->code[i]);
+    }
+}
+
+void ir_module_debug(struct ir_module* module) {
+    for (int i = 0; i < module->count; i++)
+    {
+        ir_debug(module->chunks[i]);
     }
 }
 
@@ -94,15 +107,15 @@ static uint32_t round_up_16(uint32_t size) {
     return (uint32_t)(ceilf((float)size / 16.0f) * 16.0f);
 }
 
-static uint8_t as_imm8(struct chunk* chunk, uint32_t ip) {
+static uint8_t as_imm8(struct ir* chunk, uint32_t ip) {
     return chunk->code[ip];
 }
 
-static uint32_t as_imm32(struct chunk* chunk, uint32_t ip) {
+static uint32_t as_imm32(struct ir* chunk, uint32_t ip) {
     return *(uint32_t*)&chunk->code[ip];
 }
 
-char* chunk_compile(struct chunk* chunk, FILE* out) {
+char* ir_compile(struct ir* chunk, FILE* out) {
     assert(chunk != NULL);
     assert(chunk->code != NULL);
 

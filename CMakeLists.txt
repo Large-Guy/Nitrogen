@@ -7,8 +7,8 @@ add_link_options(-fsanitize=address)
 set(CMAKE_C_STANDARD 11)
 
 add_executable(compiler src/main.c
-        src/chunk.c
-        src/chunk.h
+        src/ir.c
+        src/ir.h
         src/lexer.c
         src/lexer.h
         src/parser.c

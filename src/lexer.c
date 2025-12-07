@@ -274,16 +274,18 @@ static struct token lexer_scan(struct lexer* lexer) {
         case ':' : return make_token(lexer, match(lexer, ':') ? TOKEN_TYPE_COLON_COLON : TOKEN_TYPE_COLON);
         case '+': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_PLUS_EQUAL : match(lexer, '+') ? TOKEN_TYPE_PLUS_PLUS : TOKEN_TYPE_PLUS);
         case '-': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_MINUS_EQUAL : match(lexer, '-') ? TOKEN_TYPE_MINUS_MINUS : TOKEN_TYPE_MINUS);
-        case '*': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_STAR_EQUAL : TOKEN_TYPE_STAR);
+        case '*': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_STAR_EQUAL : match(lexer, '*') ? TOKEN_TYPE_STAR_STAR : TOKEN_TYPE_STAR);
         case '%': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_PERCENT_EQUAL : TOKEN_TYPE_PERCENT);
         case '/': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_SLASH_EQUAL : TOKEN_TYPE_SLASH);
+        case '^': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_CARET_EQUAL : TOKEN_TYPE_CARET);
         case '=': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_EQUAL_EQUAL : TOKEN_TYPE_EQUAL);
         case '!': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_BANG_EQUAL : TOKEN_TYPE_BANG);
-        case '<': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_LESS_EQUAL : TOKEN_TYPE_LESS);
-        case '>': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_GREATER_EQUAL : TOKEN_TYPE_GREATER);
+        case '<': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_LESS_EQUAL : match(lexer, '<') ? TOKEN_TYPE_LESS_LESS : TOKEN_TYPE_LESS);
+        case '>': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_GREATER_EQUAL : match(lexer, '>') ? TOKEN_TYPE_GREATER_GREATER : TOKEN_TYPE_GREATER);
+        case '~': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_TILDE_EQUAL : TOKEN_TYPE_TILDE);
 
-        case '&': return make_token(lexer, match(lexer, '&') ? TOKEN_TYPE_AND_AND : TOKEN_TYPE_AND);
-        case '|': return make_token(lexer, match(lexer, '|') ? TOKEN_TYPE_PIPE_PIPE : TOKEN_TYPE_PIPE);
+        case '&': return make_token(lexer, match(lexer, '&') ? TOKEN_TYPE_AND_AND : match(lexer, '=') ? TOKEN_TYPE_AND_EQUAL : TOKEN_TYPE_AND);
+        case '|': return make_token(lexer, match(lexer, '|') ? TOKEN_TYPE_PIPE_PIPE : match(lexer, '=') ? TOKEN_TYPE_PIPE_EQUAL : TOKEN_TYPE_PIPE);
 
         case '"': return string(lexer);
         default: break;

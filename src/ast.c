@@ -17,6 +17,9 @@ struct ast_node* ast_node_new(enum ast_node_type type, struct token token) {
 }
 
 void ast_node_free(struct ast_node* node) {
+    if (node->parent != NULL) {
+        ast_node_remove_child(node->parent, node);
+    }
     for (size_t i = 0; i < node->children_count; i++) {
         ast_node_free(node->children[i]);
     }
@@ -32,6 +35,22 @@ void ast_node_append_child(struct ast_node* node, struct ast_node* child) {
     }
     node->children[node->children_count++] = child;
     child->parent = node;
+}
+
+void ast_node_remove_child(struct ast_node* node, struct ast_node* child) {
+    for (size_t i = 0; i < node->children_count; i++) {
+        if (node->children[i] == child) {
+            for (size_t j = i; j < node->children_count - 1; j++) {
+                node->children[j] = node->children[j + 1];
+            }
+            node->children_count--;
+            child->parent = NULL;
+            if (node->children_count > 0) {
+                node->children = realloc(node->children, node->children_count * sizeof(struct ast_node*));
+                assert(node->children);
+            }
+        }
+    }
 }
 
 static void debug(struct ast_node* node, int32_t depth) {

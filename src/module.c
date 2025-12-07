@@ -39,11 +39,19 @@ void module_add_symbol(struct module* module, struct ast_node* symbol) {
 
 struct ast_node* module_get_symbol(struct ast_node* scope, struct token name) {
     for (size_t i = 0; i < scope->children_count; i++) {
-        struct token symbol_name = (*scope->children[i]->children)->token;
+        struct ast_node* child = scope->children[i];
+        if (child->type != AST_NODE_TYPE_VARIABLE &&
+            child->type != AST_NODE_TYPE_FUNCTION &&
+            child->type != AST_NODE_TYPE_INTERFACE &&
+            child->type != AST_NODE_TYPE_STRUCT) {
+            continue;
+        }
+        struct token symbol_name = (*child->children)->token;
         if (name.length == symbol_name.length &&
-            memcmp(name.start, symbol_name.start, symbol_name.length) == 0) {
+                memcmp(name.start, symbol_name.start, symbol_name.length) == 0) {
             return scope->children[i];
         }
+        
     }
     return scope->parent ? module_get_symbol(scope->parent, name) : NULL;
 }

@@ -1,31 +1,9 @@
 module program;
 
-struct Vec2
+struct Outer
 {
-    f32 x;
-    f32 y;
-}
-
-interface IDamage
-{
-    void deal(i32 amount);
-}
-
-struct Player : IDamage
-{
-    i32 health;
-    Vec2 position;
-    
-    void deal(i32 amount)
+    struct Inner
     {
-        health -= amount;
     }
-}
-
-void main()
-{
-    Player player;
-    player.health = 3;
-    player.position.x = 0;
-    player.position.y = 0;
+    Inner inner;
 }

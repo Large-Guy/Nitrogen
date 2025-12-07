@@ -21,7 +21,6 @@ enum ast_node_type {
     //types
     AST_NODE_TYPE_MODULE_NAME,
     AST_NODE_TYPE_NAME,
-    AST_NODE_TYPE_INTERFACE,
     AST_NODE_TYPE_TYPE,
 
     AST_NODE_TYPE_VOID,
@@ -39,12 +38,11 @@ enum ast_node_type {
     AST_NODE_TYPE_F32,
     AST_NODE_TYPE_F64,
 
-    //declarations
-    AST_NODE_TYPE_VARIABLE_DECLARATION,
-    AST_NODE_TYPE_FUNCTION_DECLARATION,
-    AST_NODE_TYPE_STRUCT_DECLARATION,
-    AST_NODE_TYPE_INTERFACE_DECLARATION,
-    AST_NODE_TYPE_FIELD_DECLARATION,
+    //declarations OR implementations, depending on context
+    AST_NODE_TYPE_VARIABLE,
+    AST_NODE_TYPE_FUNCTION,
+    AST_NODE_TYPE_STRUCT,
+    AST_NODE_TYPE_INTERFACE,
 
     //operators
     AST_NODE_TYPE_ASSIGN,
@@ -55,6 +53,13 @@ enum ast_node_type {
     AST_NODE_TYPE_MULTIPLY,
     AST_NODE_TYPE_DIVIDE,
     AST_NODE_TYPE_MODULO,
+    AST_NODE_TYPE_POWER,
+    AST_NODE_TYPE_BITWISE_AND,
+    AST_NODE_TYPE_BITWISE_OR,
+    AST_NODE_TYPE_BITWISE_XOR,
+    AST_NODE_TYPE_BITWISE_NOT,
+    AST_NODE_TYPE_BITWISE_LEFT,
+    AST_NODE_TYPE_BITWISE_RIGHT,
 
     AST_NODE_TYPE_CALL,
 
@@ -91,6 +96,8 @@ struct ast_node* ast_node_new(enum ast_node_type type, struct token token);
 void ast_node_free(struct ast_node* node);
 
 void ast_node_append_child(struct ast_node* node, struct ast_node* child);
+
+void ast_node_remove_child(struct ast_node* node, struct ast_node* child);
 
 void ast_node_debug(struct ast_node* node);
 

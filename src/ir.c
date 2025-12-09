@@ -163,28 +163,28 @@ char* ir_compile(struct ir* chunk, FILE* out) {
                 fprintf(out, "  str w1, [x20, #-16]!\n"); //push to stack
                 break;
             }
-            case OP_ADD_32: {
+            case OP_IADD: {
                 fprintf(out, "  ldr w1, [x20], #16\n"); //pop a
                 fprintf(out, "  ldr w2, [x20], #16\n"); //pop b
                 fprintf(out, "  add w0, w1, w2\n"); //a + b to return register w0
                 fprintf(out, "  str w0, [x20, #-16]!\n"); //push onto stack
                 break;
             }
-            case OP_SUB_32: {
+            case OP_ISUB: {
                 fprintf(out, "  ldr w2, [x20], #16\n"); //pop b
                 fprintf(out, "  ldr w1, [x20], #16\n"); //pop a
                 fprintf(out, "  sub w0, w1, w2\n"); //a - b to return register w0
                 fprintf(out, "  str w0, [x20, #-16]!\n"); //push onto stack
                 break;
             }
-            case OP_MUL_32: {
+            case OP_IMUL: {
                 fprintf(out, "  ldr w1, [x20], #16\n"); //pop a
                 fprintf(out, "  ldr w2, [x20], #16\n"); //pop b
                 fprintf(out, "  mul w0, w1, w2\n"); //a * b to return register w0
                 fprintf(out, "  str w0, [x20, #-16]!\n"); //push onto stack
                 break;
             }
-            case OP_DIV_32: { //TODO: signed vs unsigned
+            case OP_ISDIV: { //TODO: signed vs unsigned
                 fprintf(out, "  ldr w2, [x20], #16\n"); //pop b
                 fprintf(out, "  ldr w1, [x20], #16\n"); //pop a
                 fprintf(out, "  div w0, w1, w2\n"); //a / b to return register w0

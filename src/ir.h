@@ -8,13 +8,17 @@ enum op_codes {
     OP_NONE,
     OP_RETURN,
 
-    //8-bit
+    //32-bit
+    OP_IMM_8,
+    OP_IMM_16,
     OP_IMM_32,
-    OP_ADD_32,
-    OP_SUB_32,
-    OP_MUL_32,
-    OP_DIV_32,
-    OP_MOD_32,
+    OP_IMM_64,
+    OP_IADD,
+    OP_ISUB,
+    OP_IMUL,
+    OP_ISDIV,
+    OP_IUDIV,
+    OP_IMOD,
 
     
     //variables

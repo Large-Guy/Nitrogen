@@ -84,7 +84,10 @@ int main(int argc, char** argv) {
         printf("--- MODULE %s ---\n", module->name);
         struct ir_module* ir_module = ir_gen_module(module);
         ir_module_debug(ir_module);
-        printf("\n");
+        printf("--- COMPILED ---\n");
+        for (int n = 0; n < ir_module->count; n++) {
+            ir_compile(ir_module->chunks[n], stdout);
+        }
         ir_module_free(ir_module);
     }
 

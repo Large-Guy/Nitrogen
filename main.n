@@ -2,5 +2,5 @@ module program;
 
 i32 main()
 {
-    return 0;
+    return 5 + 5 * 10;
 }

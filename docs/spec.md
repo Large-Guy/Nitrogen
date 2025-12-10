@@ -10,7 +10,7 @@
     * [2.1 Keywords](#21-keywords)
     * [2.2 Identifiers](#22-identifiers)
     * [2.3 Operators](#23-operators)
-    * [2.4 Visiblity](#24-visiblity)
+    * [2.4 Visibility](#24-visibility)
   * [3. Types](#3-types)
     * [3.1 Primitives](#31-primitives)
     * [3.2 Pointer and Reference Types](#32-pointer-and-reference-types)
@@ -29,7 +29,7 @@
     * [7.2 Deconstructors](#72-deconstructors)
   * [8. Interfaces](#8-interfaces)
   * [9. Casting](#9-casting)
-  * [10. Memory Managment](#10-memory-managment)
+  * [10. Memory Management](#10-memory-management)
   * [11. Generics](#11-generics)
     * [11.1 Single Generics](#111-single-generics)
     * [11.2 Variadic Generics](#112-variadic-generics)
@@ -75,9 +75,9 @@ the only keyword used differently is the `static` keyword.
 | &  | \| | ^  | ~  | \<\< | \>\> |
 | =  | ++ | -- |    |      |      |
 
-### 2.4 Visiblity
+### 2.4 Visibility
 
-Any indentifier, (struct, interface, function, methods, fields, global variables) when prefixed with `_` will be marked
+Any identifier, (struct, interface, function, methods, fields, global variables) when prefixed with `_` will be marked
 private. Meaning things are public by default.
 
 ## 3. Types
@@ -93,7 +93,6 @@ private. Meaning things are public by default.
  - T*: Non-nullable pointer of type T. A "reference." It must be assigned before it is used, this should be enforced by the compiler.
 Once assigned, the underlying pointer **cannot** change. 
  - T*?: Nullable pointer of type T. A true pointer. Cannot by itself be read or written to, a null check is required first.
-You can retrieve a mutable reference type by dereferencing the T*? with `*`.
 
 example:
 ```c++
@@ -102,10 +101,18 @@ i32*? a = getNullable();
 //assign value
 *a = 67; // error: this is not permitted, because it is unknown whether a is null or not.
 
-i32 original;
-i32* b = &original;
+if (a != null)
+{
+    *a = 67; // this is permitted, because it has been ensured that the pointer is not null.
+}
 
-b = 41; // b is non_nullable, meaning it acts more as a reference. 
+i32 original;
+i32* b = &original; // reference pointer assigned immediately
+
+i32 other;
+b = other; // this is NOT allowed by the compiler a reference pointer CANNOT change.
+
+*b = 41; // b is non-nullable, meaning it acts as a reference. 
 // original is now 41.
 ```
 
@@ -130,8 +137,7 @@ i32*? a = getNullable();
 
 if (a != null)
 {
-    i32* b = *a; //this is now permitted
-    b = 87;
+    *a = 87;
 }
 ```
 
@@ -192,7 +198,7 @@ struct Point
     
     f32 length()
     {
-        return sqrt(x ^ 2, y ^ 2)   
+        return sqrt(x ** 2 + y ** 2)   
     }
 }
 
@@ -263,7 +269,7 @@ i32 bits = 0x40490FDB;
 f32 f = (!f32)bits;
 ```
 
-## 10. Memory Managment
+## 10. Memory Management
 
 TODO: This is unknown for now. Leaning towards manual C Style memory management. Likely with some safety features.
 
@@ -277,9 +283,9 @@ to C# generics, but more powerful. The goal is to avoid metaprogramming that mak
 ```c++
 void swap<T>(T* a, T* b)
 {
-    T temp = a;
-    b = a;
-    a = temp;
+    T temp = *a;
+    *b = *a;
+    *a = temp;
 }
 ```
 

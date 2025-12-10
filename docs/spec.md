@@ -283,7 +283,7 @@ to C# generics, but more powerful. The goal is to avoid metaprogramming that mak
 ```c++
 void swap<T>(T* a, T* b)
 {
-    T temp = *a;
+    T temp = *b;
     *b = *a;
     *a = temp;
 }

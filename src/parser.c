@@ -885,12 +885,11 @@ static struct ast_node* statement(struct parser* parser) {
 }
 
 static struct ast_node* declaration(struct parser* parser) {
-    //TODO: Implement all of this
     if (match(parser, TOKEN_TYPE_STRUCT)) {
         return struct_statement(parser);
     }
     if (match(parser, TOKEN_TYPE_UNION)) {
-        
+        //TODO: unions
     }
     if (match(parser, TOKEN_TYPE_INTERFACE)) {
         return interface_statement(parser);

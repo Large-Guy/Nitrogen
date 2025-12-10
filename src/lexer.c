@@ -133,7 +133,7 @@ static enum token_type check_keyword(struct lexer* lexer, uint32_t start, uint32
     return TOKEN_TYPE_IDENTIFIER;
 }
 
-static enum token_type type(struct lexer* lexer) { //TODO: Test if this actually works!
+static enum token_type type(struct lexer* lexer) {
     switch (*lexer->start) {
         case 'r': {
             if (lexer->current - lexer->start > 1 && lexer->start[1] == 'e' && lexer->current - lexer->start > 2) {

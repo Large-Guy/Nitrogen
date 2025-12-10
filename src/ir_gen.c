@@ -195,7 +195,7 @@ static void statement(struct compiler* compiler, struct module* module, struct a
             break;
         }
         case AST_NODE_TYPE_VARIABLE: {
-            struct ast_node* name = node->children[0]; // NOTE: this will be used later.
+            struct ast_node* name = node->children[0];
             struct ast_node* type = node->children[1];
             struct scope* scope = compiler->scope;
             struct local local = {ir_declare(ir, get_node_size(module, type)), name->token};

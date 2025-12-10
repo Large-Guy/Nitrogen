@@ -171,7 +171,7 @@ arguments.
 
 ## 7. Structures
 
-### 7.2 Constructors
+### 7.1 Constructors
 
 Structures look identical to Standard C. Nitrogen does not have standard RAII, but does follow ZII.
 Functions can be placed in structs, static functions can act as constructors.
@@ -199,7 +199,7 @@ struct Point
 Point p = Point.new(1f, 2f);
 ```
 
-### 7.3 Deconstructors
+### 7.2 Deconstructors
 
 Structures also support deconstructors allowing for safe cleanup when a variable goes out of scope. There name is `~`.
 

@@ -1,6 +1,13 @@
 module program;
 
+i32 _other()
+{
+    return 24;
+}
+
 i32 main()
 {
-    return 5 + 5 * 10;
+    i32 a = 32;
+    a++;
+    return a;
 }

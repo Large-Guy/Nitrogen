@@ -923,7 +923,7 @@ static struct ast_node* interface_type(struct parser* parser) {
     consume(parser, TOKEN_TYPE_IDENTIFIER, "expected identifier after struct");
     struct token name = parser->previous;
     struct ast_node* node = ast_node_new(AST_NODE_TYPE_INTERFACE, op_token);
-    ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
+    ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_TYPE, name));
 
     if (match(parser, TOKEN_TYPE_COLON)) {
         do {
@@ -951,7 +951,7 @@ static struct ast_node* struct_type(struct parser* parser) {
     consume(parser, TOKEN_TYPE_IDENTIFIER, "expected identifier after struct");
     struct token name = parser->previous;
     struct ast_node* node = ast_node_new(AST_NODE_TYPE_STRUCT, op_token);
-    ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
+    ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_TYPE, name));
     
     if (match(parser, TOKEN_TYPE_COLON)) {
         do {

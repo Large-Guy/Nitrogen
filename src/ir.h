@@ -1,5 +1,6 @@
 #ifndef COMPILER_CHUNK_H
 #define COMPILER_CHUNK_H
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -20,7 +21,6 @@ enum op_codes {
     OP_IUDIV,
     OP_IMOD,
 
-    
     //variables
     OP_SET,
     OP_GET,
@@ -28,6 +28,7 @@ enum op_codes {
 
 struct ir {
     char* symbol;
+    bool global;
     uint8_t* code;
     size_t capacity;
     size_t size;
@@ -50,7 +51,7 @@ void ir_module_free(struct ir_module* list);
 
 void ir_module_append(struct ir_module* list, struct ir* chunk);
 
-struct ir* ir_new(char* symbol);
+struct ir* ir_new(char* symbol, bool global);
 
 void ir_free(struct ir* chunk);
 

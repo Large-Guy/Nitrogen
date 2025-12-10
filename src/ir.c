@@ -6,11 +6,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct ir* ir_new(char* symbol) {
+struct ir* ir_new(char* symbol, bool global) {
     struct ir* chunk = malloc(sizeof(struct ir));
     assert(chunk);
     chunk->symbol = malloc(strlen(symbol) + 1);
     assert(chunk->symbol);
+    chunk->global = global;
     strcpy(chunk->symbol, symbol);
     chunk->code = malloc(1);
     chunk->capacity = 1;
@@ -132,6 +133,10 @@ char* ir_compile(struct ir* chunk, FILE* out) {
 
     //function header stuff
     uint32_t ip = 0;
+
+    if (chunk->global)
+        fprintf(out, ".global %s // this label is visible to the linker\n", chunk->symbol);
+    
     fprintf(out, "%s:\n", chunk->symbol);
 
     //allocate locals
@@ -141,7 +146,7 @@ char* ir_compile(struct ir* chunk, FILE* out) {
         total_local_size += chunk->locals[i];
     }
     fprintf(out, "  sub sp, sp, #%d // allocate space for local variables\n", round_up_16(total_local_size));
-    fprintf(out, "  mov x20, sp\n"); //end of locals
+    fprintf(out, "  mov x20, sp // end of locals??\n"); //end of locals
 
     fprintf(out, "\n"); //space after header
     
@@ -150,7 +155,7 @@ char* ir_compile(struct ir* chunk, FILE* out) {
 
         switch (byte) {
             case OP_NONE: {
-                fprintf(out, "  nop\n");
+                fprintf(out, "  nop\n // no operator");
                 break;
             }
             case OP_RETURN: {
@@ -158,49 +163,49 @@ char* ir_compile(struct ir* chunk, FILE* out) {
             }
             case OP_IMM_32: {
                 //push an 32-bit integer number to the stack
-                fprintf(out, "  mov w1, #%d\n", as_imm32(chunk, ++ip)); //imm32 value in register x0
+                fprintf(out, "  mov w1, #%d // move a i32 into register\n", as_imm32(chunk, ++ip)); //imm32 value in register x0
                 ip += 3;
-                fprintf(out, "  str w1, [x20, #-16]!\n"); //push to stack
+                fprintf(out, "  str w1, [x20, #-16]! // push the i32 to the stack\n"); //push to stack
                 break;
             }
             case OP_IADD: {
-                fprintf(out, "  ldr w1, [x20], #16\n"); //pop a
-                fprintf(out, "  ldr w2, [x20], #16\n"); //pop b
-                fprintf(out, "  add w0, w1, w2\n"); //a + b to return register w0
-                fprintf(out, "  str w0, [x20, #-16]!\n"); //push onto stack
+                fprintf(out, "  ldr w2, [x20], #16 // pop b from the stack\n"); //pop b
+                fprintf(out, "  ldr w1, [x20], #16 // pop a from the stack\n"); //pop a
+                fprintf(out, "  add w0, w1, w2 // a + b\n"); //a + b to return register w0
+                fprintf(out, "  str w0, [x20, #-16]! // push the result to the stack\n"); //push onto stack
                 break;
             }
             case OP_ISUB: {
-                fprintf(out, "  ldr w2, [x20], #16\n"); //pop b
-                fprintf(out, "  ldr w1, [x20], #16\n"); //pop a
-                fprintf(out, "  sub w0, w1, w2\n"); //a - b to return register w0
-                fprintf(out, "  str w0, [x20, #-16]!\n"); //push onto stack
+                fprintf(out, "  ldr w2, [x20], #16 // pop b from the stack\n"); //pop b
+                fprintf(out, "  ldr w1, [x20], #16 // pop a from the stack\n"); //pop a
+                fprintf(out, "  sub w0, w1, w2 // a - b\n"); //a - b to return register w0
+                fprintf(out, "  str w0, [x20, #-16]! // push the result to the stack\n"); //push onto stack
                 break;
             }
             case OP_IMUL: {
-                fprintf(out, "  ldr w1, [x20], #16\n"); //pop a
-                fprintf(out, "  ldr w2, [x20], #16\n"); //pop b
-                fprintf(out, "  mul w0, w1, w2\n"); //a * b to return register w0
-                fprintf(out, "  str w0, [x20, #-16]!\n"); //push onto stack
+                fprintf(out, "  ldr w2, [x20], #16 // pop b from the stack\n"); //pop b
+                fprintf(out, "  ldr w1, [x20], #16 // pop a from the stack\n"); //pop a
+                fprintf(out, "  mul w0, w1, w2 // a * b\n"); //a * b to return register w0
+                fprintf(out, "  str w0, [x20, #-16]! // push the result to the stack\n"); //push onto stack
                 break;
             }
             case OP_ISDIV: { //TODO: signed vs unsigned
-                fprintf(out, "  ldr w2, [x20], #16\n"); //pop b
-                fprintf(out, "  ldr w1, [x20], #16\n"); //pop a
-                fprintf(out, "  div w0, w1, w2\n"); //a / b to return register w0
-                fprintf(out, "  str w0, [x20, #-16]!\n"); //push onto stack
+                fprintf(out, "  ldr w2, [x20], #16 // pop b from the stack\n"); //pop b
+                fprintf(out, "  ldr w1, [x20], #16 // pop a from the stack\n"); //pop a
+                fprintf(out, "  div w0, w1, w2 // a / b\n"); //a / b to return register w0
+                fprintf(out, "  str w0, [x20, #-16]! // push the result to the stack\n"); //push onto stack
                 break;
             }
             case OP_SET: { //TODO: handle different sizes
                 const uint8_t id = as_imm8(chunk, ++ip); //variable id
-                fprintf(out, "  ldr w1, [x20], #16\n"); //pop value from stack
-                fprintf(out, "  str w1, [sp, #%d]\n", compiler.locals[id]); //store that at the variables offset in the pre-allocated stack
+                fprintf(out, "  ldr w1, [x20], #16 // pop value from the stack\n"); //pop value from stack
+                fprintf(out, "  str w1, [sp, #%d] // store value in local\n", compiler.locals[id]); //store that at the variables offset in the pre-allocated stack
                 break;
             }
             case OP_GET: {
                 const uint8_t id = as_imm8(chunk, ++ip);
-                fprintf(out, "  ldr w1, [sp, #%d]\n", compiler.locals[id]); //load the variable into the 1st register
-                fprintf(out, "  str w1, [x20, #-16]!\n"); //store that at the top of the stack
+                fprintf(out, "  ldr w1, [sp, #%d] // load value from locals\n", compiler.locals[id]); //load the variable into the 1st register
+                fprintf(out, "  str w1, [x20, #-16]! // push value to stack\n"); //store that at the top of the stack
                 break;
             }
             default: {
@@ -216,12 +221,12 @@ char* ir_compile(struct ir* chunk, FILE* out) {
     end_function:
 
     //cleanup
-    fprintf(out, "  add sp, sp, #%d\n", round_up_16(total_local_size)); //deallocate locals
+    fprintf(out, "  add sp, sp, #%d // deallocate locals on stack pointer\n", round_up_16(total_local_size)); //deallocate locals
 
     //top of stack is return
-    fprintf(out, "  ldr w0, [x20], #16\n"); //pop a
+    fprintf(out, "  ldr w0, [x20], #16 // pop the return value\n"); //pop a
     
-    fprintf(out, "  ret\n"); //ret, value should be in the stack
+    fprintf(out, "  ret // return\n\n"); //ret, value should be in the stack
 
     free(compiler.locals);
 }

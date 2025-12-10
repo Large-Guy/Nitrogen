@@ -56,7 +56,7 @@ i32*? a = get_nullable();
 
 i32* b = get_non_nullable();
 
-*b = 41; // b is non_nullable, meaning it acts more as a reference. 
+b = 41; // b is non_nullable, meaning it acts more as a reference. What it is pointing to cannot be changed.
 ```
 
 ### 3.3 Array Types

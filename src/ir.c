@@ -6,20 +6,26 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct ir* ir_new(char* symbol, bool global) {
+struct ir* ir_new(char* symbol, bool global, enum chunk_type type) {
     struct ir* chunk = malloc(sizeof(struct ir));
     assert(chunk);
+    
     chunk->symbol = malloc(strlen(symbol) + 1);
     assert(chunk->symbol);
-    chunk->global = global;
     strcpy(chunk->symbol, symbol);
-    chunk->code = malloc(1);
-    chunk->capacity = 1;
-    chunk->size = 0;
-    chunk->locals = malloc(sizeof(size_t));
-    assert(chunk->locals);
-    chunk->local_capacity = 1;
-    chunk->local_size = 0;
+    chunk->symbol[strlen(symbol)] = '\0';
+    
+    chunk->type = type;
+    
+    chunk->global = global;
+
+    chunk->instructions = malloc(sizeof(struct instruction));
+    assert(chunk->instructions);
+    chunk->instructions_size = 0;
+    chunk->instructions_capacity = 1;
+
+    chunk->registers = 0;
+    
     return chunk;
 }
 
@@ -57,43 +63,107 @@ void ir_module_append(struct ir_module* list, struct ir* chunk) {
 void ir_free(struct ir* chunk) {
     assert(chunk != NULL);
     free(chunk->symbol);
-    free(chunk->code);
-    free(chunk->locals);
+    free(chunk->instructions);
     free(chunk);
 }
 
-void ir_push(struct ir* chunk, uint8_t byte) {
-    if (chunk->size >= chunk->capacity) {
-        chunk->capacity *= 2;
-        chunk->code = realloc(chunk->code, chunk->capacity);
-        assert(chunk->code);
+uint32_t ir_constant(struct ir* chunk, enum type_code type, int64_t value) {
+    assert(chunk != NULL);
+    if (chunk->instructions_size >= chunk->instructions_capacity) {
+        chunk->instructions_capacity *= 2;
+        chunk->instructions = realloc(chunk->instructions, chunk->instructions_capacity * sizeof(struct instruction));
+        assert(chunk->instructions);
     }
-    chunk->code[chunk->size++] = byte;
+    struct instruction instruction;
+    instruction.operator = OP_CONST;
+    instruction.type = type;
+    instruction.result = chunk->registers;
+    instruction.operand1 = value;
+    instruction.operand2 = 0;
+    chunk->instructions[chunk->instructions_size++] = instruction;
+    return chunk->registers++;
 }
 
-void ir_push32(struct ir* chunk, uint32_t value) {
-    ir_push(chunk, (value) & 0xff);
-    ir_push(chunk, (value >> 8) & 0xff);
-    ir_push(chunk, (value >> 16) & 0xff);
-    ir_push(chunk, (value >> 24) & 0xff);
+uint32_t ir_add(struct ir* chunk, enum op_code code, enum type_code type, int operand1, int operand2) {
+    assert(chunk != NULL);
+    if (chunk->instructions_size >= chunk->instructions_capacity) {
+        chunk->instructions_capacity *= 2;
+        chunk->instructions = realloc(chunk->instructions, chunk->instructions_capacity * sizeof(struct instruction));
+        assert(chunk->instructions);
+    }
+    struct instruction instruction;
+    instruction.operator = code;
+    instruction.type = type;
+    instruction.result = chunk->registers;
+    instruction.operand1 = operand1;
+    instruction.operand2 = operand2;
+    chunk->instructions[chunk->instructions_size++] = instruction;
+    return chunk->registers++;
 }
 
-uint8_t ir_declare(struct ir* chunk, uint8_t size) {
-    if (chunk->local_size > chunk->local_capacity) {
-        chunk->capacity *= 2;
-        chunk->code = realloc(chunk->code, chunk->capacity);
-        assert(chunk->code);
+static char* type_code_name(enum type_code code) {
+    switch (code) {
+        case TYPE_U8:
+            return "U8";
+        case TYPE_U16:
+            return "U16";
+        case TYPE_U32:
+            return "U32";
+        case TYPE_U64:
+            return "U64";
+        case TYPE_I8:
+            return "I8";
+        case TYPE_I16:
+            return "I16";
+        case TYPE_I32:
+            return "I32";
+        case TYPE_I64:
+            return "I64";
+        case TYPE_F32:
+            return "F32";
+        case TYPE_F64:
+            return "F64";
+    }
+    return "UNRECOGNIZED TYPE";
+}
+
+static char* operator_name(enum op_code code) {
+    switch (code) {
+        case OP_ADD:
+            return "add";
+        case OP_SUB:
+            return "sub";
+        case OP_MUL:
+            return "mul";
+        case OP_DIV:
+            return "div";
+        case OP_RETURN:
+            return "return";
+        default:
+            return "unsupported";
+    }
+}
+
+static void instruction_debug(struct instruction instruction) {
+    printf("%%%d = ", instruction.result);
+    if (instruction.operator == OP_CONST) {
+        printf("const %llu ", instruction.operand1);
+        printf("%s\n", type_code_name(instruction.type));
+        return;
     }
 
-    chunk->locals[chunk->local_size++] = size;
-    return chunk->local_size - 1;
+    printf("%s ", operator_name(instruction.operator));
+
+    printf("%%%llu, %%%llu ", instruction.operand1, instruction.operand2);
+
+    printf("%s\n", type_code_name(instruction.type));
 }
 
 void ir_debug(struct ir* chunk) {
     assert(chunk != NULL);
-    assert(chunk->code != NULL);
-    for (size_t i = 0; i < chunk->size; i++) {
-        printf("Byte: %lu, %d\n", i, chunk->code[i]);
+    assert(chunk->instructions != NULL);
+    for (size_t i = 0; i < chunk->instructions_size; i++) {
+        instruction_debug(chunk->instructions[i]);
     }
 }
 
@@ -106,127 +176,6 @@ void ir_module_debug(struct ir_module* module) {
     }
 }
 
-struct compiler {
-    uint32_t* locals; //offsets
-};
-
-static uint32_t round_up_16(uint32_t size) {
-    return (uint32_t)(ceilf((float)size / 16.0f) * 16.0f);
-}
-
-static uint8_t as_imm8(struct ir* chunk, uint32_t ip) {
-    return chunk->code[ip];
-}
-
-static uint32_t as_imm32(struct ir* chunk, uint32_t ip) {
-    return *(uint32_t*)&chunk->code[ip];
-}
-
 char* ir_compile(struct ir* chunk, FILE* out) {
-    assert(chunk != NULL);
-    assert(chunk->code != NULL);
-
-    struct compiler compiler;
-    compiler.locals = malloc(sizeof(size_t) * chunk->local_size);
-
-    assert(compiler.locals != NULL);
-
-    //function header stuff
-    uint32_t ip = 0;
-
-    if (chunk->global)
-        fprintf(out, ".global %s // this label is visible to the linker\n", chunk->symbol);
-    
-    fprintf(out, "%s:\n", chunk->symbol);
-
-    //allocate locals
-    uint32_t total_local_size = 0;
-    for (size_t i = 0; i < chunk->local_size; i++) {
-        compiler.locals[i] = total_local_size;
-        total_local_size += chunk->locals[i];
-    }
-    fprintf(out, "  sub sp, sp, #%d // allocate space for local variables\n", round_up_16(total_local_size));
-    fprintf(out, "  mov x20, sp // end of locals??\n"); //end of locals
-
-    fprintf(out, "\n"); //space after header
-    
-    while (ip < chunk->size) {
-        uint8_t byte = chunk->code[ip];
-
-        switch (byte) {
-            case OP_NONE: {
-                fprintf(out, "  nop\n // no operator");
-                break;
-            }
-            case OP_RETURN: {
-                goto end_function;
-            }
-            case OP_IMM_32: {
-                //push an 32-bit integer number to the stack
-                fprintf(out, "  mov w1, #%d // move a i32 into register\n", as_imm32(chunk, ++ip)); //imm32 value in register x0
-                ip += 3;
-                fprintf(out, "  str w1, [x20, #-16]! // push the i32 to the stack\n"); //push to stack
-                break;
-            }
-            case OP_IADD: {
-                fprintf(out, "  ldr w2, [x20], #16 // pop b from the stack\n"); //pop b
-                fprintf(out, "  ldr w1, [x20], #16 // pop a from the stack\n"); //pop a
-                fprintf(out, "  add w0, w1, w2 // a + b\n"); //a + b to return register w0
-                fprintf(out, "  str w0, [x20, #-16]! // push the result to the stack\n"); //push onto stack
-                break;
-            }
-            case OP_ISUB: {
-                fprintf(out, "  ldr w2, [x20], #16 // pop b from the stack\n"); //pop b
-                fprintf(out, "  ldr w1, [x20], #16 // pop a from the stack\n"); //pop a
-                fprintf(out, "  sub w0, w1, w2 // a - b\n"); //a - b to return register w0
-                fprintf(out, "  str w0, [x20, #-16]! // push the result to the stack\n"); //push onto stack
-                break;
-            }
-            case OP_IMUL: {
-                fprintf(out, "  ldr w2, [x20], #16 // pop b from the stack\n"); //pop b
-                fprintf(out, "  ldr w1, [x20], #16 // pop a from the stack\n"); //pop a
-                fprintf(out, "  mul w0, w1, w2 // a * b\n"); //a * b to return register w0
-                fprintf(out, "  str w0, [x20, #-16]! // push the result to the stack\n"); //push onto stack
-                break;
-            }
-            case OP_ISDIV: { //TODO: signed vs unsigned
-                fprintf(out, "  ldr w2, [x20], #16 // pop b from the stack\n"); //pop b
-                fprintf(out, "  ldr w1, [x20], #16 // pop a from the stack\n"); //pop a
-                fprintf(out, "  div w0, w1, w2 // a / b\n"); //a / b to return register w0
-                fprintf(out, "  str w0, [x20, #-16]! // push the result to the stack\n"); //push onto stack
-                break;
-            }
-            case OP_SET: { //TODO: handle different sizes
-                const uint8_t id = as_imm8(chunk, ++ip); //variable id
-                fprintf(out, "  ldr w1, [x20], #16 // pop value from the stack\n"); //pop value from stack
-                fprintf(out, "  str w1, [sp, #%d] // store value in local\n", compiler.locals[id]); //store that at the variables offset in the pre-allocated stack
-                break;
-            }
-            case OP_GET: {
-                const uint8_t id = as_imm8(chunk, ++ip);
-                fprintf(out, "  ldr w1, [sp, #%d] // load value from locals\n", compiler.locals[id]); //load the variable into the 1st register
-                fprintf(out, "  str w1, [x20, #-16]! // push value to stack\n"); //store that at the top of the stack
-                break;
-            }
-            default: {
-                //Invalid OP
-            }
-        }
-
-        fprintf(out, "\n"); //space between commands
-
-        ip++;
-    }
-
-    end_function:
-
-    //cleanup
-    fprintf(out, "  add sp, sp, #%d // deallocate locals on stack pointer\n", round_up_16(total_local_size)); //deallocate locals
-
-    //top of stack is return
-    fprintf(out, "  ldr w0, [x20], #16 // pop the return value\n"); //pop a
-    
-    fprintf(out, "  ret // return\n\n"); //ret, value should be in the stack
-
-    free(compiler.locals);
+    //TODO: compile to ARM64
 }

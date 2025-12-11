@@ -5,7 +5,7 @@
 #include <string.h>
 
 struct local {
-    uint8_t id;
+    uint8_t reg;
     struct token name;
 };
 
@@ -42,11 +42,12 @@ void scope_add_local(struct scope* scope, struct local local) {
     scope->locals[scope->locals_count++] = local;
 }
 
-bool scope_get_local(struct scope* scope, struct token token, struct local* out) {
+
+bool scope_get_local(struct scope* scope, struct token token, struct local** out) {
     for (size_t i = 0; i < scope->locals_count; i++) {
-        struct local local = scope->locals[i];
-        if (local.name.length == token.length &&
-            memcmp(local.name.start, token.start, token.length) == 0) {
+        struct local* local = &scope->locals[i];
+        if (local->name.length == token.length &&
+            memcmp(local->name.start, token.start, token.length) == 0) {
             *out = local;
             return true;
         }
@@ -54,15 +55,38 @@ bool scope_get_local(struct scope* scope, struct token token, struct local* out)
     return scope->previous ? scope_get_local(scope->previous, token, out) : false;
 }
 
+void scope_update_local(struct scope* scope, struct token token, int new_reg) {
+    struct local* loc;
+    bool found = scope_get_local(scope, token, &loc);
+    if (found) {
+        loc->reg = new_reg;
+    }
+}
+
+#define MAX_STACK 512;
+
 struct compiler {
     struct ir* target;
+    uint32_t stack[512];
+    int stack_top;
     
     struct scope* scope;
+
+    
 };
+
+void push(struct compiler* compiler, uint32_t reg) {
+    compiler->stack[++compiler->stack_top] = reg;
+}
+
+int pop(struct compiler* compiler) {
+    return compiler->stack[compiler->stack_top--];
+}
 
 struct compiler* compiler_new() {
     struct compiler* compiler = (struct compiler*)malloc(sizeof(struct compiler));
     compiler->scope = scope_new();
+    compiler->stack_top = -1;
     return compiler;
 }
 
@@ -108,17 +132,18 @@ static size_t get_node_size(struct module* module, struct ast_node* node) {
     }
 }
 
-static struct ir* ir_symbol_new(struct token symbol)
+static struct ir* ir_symbol_new(struct token symbol, enum chunk_type type)
 {
     assert(symbol.length != 0);
     char* symbol_name = malloc(symbol.length + 1);
     memcpy(symbol_name, symbol.start, symbol.length);
     symbol_name[symbol.length] = '\0';
-    struct ir* ir = ir_new(symbol_name, symbol.start[0] != '_');
+    struct ir* ir = ir_new(symbol_name, symbol.start[0] != '_', type);
     free(symbol_name);
     return ir;
 }
 
+//NOTE: consider returning a virtual register?
 static void statement(struct compiler* compiler, struct module* module, struct ast_node* node) {
     struct ir* ir = compiler->target;
     switch (node->type) {
@@ -129,24 +154,24 @@ static void statement(struct compiler* compiler, struct module* module, struct a
                 statement(compiler, module, child);
             }
             end_scope(compiler);
+            break;
         }
         case AST_NODE_TYPE_INTEGER: {
-            ir_push(ir, OP_IMM_32);
             int64_t immediate = strtoll(node->token.start, NULL, 10);
-            ir_push32(ir, immediate);
+            push(compiler, ir_constant(ir, TYPE_I32, immediate));
             break;
         }
         case AST_NODE_TYPE_ASSIGN: {
             struct ast_node* a = node->children[0];
             struct token name = a->token;
             struct ast_node* b = node->children[1];
+            struct scope* scope = compiler->scope;
             // a = b
             statement(compiler, module, b);
-            ir_push(ir, OP_SET);
             
-            struct local info;
-            assert(scope_get_local(compiler->scope, name, &info));
-            ir_push(ir, info.id);
+            scope_update_local(scope, name, pop(compiler));
+            
+            //ir_push(ir, info.id);
             
             break;
         }
@@ -156,7 +181,10 @@ static void statement(struct compiler* compiler, struct module* module, struct a
             // a + b
             statement(compiler, module, a);
             statement(compiler, module, b);
-            ir_push(ir, OP_IADD);
+            //pop a and b off the virtual stack
+            int right = pop(compiler);
+            int left = pop(compiler);
+            push(compiler, ir_add(ir, OP_ADD, TYPE_I32, left, right));
             break;
         }
         case AST_NODE_TYPE_SUBTRACT: {
@@ -165,7 +193,9 @@ static void statement(struct compiler* compiler, struct module* module, struct a
             // a - b
             statement(compiler, module, a);
             statement(compiler, module, b);
-            ir_push(ir, OP_ISUB);
+            int right = pop(compiler);
+            int left = pop(compiler);
+            push(compiler, ir_add(ir, OP_SUB, TYPE_I32, left, right));
             break;
         }
         case AST_NODE_TYPE_MULTIPLY: {
@@ -174,7 +204,9 @@ static void statement(struct compiler* compiler, struct module* module, struct a
             // a * b
             statement(compiler, module, a);
             statement(compiler, module, b);
-            ir_push(ir, OP_IMUL);
+            int right = pop(compiler);
+            int left = pop(compiler);
+            push(compiler, ir_add(ir, OP_MUL, TYPE_I32, left, right));
             break;
         }
         case AST_NODE_TYPE_DIVIDE: {
@@ -183,38 +215,47 @@ static void statement(struct compiler* compiler, struct module* module, struct a
             // a / b
             statement(compiler, module, a);
             statement(compiler, module, b);
-            ir_push(ir, OP_ISDIV);
+            int right = pop(compiler);
+            int left = pop(compiler);
+            push(compiler, ir_add(ir, OP_DIV, TYPE_I32, left, right));
             break;
         }
         case AST_NODE_TYPE_RETURN_STATEMENT: {
+            int reg = 0;
             if (node->children_count) {
                 struct ast_node* a = node->children[0];
                 statement(compiler, module, a);
+                reg = pop(compiler);
             }
-            ir_push(ir, OP_RETURN);
+            //TODO: determine type
+            ir_add(ir, OP_RETURN, TYPE_I32, reg, 0);
             break;
         }
         case AST_NODE_TYPE_VARIABLE: {
             struct ast_node* name = node->children[0];
             struct ast_node* type = node->children[1];
             struct scope* scope = compiler->scope;
-            struct local local = {ir_declare(ir, get_node_size(module, type)), name->token};
-            scope_add_local(scope, local);
+            //semi-optimization, skips ZII
             if (node->children_count > 2) {
                 struct ast_node* value = node->children[2];
                 statement(compiler, module, value);
-                
-                ir_push(ir, OP_SET);
-                ir_push(ir, local.id);
+                struct local loc = {pop(compiler), name->token};
+                scope_add_local(scope, loc);
+                break;
             }
+            //TODO: symbol table needed
+            uint32_t reg = ir_add(ir, OP_CONST, TYPE_I32, 0, 0);
+            struct local loc = {reg, name->token};
+            scope_add_local(scope, loc);
             break;
         }
         case AST_NODE_TYPE_NAME: {
             struct token name = node->token;
-            ir_push(ir, OP_GET);
-            struct local info;
-            assert(scope_get_local(compiler->scope, name, &info));
-            ir_push(ir, info.id);
+            struct local* info;
+            struct scope* scope = compiler->scope;
+            //TODO: symbol table needed
+            assert(scope_get_local(scope, name, &info));
+            push(compiler, info->reg);
             break;
         }
         default: {
@@ -227,9 +268,9 @@ static struct ir* definition(struct module* module, struct ast_node* node)
 {
     switch (node->type)
     {
-    case AST_NODE_TYPE_FUNCTION:
+        case AST_NODE_TYPE_FUNCTION:
         {
-            struct ir* ir = ir_symbol_new(node->children[0]->token);
+            struct ir* ir = ir_symbol_new(node->children[0]->token, CHUNK_TYPE_FUNCTION);
             struct ast_node* type = node->children[1]; //type
             struct ast_node* body = node->children[2]; //function body
             struct compiler* compiler = compiler_new();
@@ -240,7 +281,15 @@ static struct ir* definition(struct module* module, struct ast_node* node)
             compiler_free(compiler);
             return ir;
         }
-    default:
+        case AST_NODE_TYPE_VARIABLE:
+        {
+            struct ir* ir = ir_symbol_new(node->children[0]->token, CHUNK_TYPE_VARIABLE);
+            struct ast_node* type = node->children[0];
+            struct ast_node* value = node->children[1];
+            //TODO: implement IR instructions for generating this stuff
+            return ir;
+        }
+        default:
         {
             fprintf(stderr, "unexpected node type: %d\n", node->type);
             return NULL;

@@ -5,36 +5,63 @@
 #include <stdint.h>
 #include <stdio.h>
 
-enum op_codes {
+enum op_code {
     OP_NONE,
     OP_RETURN,
 
     //32-bit
-    OP_IMM_8,
-    OP_IMM_16,
-    OP_IMM_32,
-    OP_IMM_64,
-    OP_IADD,
-    OP_ISUB,
-    OP_IMUL,
-    OP_ISDIV,
-    OP_IUDIV,
-    OP_IMOD,
+    OP_CONST,
+    OP_ADD,
+    OP_SUB,
+    OP_MUL,
+    OP_DIV,
 
     //variables
-    OP_SET,
-    OP_GET,
+    OP_LOAD,
+    OP_STORE
+};
+
+enum type_code {
+    TYPE_U8,
+    TYPE_U16,
+    TYPE_U32,
+    TYPE_U64,
+    TYPE_I8,
+    TYPE_I16,
+    TYPE_I32,
+    TYPE_I64,
+    TYPE_F32,
+    TYPE_F64,
+};
+
+enum chunk_type {
+    CHUNK_TYPE_FUNCTION,
+    CHUNK_TYPE_VARIABLE,
+};
+
+struct instruction {
+    enum op_code operator;
+
+    enum type_code type;
+    
+    // this should always be a register
+    uint32_t result;
+    
+    // these could be a register or a constant depending on the operator
+    uint64_t operand1;
+    uint64_t operand2;
 };
 
 struct ir {
     char* symbol;
+    enum chunk_type type;
     bool global;
-    uint8_t* code;
-    size_t capacity;
-    size_t size;
-    uint8_t* locals; //sizes of locals in bytes
-    size_t local_capacity;
-    size_t local_size;
+
+    struct instruction* instructions;
+    uint32_t instructions_size;
+    uint32_t instructions_capacity;
+
+    uint32_t registers;
 };
 
 struct ir_module {
@@ -51,15 +78,13 @@ void ir_module_free(struct ir_module* list);
 
 void ir_module_append(struct ir_module* list, struct ir* chunk);
 
-struct ir* ir_new(char* symbol, bool global);
+struct ir* ir_new(char* symbol, bool global, enum chunk_type type);
 
 void ir_free(struct ir* chunk);
 
-void ir_push(struct ir* chunk, uint8_t byte);
+uint32_t ir_constant(struct ir* chunk, enum type_code type, int64_t value);
 
-void ir_push32(struct ir* chunk, uint32_t value);
-
-uint8_t ir_declare(struct ir* chunk, uint8_t size);
+uint32_t ir_add(struct ir* chunk, enum op_code code, enum type_code type, int operand1, int operand2);
 
 void ir_debug(struct ir* chunk);
 

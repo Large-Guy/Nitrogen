@@ -2,7 +2,6 @@ module program;
 
 i32 main()
 {
-    i32 x = 3 + 5;
-    i32 y = x * 2;
-    return x;
+    15;
+    return 0;
 }

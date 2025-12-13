@@ -11,7 +11,7 @@ struct module* module_new(struct token name) {
     memcpy(module->name, name.start, name.length);
     module->name[name.length] = '\0';
     module->root = ast_node_new(AST_NODE_TYPE_MODULE, name);
-    module->symbols = ast_node_new(AST_NODE_TYPE_MODULE, name);
+    module->definitions = ast_node_new(AST_NODE_TYPE_MODULE, name);
     module->lexers = malloc(sizeof(struct lexer*));
     assert(module->lexers);
     module->lexer_count = 0;
@@ -23,7 +23,7 @@ void module_free(struct module* module) {
     free(module->lexers);
     free(module->name);
     ast_node_free(module->root);
-    ast_node_free(module->symbols);
+    ast_node_free(module->definitions);
     free(module);
 }
 
@@ -38,7 +38,7 @@ void module_add_source(struct module* module, struct lexer* lexer) {
 }
 
 void module_add_symbol(struct module* module, struct ast_node* symbol) {
-    ast_node_append_child(module->symbols, symbol);
+    ast_node_append_child(module->definitions, symbol);
 }
 
 struct ast_node* module_get_symbol(struct ast_node* scope, struct token name) {

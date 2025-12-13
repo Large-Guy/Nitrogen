@@ -149,7 +149,7 @@ struct parser* parser_new(enum parser_stage stage, struct module* module, struct
     self->scope_stack_capacity = 1;
     advance(self);
     if (module)
-        push_scope(self, module->symbols);
+        push_scope(self, module->definitions);
     return self;
 }
 
@@ -732,7 +732,7 @@ static struct ast_node* struct_statement(struct parser* parser) {
         do {
             consume(parser, TOKEN_TYPE_IDENTIFIER, "expected identifier");
             struct token interface = parser->previous;
-            ast_node_append_child(node, module_get_symbol(parser->module->symbols, interface));
+            ast_node_append_child(node, module_get_symbol(parser->module->definitions, interface));
         } while (match(parser, TOKEN_TYPE_COMMA));
     }
 
@@ -1087,7 +1087,7 @@ static void symbol_pass(struct module_list* list) {
                     skip_block(parser);
                 }
                 else if (match_type(parser)) {
-                    ast_node_append_child(module->symbols, variable_symbol(parser));
+                    ast_node_append_child(module->definitions, variable_symbol(parser));
                 }
                 else {
                     advance(parser);

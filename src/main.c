@@ -69,7 +69,7 @@ int main(int argc, char** argv) {
         struct module* module = modules.modules[i];
         printf("--- MODULE %s ---\n", module->name);
         printf("\nSYMBOLS ---\n");
-        ast_node_debug(module->symbols);
+        ast_node_debug(module->definitions);
         printf("\nAST ---\n");
         ast_node_debug(module->root);
         printf("\n");

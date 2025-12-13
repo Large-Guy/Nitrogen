@@ -5,7 +5,7 @@
 #include "lexer.h"
 #include "ast.h"
 
-enum symbol_type {
+enum definition_type {
     SYMBOL_TYPE_STRUCT,
     SYMBOL_TYPE_UNION,
     SYMBOL_TYPE_INTERFACE,
@@ -17,7 +17,7 @@ struct module {
     char* name;
 
     struct ast_node* root;
-    struct ast_node* symbols;
+    struct ast_node* definitions;
     
     struct lexer** lexers;
     size_t lexer_count;

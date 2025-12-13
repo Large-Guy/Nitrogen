@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "block.h"
+
 struct ir* ir_new(char* symbol, bool global, enum chunk_type type) {
     struct ir* chunk = malloc(sizeof(struct ir));
     assert(chunk);
@@ -19,13 +21,11 @@ struct ir* ir_new(char* symbol, bool global, enum chunk_type type) {
     
     chunk->global = global;
 
-    chunk->instructions = malloc(sizeof(struct instruction));
-    assert(chunk->instructions);
-    chunk->instructions_size = 0;
-    chunk->instructions_capacity = 1;
+    chunk->blocks = malloc(sizeof(struct ssa_instruction));
+    assert(chunk->blocks);
+    chunk->block_count = 0;
+    chunk->block_capacity = 1;
 
-    chunk->registers = 0;
-    
     return chunk;
 }
 
@@ -63,45 +63,21 @@ void ir_module_append(struct ir_module* list, struct ir* chunk) {
 void ir_free(struct ir* chunk) {
     assert(chunk != NULL);
     free(chunk->symbol);
-    free(chunk->instructions);
+    free(chunk->blocks);
     free(chunk);
 }
 
-uint32_t ir_constant(struct ir* chunk, enum type_code type, int64_t value) {
+void ir_add(struct ir* chunk, struct block* block) {
     assert(chunk != NULL);
-    if (chunk->instructions_size >= chunk->instructions_capacity) {
-        chunk->instructions_capacity *= 2;
-        chunk->instructions = realloc(chunk->instructions, chunk->instructions_capacity * sizeof(struct instruction));
-        assert(chunk->instructions);
+    if (chunk->block_count >= chunk->block_capacity) {
+        chunk->block_capacity *= 2;
+        chunk->blocks = realloc(chunk->blocks, chunk->block_capacity * sizeof(struct ssa_instruction));
+        assert(chunk->blocks);
     }
-    struct instruction instruction;
-    instruction.operator = OP_CONST;
-    instruction.type = type;
-    instruction.result = chunk->registers;
-    instruction.operand1 = value;
-    instruction.operand2 = 0;
-    chunk->instructions[chunk->instructions_size++] = instruction;
-    return chunk->registers++;
+    chunk->blocks[chunk->block_count++] = block;
 }
 
-uint32_t ir_add(struct ir* chunk, enum op_code code, enum type_code type, int operand1, int operand2) {
-    assert(chunk != NULL);
-    if (chunk->instructions_size >= chunk->instructions_capacity) {
-        chunk->instructions_capacity *= 2;
-        chunk->instructions = realloc(chunk->instructions, chunk->instructions_capacity * sizeof(struct instruction));
-        assert(chunk->instructions);
-    }
-    struct instruction instruction;
-    instruction.operator = code;
-    instruction.type = type;
-    instruction.result = chunk->registers;
-    instruction.operand1 = operand1;
-    instruction.operand2 = operand2;
-    chunk->instructions[chunk->instructions_size++] = instruction;
-    return chunk->registers++;
-}
-
-static char* type_code_name(enum type_code code) {
+static char* type_code_name(enum ssa_type code) {
     switch (code) {
         case TYPE_U8:
             return "U8";
@@ -127,7 +103,7 @@ static char* type_code_name(enum type_code code) {
     return "UNRECOGNIZED TYPE";
 }
 
-static char* operator_name(enum op_code code) {
+static char* operator_name(enum ssa_instruction_code code) {
     switch (code) {
         case OP_ADD:
             return "add";
@@ -144,7 +120,7 @@ static char* operator_name(enum op_code code) {
     }
 }
 
-static void instruction_debug(struct instruction instruction) {
+static void instruction_debug(struct ssa_instruction instruction) {
     printf("%%%d = ", instruction.result);
     if (instruction.operator == OP_CONST) {
         printf("const %llu ", instruction.operand1);
@@ -159,11 +135,18 @@ static void instruction_debug(struct instruction instruction) {
     printf("%s\n", type_code_name(instruction.type));
 }
 
+static void block_debug(struct block* block) {
+    printf("BLOCK [%p] ---\n", &block);
+    for (int i = 0; i < block->instructions_count; i++) {
+        instruction_debug(block->instructions[i]);
+    }
+}
+
 void ir_debug(struct ir* chunk) {
     assert(chunk != NULL);
-    assert(chunk->instructions != NULL);
-    for (size_t i = 0; i < chunk->instructions_size; i++) {
-        instruction_debug(chunk->instructions[i]);
+    assert(chunk->blocks != NULL);
+    for (size_t i = 0; i < chunk->block_count; i++) {
+        block_debug(chunk->blocks[i]);
     }
 }
 

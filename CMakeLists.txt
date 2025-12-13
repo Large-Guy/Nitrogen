@@ -18,4 +18,8 @@ add_executable(compiler src/main.c
         src/ir_gen.c
         src/ir_gen.h
         src/module.c
-        src/module.h)
+        src/module.h
+        src/block.c
+        src/block.h
+        src/ssa.c
+        src/ssa.h)

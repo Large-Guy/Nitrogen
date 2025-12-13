@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "block.h"
+
 struct local {
     uint8_t reg;
     struct token name;
@@ -63,48 +65,47 @@ void scope_update_local(struct scope* scope, struct token token, int new_reg) {
     }
 }
 
-#define MAX_STACK 512;
-
 struct compiler {
     struct ir* target;
-    uint32_t stack[512];
-    int stack_top;
-    
-    struct scope* scope;
 
+    uint32_t* stack;
+    uint32_t stack_count;
+    uint32_t stack_capacity;
     
+    struct register_table* regs;
+    struct block* current;
 };
 
-void push(struct compiler* compiler, uint32_t reg) {
-    compiler->stack[++compiler->stack_top] = reg;
-}
+static struct compiler* compiler_new() {
+    struct compiler* compiler = malloc(sizeof(struct compiler));
+    compiler->regs = register_table_new();
+    compiler->current = block_new(true);
+    compiler->current->symbol_table = compiler->regs;
 
-int pop(struct compiler* compiler) {
-    return compiler->stack[compiler->stack_top--];
-}
-
-struct compiler* compiler_new() {
-    struct compiler* compiler = (struct compiler*)malloc(sizeof(struct compiler));
-    compiler->scope = scope_new();
-    compiler->stack_top = -1;
+    compiler->stack = malloc(sizeof(uint32_t));
+    compiler->stack_count = 0;
+    compiler->stack_capacity = 1;
+    
     return compiler;
 }
 
-void compiler_free(struct compiler* compiler) {
-    free(compiler->scope);
+static void compiler_free(struct compiler* compiler) {
+    free(compiler->regs);
     free(compiler);
 }
 
-void begin_scope(struct compiler* compiler) {
-    struct scope* new_scope = scope_new();
-    new_scope->previous = compiler->scope;
-    compiler->scope = new_scope;
+static void compiler_push(struct compiler* compiler, uint32_t reg) {
+    if (compiler->stack_count >= compiler->stack_capacity) {
+        compiler->stack_capacity *= 2;
+        compiler->stack = realloc(compiler->stack, compiler->stack_capacity * sizeof(uint32_t));
+        assert(compiler->stack);
+    }
+    compiler->stack[compiler->stack_count++] = reg;
 }
 
-void end_scope(struct compiler* compiler) {
-    struct scope* old_scope = compiler->scope;
-    compiler->scope = old_scope->previous;
-    free(old_scope);
+static uint32_t compiler_pop(struct compiler* compiler) {
+    assert(compiler->stack_count > 0);
+    return compiler->stack[--compiler->stack_count];
 }
 
 static size_t get_node_size(struct module* module, struct ast_node* node) {
@@ -143,119 +144,44 @@ static struct ir* ir_symbol_new(struct token symbol, enum chunk_type type)
     return ir;
 }
 
-//NOTE: consider returning a virtual register?
+//TODO: everything is currently an i32 for simplicity, implement types properly.
 static void statement(struct compiler* compiler, struct module* module, struct ast_node* node) {
-    struct ir* ir = compiler->target;
+    struct block* current = compiler->current;
+    struct register_table* regs = compiler->regs;
     switch (node->type) {
         case AST_NODE_TYPE_SEQUENCE: {
-            begin_scope(compiler);
             for (int i = 0; i < node->children_count; i++) {
                 struct ast_node* child = node->children[i];
                 statement(compiler, module, child);
             }
-            end_scope(compiler);
             break;
         }
         case AST_NODE_TYPE_INTEGER: {
             int64_t immediate = strtoll(node->token.start, NULL, 10);
-            push(compiler, ir_constant(ir, TYPE_I32, immediate));
-            break;
-        }
-        case AST_NODE_TYPE_ASSIGN: {
-            struct ast_node* a = node->children[0];
-            struct token name = a->token;
-            struct ast_node* b = node->children[1];
-            struct scope* scope = compiler->scope;
-            // a = b
-            statement(compiler, module, b);
-            
-            scope_update_local(scope, name, pop(compiler));
-            
-            //ir_push(ir, info.id);
-            
-            break;
-        }
-        case AST_NODE_TYPE_ADD: {
-            struct ast_node* a = node->children[0];
-            struct ast_node* b = node->children[1];
-            // a + b
-            statement(compiler, module, a);
-            statement(compiler, module, b);
-            //pop a and b off the virtual stack
-            int right = pop(compiler);
-            int left = pop(compiler);
-            push(compiler, ir_add(ir, OP_ADD, TYPE_I32, left, right));
-            break;
-        }
-        case AST_NODE_TYPE_SUBTRACT: {
-            struct ast_node* a = node->children[0];
-            struct ast_node* b = node->children[1];
-            // a - b
-            statement(compiler, module, a);
-            statement(compiler, module, b);
-            int right = pop(compiler);
-            int left = pop(compiler);
-            push(compiler, ir_add(ir, OP_SUB, TYPE_I32, left, right));
-            break;
-        }
-        case AST_NODE_TYPE_MULTIPLY: {
-            struct ast_node* a = node->children[0];
-            struct ast_node* b = node->children[1];
-            // a * b
-            statement(compiler, module, a);
-            statement(compiler, module, b);
-            int right = pop(compiler);
-            int left = pop(compiler);
-            push(compiler, ir_add(ir, OP_MUL, TYPE_I32, left, right));
-            break;
-        }
-        case AST_NODE_TYPE_DIVIDE: {
-            struct ast_node* a = node->children[0];
-            struct ast_node* b = node->children[1];
-            // a / b
-            statement(compiler, module, a);
-            statement(compiler, module, b);
-            int right = pop(compiler);
-            int left = pop(compiler);
-            push(compiler, ir_add(ir, OP_DIV, TYPE_I32, left, right));
+            struct ssa_instruction instruction = {};
+            instruction.operator = OP_CONST;
+            instruction.type = TYPE_I32;
+            instruction.operand1 = immediate;
+            instruction.result = register_table_alloc(regs);
+            block_add(current, instruction);
+            compiler_push(compiler, instruction.result);
             break;
         }
         case AST_NODE_TYPE_RETURN_STATEMENT: {
-            int reg = 0;
-            if (node->children_count) {
-                struct ast_node* a = node->children[0];
-                statement(compiler, module, a);
-                reg = pop(compiler);
-            }
-            //TODO: determine type
-            ir_add(ir, OP_RETURN, TYPE_I32, reg, 0);
-            break;
-        }
-        case AST_NODE_TYPE_VARIABLE: {
-            struct ast_node* name = node->children[0];
-            struct ast_node* type = node->children[1];
-            struct scope* scope = compiler->scope;
-            //semi-optimization, skips ZII
-            if (node->children_count > 2) {
-                struct ast_node* value = node->children[2];
+            struct ssa_instruction instruction = {};
+            instruction.operator = OP_RETURN;
+            instruction.type = TYPE_I32;
+            instruction.operand1 = 0;
+            instruction.operand2 = 0;
+            instruction.result = 0;
+
+            if (node->children_count > 0) {
+                struct ast_node* value = node->children[0];
                 statement(compiler, module, value);
-                struct local loc = {pop(compiler), name->token};
-                scope_add_local(scope, loc);
-                break;
+                instruction.operand1 = compiler_pop(compiler);
             }
-            //TODO: symbol table needed
-            uint32_t reg = ir_add(ir, OP_CONST, TYPE_I32, 0, 0);
-            struct local loc = {reg, name->token};
-            scope_add_local(scope, loc);
-            break;
-        }
-        case AST_NODE_TYPE_NAME: {
-            struct token name = node->token;
-            struct local* info;
-            struct scope* scope = compiler->scope;
-            //TODO: symbol table needed
-            assert(scope_get_local(scope, name, &info));
-            push(compiler, info->reg);
+            
+            block_add(current, instruction);
             break;
         }
         default: {
@@ -277,6 +203,8 @@ static struct ir* definition(struct module* module, struct ast_node* node)
             
             compiler->target = ir;
             statement(compiler, module, body);
+
+            ir_add(ir, compiler->current);
             
             compiler_free(compiler);
             return ir;

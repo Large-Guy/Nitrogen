@@ -2,6 +2,5 @@ module program;
 
 i32 main()
 {
-    15;
-    return 0;
+    return 2 * (3 / 4);
 }

@@ -167,6 +167,66 @@ static void statement(struct compiler* compiler, struct module* module, struct a
             compiler_push(compiler, instruction.result);
             break;
         }
+        case AST_NODE_TYPE_ADD: {
+            struct ast_node* left = node->children[0];
+            struct ast_node* right = node->children[1];
+            struct ssa_instruction instruction = {};
+            instruction.operator = OP_ADD;
+            instruction.type = TYPE_I32;
+            statement(compiler, module, left);
+            instruction.operand1 = compiler_pop(compiler);
+            statement(compiler, module, right);
+            instruction.operand2 = compiler_pop(compiler);
+            instruction.result = register_table_alloc(regs);
+            block_add(current, instruction);
+            compiler_push(compiler, instruction.result);
+            break;
+        }
+        case AST_NODE_TYPE_SUBTRACT: {
+            struct ast_node* left = node->children[0];
+            struct ast_node* right = node->children[1];
+            struct ssa_instruction instruction = {};
+            instruction.operator = OP_SUB;
+            instruction.type = TYPE_I32;
+            statement(compiler, module, left);
+            instruction.operand1 = compiler_pop(compiler);
+            statement(compiler, module, right);
+            instruction.operand2 = compiler_pop(compiler);
+            instruction.result = register_table_alloc(regs);
+            block_add(current, instruction);
+            compiler_push(compiler, instruction.result);
+            break;
+        }
+        case AST_NODE_TYPE_MULTIPLY: {
+            struct ast_node* left = node->children[0];
+            struct ast_node* right = node->children[1];
+            struct ssa_instruction instruction = {};
+            instruction.operator = OP_MUL;
+            instruction.type = TYPE_I32;
+            statement(compiler, module, left);
+            instruction.operand1 = compiler_pop(compiler);
+            statement(compiler, module, right);
+            instruction.operand2 = compiler_pop(compiler);
+            instruction.result = register_table_alloc(regs);
+            block_add(current, instruction);
+            compiler_push(compiler, instruction.result);
+            break;
+        }
+        case AST_NODE_TYPE_DIVIDE: {
+            struct ast_node* left = node->children[0];
+            struct ast_node* right = node->children[1];
+            struct ssa_instruction instruction = {};
+            instruction.operator = OP_DIV;
+            instruction.type = TYPE_I32;
+            statement(compiler, module, left);
+            instruction.operand1 = compiler_pop(compiler);
+            statement(compiler, module, right);
+            instruction.operand2 = compiler_pop(compiler);
+            instruction.result = register_table_alloc(regs);
+            block_add(current, instruction);
+            compiler_push(compiler, instruction.result);
+            break;
+        }
         case AST_NODE_TYPE_RETURN_STATEMENT: {
             struct ssa_instruction instruction = {};
             instruction.operator = OP_RETURN;

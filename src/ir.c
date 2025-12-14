@@ -161,16 +161,15 @@ static void instruction_debug(struct ssa_instruction instruction) {
 
     printf("%s ", operator_name(instruction.operator));
 
-    operand_debug(instruction.operand1);
-
-    operand_debug(instruction.operand2);
+    for (int i = 0; i < MAX_OPERANDS; i++)
+        operand_debug(instruction.operands[i]);
     
     printf("%s\n", type_code_name(instruction.type));
 }
 
 static void block_debug(struct block* block) {
     if (!block->entry) {
-        printf("---> ");
+        printf("dominated by ---> ");
         for (int i = 0; i < block->parents_count; i++) {
             struct block* parent = block->parents[i];
             printf("[%p] ", parent);
@@ -181,8 +180,8 @@ static void block_debug(struct block* block) {
     for (int i = 0; i < block->instructions_count; i++) {
         instruction_debug(block->instructions[i]);
     }
-    if (block->instructions_count > 0) {
-        printf("---> ");
+    if (block->children_count > 0) {
+        printf("dominates ---> ");
         for (int i = 0; i < block->children_count; i++) {
             struct block* child = block->children[i];
             printf("[%p] ", child);

@@ -63,6 +63,8 @@ struct operand operand_const(uint64_t constant);
 
 struct operand operand_block(struct block* block);
 
+#define MAX_OPERANDS 3
+
 struct ssa_instruction {
     enum ssa_instruction_code operator;
 
@@ -72,8 +74,7 @@ struct ssa_instruction {
     struct operand result;
     
     // these could be a register or a constant depending on the operator
-    struct operand operand1;
-    struct operand operand2;
+    struct operand operands[MAX_OPERANDS];
 };
 
 #endif //COMPILER_SSA_H

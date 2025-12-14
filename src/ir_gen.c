@@ -138,8 +138,8 @@ static struct operand binary(struct compiler* compiler, struct module* module, s
     struct ssa_instruction instruction = {};
     instruction.operator = type;
     instruction.type = TYPE_I32;
-    instruction.operand1 = statement(compiler, module, left);
-    instruction.operand2 = statement(compiler, module, right);
+    instruction.operands[0] = statement(compiler, module, left);
+    instruction.operands[1] = statement(compiler, module, right);
     instruction.result = operand_reg(register_table_alloc(compiler->regs));
     block_add(compiler->current, instruction);
     return instruction.result;
@@ -160,19 +160,20 @@ static struct operand statement(struct compiler* compiler, struct module* module
         case AST_NODE_TYPE_IF: {
             struct ast_node* condition = node->children[0];
             struct ast_node* then = node->children[1];
-            //TODO: implement comparison
             
             struct block* post_block = block_new(false, compiler->regs);
             
             struct block* then_block = block_new(false, compiler->regs);
             block_link(current, then_block);
             block_link(then_block, post_block);
+            block_link(current, post_block);
 
             // push the final branching instruction to the current block
             struct ssa_instruction instruction = {};
             instruction.operator = OP_IF;
-            instruction.operand1 = statement(compiler, module, condition);
-            instruction.operand2 = operand_block(then_block);
+            instruction.operands[0] = statement(compiler, module, condition);
+            instruction.operands[1] = operand_block(then_block);
+            instruction.operands[2] = operand_block(post_block);
 
             block_add(compiler->current, instruction);
             
@@ -188,7 +189,7 @@ static struct operand statement(struct compiler* compiler, struct module* module
             
             struct ssa_instruction exit_instruction = {};
             exit_instruction.operator = OP_GOTO;
-            exit_instruction.operand1 = operand_block(post_block);
+            exit_instruction.operands[0] = operand_block(post_block);
             block_add(compiler->current, exit_instruction);
 
             ir_add(compiler->ir, compiler->current);
@@ -237,10 +238,10 @@ static struct operand statement(struct compiler* compiler, struct module* module
             struct ssa_instruction instruction = {};
             instruction.operator = OP_CONST;
             instruction.type = TYPE_I32;
-            instruction.operand1 = operand_const(0);
+            instruction.operands[0] = operand_const(0);
 
             if (node->children_count > 2) {
-                instruction.operand1 = statement(compiler, module, node->children[2]);
+                instruction.operands[0] = statement(compiler, module, node->children[2]);
             }
 
             instruction.result = operand_reg(register_table_add(current->symbol_table, name->token, TYPE_I32)->v_reg); //NOTE: assumed i32
@@ -257,7 +258,7 @@ static struct operand statement(struct compiler* compiler, struct module* module
             struct symbol* symbol = register_table_lookup(current->symbol_table, target->token);
             
             instruction.result = operand_reg(symbol->v_reg);
-            instruction.operand1 = statement(compiler, module, value);
+            instruction.operands[0] = statement(compiler, module, value);
             block_add(current, instruction);
             return instruction.result;
         }
@@ -271,7 +272,7 @@ static struct operand statement(struct compiler* compiler, struct module* module
 
             if (node->children_count > 0) {
                 struct ast_node* value = node->children[0];
-                instruction.operand1 = statement(compiler, module, value);
+                instruction.operands[0] = statement(compiler, module, value);
             }
             
             block_add(current, instruction);

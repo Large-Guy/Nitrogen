@@ -2,5 +2,10 @@ module program;
 
 i32 main()
 {
-    return 2 * (3 / 4);
+    i32 a = (32 + 64) * 2;
+    if(a < 10)
+    {
+        return 20;
+    }
+    return a;
 }

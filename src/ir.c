@@ -105,6 +105,8 @@ static char* type_code_name(enum ssa_type code) {
 
 static char* operator_name(enum ssa_instruction_code code) {
     switch (code) {
+        case OP_CONST:
+            return "const";
         case OP_ADD:
             return "add";
         case OP_SUB:
@@ -120,18 +122,28 @@ static char* operator_name(enum ssa_instruction_code code) {
     }
 }
 
-static void instruction_debug(struct ssa_instruction instruction) {
-    printf("%%%d = ", instruction.result);
-    if (instruction.operator == OP_CONST) {
-        printf("const %llu ", instruction.operand1);
-        printf("%s\n", type_code_name(instruction.type));
-        return;
+static void operand_debug(struct operand operand) {
+    switch (operand.type) {
+        case OPERAND_UNUSED:
+            break;
+        case OPERAND_TYPE_CONSTANT:
+            printf("#%llu ", operand.value);
+            break;
+        case OPERAND_TYPE_REGISTER:
+            printf("%%%llu ", operand.value);
+            break;
     }
+}
+
+static void instruction_debug(struct ssa_instruction instruction) {
+    operand_debug(instruction.result);
 
     printf("%s ", operator_name(instruction.operator));
 
-    printf("%%%llu, %%%llu ", instruction.operand1, instruction.operand2);
+    operand_debug(instruction.operand1);
 
+    operand_debug(instruction.operand2);
+    
     printf("%s\n", type_code_name(instruction.type));
 }
 

@@ -31,11 +31,13 @@ void register_table_end(struct register_table* table) {
     table->current_scope--;
 }
 
-struct symbol* register_table_lookup(struct register_table* table, char* name) {
+struct symbol* register_table_lookup(struct register_table* table, struct token name) {
     struct symbol* result = NULL;
     for (int i = 0; i < table->symbol_count; i++) {
         struct symbol* symbol = &table->symbols[i];
-        if (strcmp(name, symbol->name) == 0 && symbol->scope <= table->current_scope) {
+        if (name.length == symbol->name.length &&
+            memcmp(name.start, symbol->name.start, name.length) == 0 &&
+            symbol->scope <= table->current_scope) {
             if (result != NULL && symbol->scope <= result->scope) 
                 continue;
             result = symbol;
@@ -45,7 +47,7 @@ struct symbol* register_table_lookup(struct register_table* table, char* name) {
     
 }
 
-void register_table_add(struct register_table* table, char* name, enum ssa_type type) {
+struct symbol* register_table_add(struct register_table* table, struct token name, enum ssa_type type) {
     if (table->symbol_count >= table->symbol_capacity) {
         table->symbol_capacity *= 2;
         table->symbols = realloc(table->symbols, sizeof(struct symbol) * table->symbol_capacity);
@@ -56,7 +58,8 @@ void register_table_add(struct register_table* table, char* name, enum ssa_type 
     symbol.v_reg = table->register_count++;
     symbol.type = type;
     symbol.scope = table->current_scope;
-    table->symbols[table->symbol_count++].name = name;
+    table->symbols[table->symbol_count] = symbol;
+    return &table->symbols[table->symbol_count++];
 }
 
 uint32_t register_table_alloc(struct register_table* table) {

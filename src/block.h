@@ -4,9 +4,10 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "ssa.h"
+#include "lexer.h"
 
 struct symbol {
-    char* name;
+    struct token name;
     uint32_t v_reg;
     enum ssa_type type;
     uint32_t scope;
@@ -30,9 +31,9 @@ void register_table_begin(struct register_table* table);
 
 void register_table_end(struct register_table* table);
 
-struct symbol* register_table_lookup(struct register_table* table, char* name);
+struct symbol* register_table_lookup(struct register_table* table, struct token name);
 
-void register_table_add(struct register_table* table, char* name, enum ssa_type type);
+struct symbol* register_table_add(struct register_table* table, struct token name, enum ssa_type type);
 
 uint32_t register_table_alloc(struct register_table* table);
 

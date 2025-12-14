@@ -31,17 +31,32 @@ enum ssa_type {
     TYPE_F64,
 };
 
+enum operand_type {
+    OPERAND_UNUSED,
+    OPERAND_TYPE_REGISTER,
+    OPERAND_TYPE_CONSTANT,
+};
+
+struct operand {
+    enum operand_type type;
+    uint64_t value;
+};
+
+struct operand operand_reg(uint32_t reg);
+
+struct operand operand_const(uint64_t constant);
+
 struct ssa_instruction {
     enum ssa_instruction_code operator;
 
     enum ssa_type type;
     
     // this should always be a register
-    uint32_t result;
+    struct operand result;
     
     // these could be a register or a constant depending on the operator
-    uint64_t operand1;
-    uint64_t operand2;
+    struct operand operand1;
+    struct operand operand2;
 };
 
 #endif //COMPILER_SSA_H

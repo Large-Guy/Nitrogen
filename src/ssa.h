@@ -12,6 +12,17 @@ enum ssa_instruction_code {
     OP_SUB,
     OP_MUL,
     OP_DIV,
+    
+    OP_LESS,
+    OP_LESS_EQUAL,
+    OP_GREATER,
+    OP_GREATER_EQUAL,
+    OP_EQUAL,
+    OP_NOT_EQUAL,
+
+    OP_GOTO,
+    OP_IF,
+    
 
     //variables
     OP_LOAD,
@@ -35,16 +46,22 @@ enum operand_type {
     OPERAND_UNUSED,
     OPERAND_TYPE_REGISTER,
     OPERAND_TYPE_CONSTANT,
+    OPERAND_TYPE_BLOCK,
 };
 
 struct operand {
     enum operand_type type;
-    uint64_t value;
+    union {
+        uint64_t integer;
+        struct block* block;
+    } value;
 };
 
 struct operand operand_reg(uint32_t reg);
 
 struct operand operand_const(uint64_t constant);
+
+struct operand operand_block(struct block* block);
 
 struct ssa_instruction {
     enum ssa_instruction_code operator;

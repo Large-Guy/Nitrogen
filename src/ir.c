@@ -21,11 +21,11 @@ struct ir* ir_new(char* symbol, bool global, enum chunk_type type) {
     
     chunk->global = global;
 
-    chunk->blocks = malloc(sizeof(struct ssa_instruction));
+    chunk->blocks = malloc(sizeof(struct block*));
     assert(chunk->blocks);
     chunk->block_count = 0;
     chunk->block_capacity = 1;
-
+    
     return chunk;
 }
 
@@ -63,6 +63,9 @@ void ir_module_append(struct ir_module* list, struct ir* chunk) {
 void ir_free(struct ir* chunk) {
     assert(chunk != NULL);
     free(chunk->symbol);
+    for (int i = 0; i < chunk->block_count; i++) {
+        block_free(chunk->blocks[i]);
+    }
     free(chunk->blocks);
     free(chunk);
 }
@@ -115,6 +118,22 @@ static char* operator_name(enum ssa_instruction_code code) {
             return "mul";
         case OP_DIV:
             return "div";
+        case OP_LESS:
+            return "less";
+        case OP_LESS_EQUAL:
+            return "less_equal";
+        case OP_GREATER:
+            return "greater";
+        case OP_GREATER_EQUAL:
+            return "greater_equal";
+        case OP_EQUAL:
+            return "equal";
+        case OP_NOT_EQUAL:
+            return "not_equal";
+        case OP_GOTO:
+            return "goto";
+        case OP_IF:
+            return "if";
         case OP_RETURN:
             return "return";
         default:
@@ -127,11 +146,13 @@ static void operand_debug(struct operand operand) {
         case OPERAND_UNUSED:
             break;
         case OPERAND_TYPE_CONSTANT:
-            printf("#%llu ", operand.value);
+            printf("#%llu ", operand.value.integer);
             break;
         case OPERAND_TYPE_REGISTER:
-            printf("%%%llu ", operand.value);
+            printf("%%%llu ", operand.value.integer);
             break;
+        case OPERAND_TYPE_BLOCK:
+            printf("&%p ", operand.value.block);
     }
 }
 
@@ -148,9 +169,25 @@ static void instruction_debug(struct ssa_instruction instruction) {
 }
 
 static void block_debug(struct block* block) {
-    printf("BLOCK [%p] ---\n", &block);
+    if (!block->entry) {
+        printf("---> ");
+        for (int i = 0; i < block->parents_count; i++) {
+            struct block* parent = block->parents[i];
+            printf("[%p] ", parent);
+        }
+        printf("---> ");
+    }
+    printf("BLOCK [%p] ---\n", block);
     for (int i = 0; i < block->instructions_count; i++) {
         instruction_debug(block->instructions[i]);
+    }
+    if (block->instructions_count > 0) {
+        printf("---> ");
+        for (int i = 0; i < block->children_count; i++) {
+            struct block* child = block->children[i];
+            printf("[%p] ", child);
+        }
+        printf("\n\n");
     }
 }
 

@@ -55,7 +55,7 @@ struct block {
     uint32_t instructions_capacity;
 };
 
-struct block* block_new(bool entry);
+struct block* block_new(bool entry, struct register_table* symbol_table);
 
 void block_free(struct block* node);
 

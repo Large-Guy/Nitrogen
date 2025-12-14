@@ -67,10 +67,12 @@ uint32_t register_table_alloc(struct register_table* table) {
 }
 
 
-struct block* block_new(bool entry) {
+struct block* block_new(bool entry, struct register_table* symbol_table) {
     struct block* node = malloc(sizeof(struct block));
     assert(node);
     node->entry = entry;
+
+    node->symbol_table = symbol_table;
 
     node->parents = malloc(sizeof(struct block*));
     assert(node->parents);
@@ -92,10 +94,6 @@ struct block* block_new(bool entry) {
 
 void block_free(struct block* node) {
     assert(node);
-    for (int i = 0; i < node->children_count; i++) {
-        struct block* child = node->children[i];
-        block_free(child);
-    }
     free(node->children);
     free(node);
 }
@@ -116,7 +114,7 @@ void block_link(struct block* parent, struct block* child) {
         child->parents = realloc(child->parents, child->parents_capacity * sizeof(struct block*));
         assert(child->parents);
     }
-    
+
     child->parents[child->parents_count++] = parent;
 }
 

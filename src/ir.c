@@ -82,6 +82,8 @@ void ir_add(struct ir* chunk, struct block* block) {
 
 static char* type_code_name(enum ssa_type code) {
     switch (code) {
+        case TYPE_VOID:
+            return "void";
         case TYPE_U8:
             return "U8";
         case TYPE_U16:
@@ -118,6 +120,22 @@ static char* operator_name(enum ssa_instruction_code code) {
             return "mul";
         case OP_DIV:
             return "div";
+        case OP_BITWISE_AND:
+            return "bitwise-and";
+        case OP_BITWISE_OR:
+            return "bitwise-or";
+        case OP_BITWISE_XOR:
+            return "bitwise-xor";
+        case OP_BITWISE_NOT:
+            return "bitwise-not";
+        case OP_NEGATE:
+            return "negate";
+        case OP_NOT:
+            return "not";
+        case OP_AND:
+            return "and";
+        case OP_OR:
+            return "or";
         case OP_LESS:
             return "less";
         case OP_LESS_EQUAL:
@@ -186,8 +204,9 @@ static void block_debug(struct block* block) {
             struct block* child = block->children[i];
             printf("[%p] ", child);
         }
-        printf("\n\n");
+        printf("\n");
     }
+    printf("\n");
 }
 
 void ir_debug(struct ir* chunk) {

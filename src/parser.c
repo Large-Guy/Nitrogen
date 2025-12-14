@@ -420,7 +420,7 @@ static struct ast_node* unary(struct parser* parser, bool canAssign) {
             return node;
         }
         case TOKEN_TYPE_BANG: {
-            struct ast_node* node = ast_node_new(AST_NODE_TYPE_INVERSE, token);
+            struct ast_node* node = ast_node_new(AST_NODE_TYPE_NOT, token);
             ast_node_append_child(node, operand);
             return node;
         }

@@ -2,10 +2,18 @@ module program;
 
 i32 main()
 {
-    i32 a = (32 + 64) * 2;
-    if(a < 10)
+    i32 a = 64;
+    if(a < 16)
     {
-        return 20;
+        return 16;
     }
-    return a;
+    else if(a < 32)
+    {
+        return 32;
+    }
+    else if(a < 48)
+    {
+        return 48;
+    }
+    return 64;
 }

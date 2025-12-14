@@ -145,6 +145,17 @@ static struct operand binary(struct compiler* compiler, struct module* module, s
     return instruction.result;
 }
 
+static struct operand unary(struct compiler* compiler, struct module* module, struct ast_node* node, enum ssa_instruction_code type) {
+    struct ast_node* x = node->children[0];
+    struct ssa_instruction instruction = {};
+    instruction.operator = type;
+    instruction.type = TYPE_I32;
+    instruction.operands[0] = statement(compiler, module, x);
+    instruction.result = operand_reg(register_table_alloc(compiler->regs));
+    block_add(compiler->current, instruction);
+    return instruction.result;
+}
+
 //TODO: everything is currently an i32 for simplicity, implement types properly.
 static struct operand statement(struct compiler* compiler, struct module* module, struct ast_node* node) {
     struct block* current = compiler->current;
@@ -162,18 +173,30 @@ static struct operand statement(struct compiler* compiler, struct module* module
             struct ast_node* then = node->children[1];
             
             struct block* post_block = block_new(false, compiler->regs);
+
+            struct block* else_block = NULL;
+            struct ast_node* else_node = NULL;
             
             struct block* then_block = block_new(false, compiler->regs);
             block_link(current, then_block);
             block_link(then_block, post_block);
-            block_link(current, post_block);
+
+            if (node->children_count > 2) {
+                else_block = block_new(false, compiler->regs);
+                else_node = node->children[2];
+                block_link(current, else_block);
+                block_link(else_block, post_block);
+            }
+            else {
+                block_link(current, post_block);
+            }
 
             // push the final branching instruction to the current block
             struct ssa_instruction instruction = {};
             instruction.operator = OP_IF;
             instruction.operands[0] = statement(compiler, module, condition);
             instruction.operands[1] = operand_block(then_block);
-            instruction.operands[2] = operand_block(post_block);
+            instruction.operands[2] = operand_block(else_block ? else_block : post_block);
 
             block_add(compiler->current, instruction);
             
@@ -194,6 +217,16 @@ static struct operand statement(struct compiler* compiler, struct module* module
 
             ir_add(compiler->ir, compiler->current);
 
+            // else block
+            
+            if (else_block) {
+                compiler->current = else_block;
+                statement(compiler, module, else_node);
+                
+                block_add(compiler->current, exit_instruction);
+                ir_add(compiler->ir, compiler->current);
+            }
+            
             // post-block
             
             compiler->current = post_block;
@@ -232,6 +265,36 @@ static struct operand statement(struct compiler* compiler, struct module* module
         }
         case AST_NODE_TYPE_NOT_EQUAL: {
             return binary(compiler, module, node, OP_NOT_EQUAL);
+        }
+        case AST_NODE_TYPE_BITWISE_AND: {
+            return binary(compiler, module, node, OP_BITWISE_AND);
+        }
+        case AST_NODE_TYPE_BITWISE_OR: {
+            return binary(compiler, module, node, OP_BITWISE_OR);
+        }
+        case AST_NODE_TYPE_BITWISE_XOR: {
+            return binary(compiler, module, node, OP_BITWISE_XOR);
+        }
+        case AST_NODE_TYPE_BITWISE_NOT: {
+            return binary(compiler, module, node, OP_BITWISE_NOT);
+        }
+        case AST_NODE_TYPE_BITWISE_LEFT: {
+            return binary(compiler, module, node, OP_BITWISE_LEFT);
+        }
+        case AST_NODE_TYPE_BITWISE_RIGHT: {
+            return binary(compiler, module, node, OP_BITWISE_RIGHT);
+        }
+        case AST_NODE_TYPE_AND: {
+            return binary(compiler, module, node, OP_AND);
+        }
+        case AST_NODE_TYPE_OR: {
+            return binary(compiler, module, node, OP_OR);
+        }
+        case AST_NODE_TYPE_NEGATE: {
+            return unary(compiler, module, node, OP_NEGATE);
+        }
+        case AST_NODE_TYPE_NOT: {
+            return unary(compiler, module, node, OP_NOT);
         }
         case AST_NODE_TYPE_VARIABLE: {
             struct ast_node* name = node->children[0];

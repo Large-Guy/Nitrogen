@@ -12,6 +12,19 @@ enum ssa_instruction_code {
     OP_SUB,
     OP_MUL,
     OP_DIV,
+
+    OP_BITWISE_AND,
+    OP_BITWISE_OR,
+    OP_BITWISE_XOR,
+    OP_BITWISE_NOT,
+    OP_BITWISE_LEFT,
+    OP_BITWISE_RIGHT,
+    
+    OP_NEGATE,
+    OP_NOT,
+
+    OP_AND,
+    OP_OR,
     
     OP_LESS,
     OP_LESS_EQUAL,
@@ -30,6 +43,7 @@ enum ssa_instruction_code {
 };
 
 enum ssa_type {
+    TYPE_VOID,
     TYPE_U8,
     TYPE_U16,
     TYPE_U32,

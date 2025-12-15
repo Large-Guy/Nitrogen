@@ -73,14 +73,14 @@ struct compiler {
     uint32_t stack_capacity;
     
     struct register_table* regs;
-    struct block* current;
+    struct block* block;
 };
 
 static struct compiler* compiler_new(struct ir* ir) {
     struct compiler* compiler = malloc(sizeof(struct compiler));
     compiler->regs = register_table_new();
     compiler->ir = ir;
-    compiler->current = block_new(true, compiler->regs);
+    compiler->block = block_new(true, compiler->regs);
 
     compiler->stack = malloc(sizeof(uint32_t));
     compiler->stack_count = 0;
@@ -141,7 +141,7 @@ static struct operand binary(struct compiler* compiler, struct module* module, s
     instruction.operands[0] = statement(compiler, module, left);
     instruction.operands[1] = statement(compiler, module, right);
     instruction.result = operand_reg(register_table_alloc(compiler->regs));
-    block_add(compiler->current, instruction);
+    block_add(compiler->block, instruction);
     return instruction.result;
 }
 
@@ -152,85 +152,85 @@ static struct operand unary(struct compiler* compiler, struct module* module, st
     instruction.type = TYPE_I32;
     instruction.operands[0] = statement(compiler, module, x);
     instruction.result = operand_reg(register_table_alloc(compiler->regs));
-    block_add(compiler->current, instruction);
+    block_add(compiler->block, instruction);
     return instruction.result;
 }
 
 //TODO: everything is currently an i32 for simplicity, implement types properly.
 static struct operand statement(struct compiler* compiler, struct module* module, struct ast_node* node) {
-    struct block* current = compiler->current;
+    struct block* current = compiler->block;
     struct register_table* regs = compiler->regs;
     switch (node->type) {
         case AST_NODE_TYPE_SEQUENCE: {
+            struct operand last_operand = {};
             for (int i = 0; i < node->children_count; i++) {
                 struct ast_node* child = node->children[i];
-                statement(compiler, module, child);
+                last_operand = statement(compiler, module, child);
+                if (last_operand.type == OPERAND_TYPE_END)
+                    break;
             }
-            return (struct operand){};
+            return last_operand;
         }
         case AST_NODE_TYPE_IF: {
             struct ast_node* condition = node->children[0];
             struct ast_node* then = node->children[1];
             
-            struct block* post_block = block_new(false, compiler->regs);
+            struct ast_node* else_node = node->children_count > 2 ? node->children[2] : NULL;
 
-            struct block* else_block = NULL;
-            struct ast_node* else_node = NULL;
+            struct block* pass_block = block_new(true, regs);
+
+            struct ssa_instruction pass = {};
+            pass.operator = OP_GOTO;
+            pass.type = TYPE_VOID;
+            pass.operands[0] = operand_block(pass_block);
             
-            struct block* then_block = block_new(false, compiler->regs);
-            block_link(current, then_block);
-            block_link(then_block, post_block);
+            struct ssa_instruction instruction = {};
+            //instruction.result = operand_branch();
+            instruction.operator = OP_IF;
+            instruction.type = TYPE_I32;
+            instruction.operands[0] = statement(compiler, module, condition);
+            
+            compiler->block = block_new(false, regs);
+            ir_add(compiler->ir, compiler->block);
+            block_link(current, compiler->block);
+            instruction.operands[1] = operand_block(compiler->block);
+            struct operand operand = statement(compiler, module, then);
 
-            if (node->children_count > 2) {
-                else_block = block_new(false, compiler->regs);
-                else_node = node->children[2];
-                block_link(current, else_block);
-                block_link(else_block, post_block);
+            if (operand.type != OPERAND_TYPE_END) {
+                block_add(compiler->block, pass);
+                block_link(compiler->block, pass_block);
+            }
+            
+            
+            if (else_node) {
+                compiler->block = block_new(false, regs);
+                ir_add(compiler->ir, compiler->block);
+                block_link(current, compiler->block);
+                instruction.operands[2] = operand_block(compiler->block);
+                operand = statement(compiler, module, else_node);
+                if (operand.type != OPERAND_TYPE_END) {
+                    block_add(compiler->block, pass);
+                    block_link(compiler->block, pass_block);
+                }
             }
             else {
-                block_link(current, post_block);
+                instruction.operands[2] = operand_block(pass_block);
+                block_link(current, pass_block);
             }
 
-            // push the final branching instruction to the current block
-            struct ssa_instruction instruction = {};
-            instruction.operator = OP_IF;
-            instruction.operands[0] = statement(compiler, module, condition);
-            instruction.operands[1] = operand_block(then_block);
-            instruction.operands[2] = operand_block(else_block ? else_block : post_block);
+            block_add(current, instruction);
 
-            block_add(compiler->current, instruction);
-            
-            ir_add(compiler->ir, compiler->current);
-
-            // build the then block
-            
-            compiler->current = then_block;
-
-            statement(compiler, module, then);
-
-            // exit block instruction, skip to the post-block
-            
-            struct ssa_instruction exit_instruction = {};
-            exit_instruction.operator = OP_GOTO;
-            exit_instruction.operands[0] = operand_block(post_block);
-            block_add(compiler->current, exit_instruction);
-
-            ir_add(compiler->ir, compiler->current);
-
-            // else block
-            
-            if (else_block) {
-                compiler->current = else_block;
-                statement(compiler, module, else_node);
-                
-                block_add(compiler->current, exit_instruction);
-                ir_add(compiler->ir, compiler->current);
+            if (pass_block->parents_count > 0) {
+                compiler->block = pass_block;
+                ir_add(compiler->ir, pass_block);
+            }
+            else {
+                block_free(pass_block);
+                compiler->block = NULL;
+                return operand_end();
             }
             
-            // post-block
-            
-            compiler->current = post_block;
-            return (struct operand){};
+            return instruction.result;
         }
         case AST_NODE_TYPE_INTEGER: {
             int64_t immediate = strtoll(node->token.start, NULL, 10);
@@ -331,6 +331,7 @@ static struct operand statement(struct compiler* compiler, struct module* module
         case AST_NODE_TYPE_RETURN_STATEMENT: {
             struct ssa_instruction instruction = {};
             instruction.operator = OP_RETURN;
+            instruction.result = operand_end();
             instruction.type = TYPE_I32;
 
             if (node->children_count > 0) {
@@ -357,10 +358,10 @@ static struct ir* definition(struct module* module, struct ast_node* node)
             struct ast_node* type = node->children[1]; //type
             struct ast_node* body = node->children[2]; //function body
             struct compiler* compiler = compiler_new(ir);
+
+            ir_add(ir, compiler->block);
             
             statement(compiler, module, body);
-
-            ir_add(ir, compiler->current);
             
             compiler_free(compiler);
             return ir;

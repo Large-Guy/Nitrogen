@@ -11,3 +11,7 @@ struct operand operand_const(uint64_t constant) {
 struct operand operand_block(struct block* block) {
     return (struct operand){OPERAND_TYPE_BLOCK, {.block = block}};
 }
+
+struct operand operand_end() {
+    return (struct operand){OPERAND_TYPE_END};
+}

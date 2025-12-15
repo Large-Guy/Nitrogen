@@ -53,6 +53,9 @@ struct block {
     struct ssa_instruction* instructions;
     uint32_t instructions_count;
     uint32_t instructions_capacity;
+
+    struct ssa_instruction* exit;
+    bool branches;
 };
 
 struct block* block_new(bool entry, struct register_table* symbol_table);

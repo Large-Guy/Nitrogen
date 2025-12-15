@@ -57,7 +57,8 @@ enum ssa_type {
 };
 
 enum operand_type {
-    OPERAND_UNUSED,
+    OPERAND_TYPE_NONE,
+    OPERAND_TYPE_END,
     OPERAND_TYPE_REGISTER,
     OPERAND_TYPE_CONSTANT,
     OPERAND_TYPE_BLOCK,
@@ -76,6 +77,8 @@ struct operand operand_reg(uint32_t reg);
 struct operand operand_const(uint64_t constant);
 
 struct operand operand_block(struct block* block);
+
+struct operand operand_end();
 
 #define MAX_OPERANDS 3
 

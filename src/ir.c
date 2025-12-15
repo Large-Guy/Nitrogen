@@ -161,7 +161,7 @@ static char* operator_name(enum ssa_instruction_code code) {
 
 static void operand_debug(struct operand operand) {
     switch (operand.type) {
-        case OPERAND_UNUSED:
+        case OPERAND_TYPE_END:
             break;
         case OPERAND_TYPE_CONSTANT:
             printf("#%llu ", operand.value.integer);

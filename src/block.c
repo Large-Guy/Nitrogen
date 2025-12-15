@@ -88,6 +88,8 @@ struct block* block_new(bool entry, struct register_table* symbol_table) {
     assert(node->instructions);
     node->instructions_count = 0;
     node->instructions_capacity = 1;
+
+    node->exit = NULL;
     
     return node;
 }
@@ -127,4 +129,6 @@ void block_add(struct block* block, struct ssa_instruction instruction) {
         assert(block->instructions);
     }
     block->instructions[block->instructions_count++] = instruction;
+    block->exit = &block->instructions[block->instructions_count-1];
+    block->branches = instruction.result.type == OPERAND_TYPE_END;
 }

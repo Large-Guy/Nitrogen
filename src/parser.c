@@ -163,6 +163,7 @@ void parser_free(struct parser* parser) {
 #pragma region expression
 
 static struct token token_null = {0, NULL, 0, 0};
+static struct token token_zero = {TOKEN_TYPE_INTEGER, "0", 1, 0};
 static struct token token_one = {TOKEN_TYPE_INTEGER, "1", 1, 0};
 
 enum precedence {
@@ -437,9 +438,10 @@ static struct ast_node* literal(struct parser* parser, bool canAssign) {
 
     switch (token.type) {
         case TOKEN_TYPE_NULL:
-        case TOKEN_TYPE_TRUE:
         case TOKEN_TYPE_FALSE:
-            return ast_node_new(AST_NODE_TYPE_INTEGER, token);
+            return ast_node_new(AST_NODE_TYPE_INTEGER, token_zero);
+        case TOKEN_TYPE_TRUE:
+            return ast_node_new(AST_NODE_TYPE_INTEGER, token_one);
         default:
             //TODO: error out
             fprintf(stderr, "unexpected literal token type, this should never happen: %i\n", token.type);

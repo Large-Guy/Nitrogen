@@ -15,3 +15,7 @@ struct operand operand_block(struct block* block) {
 struct operand operand_end() {
     return (struct operand){OPERAND_TYPE_END};
 }
+
+struct operand operand_none() {
+    return (struct operand){OPERAND_TYPE_NONE};
+}

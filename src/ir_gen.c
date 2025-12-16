@@ -73,15 +73,31 @@ struct compiler {
     uint32_t stack_capacity;
     
     struct register_table* regs;
-    struct block* block;
+    
+    //local variables
+    struct block* entry;
+    //body of the function
+    struct block* body;
+    //clean up
+    struct block* exit;
 };
 
-static struct compiler* compiler_new(struct ir* ir) {
+static struct compiler* compiler_new(struct ir* ir, enum ssa_type return_type) {
     struct compiler* compiler = malloc(sizeof(struct compiler));
     compiler->regs = register_table_new();
     compiler->ir = ir;
-    compiler->block = block_new(true, compiler->regs);
-
+    compiler->entry = block_new(true, compiler->regs);
+    ir_add(compiler->ir, compiler->entry);
+    compiler->exit = block_new(false, compiler->regs);
+    compiler->body = block_new(false, compiler->regs);
+    block_link(compiler->entry, compiler->body);
+    struct ssa_instruction ret = {};
+    ret.result = operand_end();
+    ret.operator = OP_RETURN;
+    ret.type = return_type;
+    block_add(compiler->exit, ret);
+    ir_add(compiler->ir, compiler->body);
+    
     compiler->stack = malloc(sizeof(uint32_t));
     compiler->stack_count = 0;
     compiler->stack_capacity = 1;
@@ -140,8 +156,8 @@ static struct operand binary(struct compiler* compiler, struct module* module, s
     instruction.type = TYPE_I32;
     instruction.operands[0] = statement(compiler, module, left);
     instruction.operands[1] = statement(compiler, module, right);
-    instruction.result = operand_reg(register_table_alloc(compiler->regs));
-    block_add(compiler->block, instruction);
+    instruction.result = register_table_alloc(compiler->regs);
+    block_add(compiler->body, instruction);
     return instruction.result;
 }
 
@@ -151,8 +167,8 @@ static struct operand unary(struct compiler* compiler, struct module* module, st
     instruction.operator = type;
     instruction.type = TYPE_I32;
     instruction.operands[0] = statement(compiler, module, x);
-    instruction.result = operand_reg(register_table_alloc(compiler->regs));
-    block_add(compiler->block, instruction);
+    instruction.result = register_table_alloc(compiler->regs);
+    block_add(compiler->body, instruction);
     return instruction.result;
 }
 
@@ -162,7 +178,7 @@ static struct operand unary(struct compiler* compiler, struct module* module, st
 //Note: GCC pre-allocates a register to be used as the return value %1, which is then assigned to at a return node
 //Note: and a goto statement occurs to jump to the return block
 static struct operand statement(struct compiler* compiler, struct module* module, struct ast_node* node) {
-    struct block* current = compiler->block;
+    struct block* current = compiler->body;
     struct register_table* regs = compiler->regs;
     switch (node->type) {
         case AST_NODE_TYPE_SEQUENCE: {
@@ -174,67 +190,6 @@ static struct operand statement(struct compiler* compiler, struct module* module
                     break;
             }
             return last_operand;
-        }
-        case AST_NODE_TYPE_IF: {
-            struct ast_node* condition = node->children[0];
-            struct ast_node* then = node->children[1];
-            
-            struct ast_node* else_node = node->children_count > 2 ? node->children[2] : NULL;
-
-            struct block* pass_block = block_new(true, regs);
-
-            struct ssa_instruction pass = {};
-            pass.operator = OP_GOTO;
-            pass.type = TYPE_VOID;
-            pass.operands[0] = operand_block(pass_block);
-            
-            struct ssa_instruction instruction = {};
-            //instruction.result = operand_branch();
-            instruction.operator = OP_IF;
-            instruction.type = TYPE_I32;
-            instruction.operands[0] = statement(compiler, module, condition);
-            
-            compiler->block = block_new(false, regs);
-            ir_add(compiler->ir, compiler->block);
-            block_link(current, compiler->block);
-            instruction.operands[1] = operand_block(compiler->block);
-            struct operand operand = statement(compiler, module, then);
-
-            if (operand.type != OPERAND_TYPE_END) {
-                block_add(compiler->block, pass);
-                block_link(compiler->block, pass_block);
-            }
-            
-            
-            if (else_node) {
-                compiler->block = block_new(false, regs);
-                ir_add(compiler->ir, compiler->block);
-                block_link(current, compiler->block);
-                instruction.operands[2] = operand_block(compiler->block);
-                operand = statement(compiler, module, else_node);
-                if (operand.type != OPERAND_TYPE_END) {
-                    block_add(compiler->block, pass);
-                    block_link(compiler->block, pass_block);
-                }
-            }
-            else {
-                instruction.operands[2] = operand_block(pass_block);
-                block_link(current, pass_block);
-            }
-
-            block_add(current, instruction);
-
-            if (pass_block->parents_count > 0) {
-                compiler->block = pass_block;
-                ir_add(compiler->ir, pass_block);
-            }
-            else {
-                block_free(pass_block);
-                compiler->block = NULL;
-                return operand_end();
-            }
-            
-            return instruction.result;
         }
         case AST_NODE_TYPE_INTEGER: {
             int64_t immediate = strtoll(node->token.start, NULL, 10);
@@ -302,48 +257,66 @@ static struct operand statement(struct compiler* compiler, struct module* module
         }
         case AST_NODE_TYPE_VARIABLE: {
             struct ast_node* name = node->children[0];
+            struct ast_node* value = node->children_count > 2 ? node->children[2] : NULL;
             struct ssa_instruction instruction = {};
-            instruction.operator = OP_CONST;
+            instruction.operator = OP_ALLOC;
             instruction.type = TYPE_I32;
-            instruction.operands[0] = operand_const(0);
 
-            if (node->children_count > 2) {
-                instruction.operands[0] = statement(compiler, module, node->children[2]);
-            }
+            //NOTE: assumed i32
+            instruction.result = register_table_add(current->symbol_table, name->token, 4)->pointer;
 
-            instruction.result = operand_reg(register_table_add(current->symbol_table, name->token, TYPE_I32)->v_reg); //NOTE: assumed i32
+            block_add(compiler->entry, instruction);
+
+            //ZII
+            struct ssa_instruction store = {};
+            store.operator = OP_STORE;
+            store.type = TYPE_I32;
+            store.operands[0] = instruction.result;
             
-            block_add(current, instruction);
+            //store the value
+            if (value) {
+                store.operands[1] = statement(compiler, module, value);
+            }
+            else {
+                store.operands[1] = operand_const(0);
+            }
+            
+            block_add(current, store);
+            
             return instruction.result;
         }
         case AST_NODE_TYPE_ASSIGN: {
             struct ast_node* target = node->children[0];
             struct ast_node* value = node->children[1];
             struct ssa_instruction instruction = {};
-            instruction.operator = OP_CONST;
+            instruction.operator = OP_STORE;
             instruction.type = TYPE_I32;
-            struct symbol* symbol = register_table_lookup(current->symbol_table, target->token);
+            struct variable* symbol = register_table_lookup(current->symbol_table, target->token);
             
-            instruction.result = operand_reg(symbol->v_reg);
-            instruction.operands[0] = statement(compiler, module, value);
+            instruction.result = operand_none();
+            instruction.operands[0] = symbol->pointer;
+            instruction.operands[1] = statement(compiler, module, value);
             block_add(current, instruction);
             return instruction.result;
         }
         case AST_NODE_TYPE_NAME: {
-            return operand_reg(register_table_lookup(current->symbol_table, node->token)->v_reg);
+            struct ssa_instruction instruction = {};
+            instruction.operator = OP_LOAD;
+            instruction.type = TYPE_I32;
+            instruction.operands[0] = register_table_lookup(current->symbol_table, node->token)->pointer;
+            instruction.result = register_table_alloc(current->symbol_table);
+            block_add(current, instruction);
+            
+            return instruction.result;
         }
         case AST_NODE_TYPE_RETURN_STATEMENT: {
             struct ssa_instruction instruction = {};
-            instruction.operator = OP_RETURN;
+            instruction.operator = OP_GOTO;
             instruction.result = operand_end();
             instruction.type = TYPE_I32;
-
-            if (node->children_count > 0) {
-                struct ast_node* value = node->children[0];
-                instruction.operands[0] = statement(compiler, module, value);
-            }
+            instruction.operands[0] = operand_block(compiler->exit);
             
-            block_add(current, instruction);
+            block_add(compiler->body, instruction);
             return instruction.result;
         }
         default: {
@@ -361,11 +334,11 @@ static struct ir* definition(struct module* module, struct ast_node* node)
             struct ir* ir = ir_symbol_new(node->children[0]->token, CHUNK_TYPE_FUNCTION);
             struct ast_node* type = node->children[1]; //type
             struct ast_node* body = node->children[2]; //function body
-            struct compiler* compiler = compiler_new(ir);
+            struct compiler* compiler = compiler_new(ir, TYPE_I32);
 
-            ir_add(ir, compiler->block);
-            
             statement(compiler, module, body);
+
+            ir_add(compiler->ir, compiler->exit);
             
             compiler_free(compiler);
             return ir;

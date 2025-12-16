@@ -7,7 +7,7 @@
 struct register_table* register_table_new() {
     struct register_table* table = malloc(sizeof(struct register_table));
     assert(table);
-    table->symbols = malloc(sizeof(struct symbol));
+    table->symbols = malloc(sizeof(struct variable));
     assert(table->symbols);
     table->symbol_count = 0;
     table->symbol_capacity = 1;
@@ -31,10 +31,10 @@ void register_table_end(struct register_table* table) {
     table->current_scope--;
 }
 
-struct symbol* register_table_lookup(struct register_table* table, struct token name) {
-    struct symbol* result = NULL;
+struct variable* register_table_lookup(struct register_table* table, struct token name) {
+    struct variable* result = NULL;
     for (int i = 0; i < table->symbol_count; i++) {
-        struct symbol* symbol = &table->symbols[i];
+        struct variable* symbol = &table->symbols[i];
         if (name.length == symbol->name.length &&
             memcmp(name.start, symbol->name.start, name.length) == 0 &&
             symbol->scope <= table->current_scope) {
@@ -47,29 +47,30 @@ struct symbol* register_table_lookup(struct register_table* table, struct token 
     
 }
 
-struct symbol* register_table_add(struct register_table* table, struct token name, enum ssa_type type) {
+struct variable* register_table_add(struct register_table* table, struct token name, uint64_t size) {
     if (table->symbol_count >= table->symbol_capacity) {
         table->symbol_capacity *= 2;
-        table->symbols = realloc(table->symbols, sizeof(struct symbol) * table->symbol_capacity);
+        table->symbols = realloc(table->symbols, sizeof(struct variable) * table->symbol_capacity);
         assert(table->symbols);
     }
-    struct symbol symbol;
+    struct variable symbol;
     symbol.name = name;
-    symbol.v_reg = table->register_count++;
-    symbol.type = type;
+    symbol.size = size;
     symbol.scope = table->current_scope;
+    symbol.pointer = register_table_alloc(table);
     table->symbols[table->symbol_count] = symbol;
     return &table->symbols[table->symbol_count++];
 }
 
-uint32_t register_table_alloc(struct register_table* table) {
-    return table->register_count++;
+struct operand register_table_alloc(struct register_table* table) {
+    return operand_reg(table->register_count++);
 }
 
 
 struct block* block_new(bool entry, struct register_table* symbol_table) {
     struct block* node = malloc(sizeof(struct block));
     assert(node);
+    node->id = 0;
     node->entry = entry;
 
     node->symbol_table = symbol_table;

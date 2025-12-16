@@ -38,6 +38,7 @@ enum ssa_instruction_code {
     
 
     //variables
+    OP_ALLOC,
     OP_LOAD,
     OP_STORE
 };
@@ -61,6 +62,7 @@ enum operand_type {
     OPERAND_TYPE_END,
     OPERAND_TYPE_REGISTER,
     OPERAND_TYPE_CONSTANT,
+    OPERAND_TYPE_POINTER,
     OPERAND_TYPE_BLOCK,
 };
 
@@ -71,6 +73,8 @@ struct operand {
         struct block* block;
     } value;
 };
+
+struct operand operand_none();
 
 struct operand operand_reg(uint32_t reg);
 

@@ -78,6 +78,7 @@ void ir_add(struct ir* chunk, struct block* block) {
         assert(chunk->blocks);
     }
     chunk->blocks[chunk->block_count++] = block;
+    block->id = chunk->block_count;
 }
 
 static char* type_code_name(enum ssa_type code) {
@@ -154,6 +155,12 @@ static char* operator_name(enum ssa_instruction_code code) {
             return "if";
         case OP_RETURN:
             return "return";
+        case OP_ALLOC:
+            return "alloc";
+        case OP_STORE:
+            return "store";
+        case OP_LOAD:
+            return "load";
         default:
             return "unsupported";
     }
@@ -170,7 +177,7 @@ static void operand_debug(struct operand operand) {
             printf("%%%llu ", operand.value.integer);
             break;
         case OPERAND_TYPE_BLOCK:
-            printf("&%p ", operand.value.block);
+            printf("&%d ", operand.value.block->id);
     }
 }
 
@@ -190,11 +197,11 @@ static void block_debug(struct block* block) {
         printf("dominated by ---> ");
         for (int i = 0; i < block->parents_count; i++) {
             struct block* parent = block->parents[i];
-            printf("[%p] ", parent);
+            printf("BLOCK [%p] ", parent);
         }
         printf("---> ");
     }
-    printf("BLOCK [%p] ---\n", block);
+    printf("BLOCK [%d] ---\n", block->id);
     for (int i = 0; i < block->instructions_count; i++) {
         instruction_debug(block->instructions[i]);
     }
@@ -202,7 +209,7 @@ static void block_debug(struct block* block) {
         printf("dominates ---> ");
         for (int i = 0; i < block->children_count; i++) {
             struct block* child = block->children[i];
-            printf("[%p] ", child);
+            printf("BLOCK [%d] ", child->id);
         }
         printf("\n");
     }

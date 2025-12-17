@@ -290,7 +290,7 @@ void ir_module_debug(struct ir_module* module) {
 void ir_module_debug_graph(struct ir_module* module, FILE* out) {
     
     fprintf(out, "digraph \"SSA+CFG\" {\n");
-    fprintf(out, "  node [shape=box, fontname=\"Courier\"];\n");
+    fprintf(out, "  node [shape=box, fontname=\"Maple Mono\"];\n");
     fprintf(out, "  compound=true;\n");
     
     for (int i = 0; i < module->count; i++)

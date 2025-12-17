@@ -355,7 +355,6 @@ static struct operand statement(struct compiler* compiler, struct module* module
             struct ssa_instruction instruction = {};
             instruction.operator = OP_GOTO;
             instruction.result = operand_end();
-            instruction.type = TYPE_I32;
             instruction.operands[0] = operand_block(compiler->exit);
 
             block_link(current, compiler->exit);
@@ -377,22 +376,48 @@ static struct operand statement(struct compiler* compiler, struct module* module
 
             struct ast_node* then = node->children[1];
             struct block* then_block = block_new(false, compiler->regs);
+            instruction.operands[1] = operand_block(then_block);
             ir_add(compiler->ir, then_block);
 
             block_link(current, then_block);
 
             compiler->body = then_block;
 
-            statement(compiler, module, then);
+            struct operand result = statement(compiler, module, then);
 
-            instruction.operands[1] = operand_block(compiler->body);
+            if (result.type != OPERAND_TYPE_END) {
+                struct ssa_instruction instruction = {};
+                instruction.operator = OP_GOTO;
+                instruction.result = operand_end();
+                instruction.operands[0] = operand_block(after);
+                block_add(compiler->body, instruction);
+                block_link(compiler->body, after);
+            }
+
+            if (node->children_count > 2) {
+                struct block* else_block = block_new(false, compiler->regs);
+                ir_add(compiler->ir, else_block);
+                block_link(current, else_block);
+                struct ast_node* else_node = node->children[2];
+                instruction.operands[2] = operand_block(else_block);
+                compiler->body = else_block;
+                result = statement(compiler, module, else_node);
+                if (result.type != OPERAND_TYPE_END) {
+                    struct ssa_instruction goto_instruction = {};
+                    goto_instruction.operator = OP_GOTO;
+                    goto_instruction.result = operand_end();
+                    goto_instruction.operands[0] = operand_block(after);
+                    block_add(compiler->body, goto_instruction);
+                    block_link(compiler->body, after);
+                }
+            }
+            else {
+                block_link(current, after);
+            }
 
             block_add(current, instruction);
-
-            block_link(current, after);
-
+            
             ir_add(compiler->ir, after);
-
             compiler->body = after;
 
             return operand_none();

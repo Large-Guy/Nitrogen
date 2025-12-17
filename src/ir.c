@@ -174,7 +174,10 @@ static void operand_debug(struct operand operand, FILE* out) {
             fprintf(out, "#%llu ", operand.value.integer);
             break;
         case OPERAND_TYPE_REGISTER:
-            fprintf(out, "%%%llu ", operand.value.integer);
+            if (operand.value.integer == 0)
+                fprintf(out, "%%ret "); // 0 should be return value of all chunks
+            else
+                fprintf(out, "%%%llu ", operand.value.integer);
             break;
         case OPERAND_TYPE_BLOCK:
             fprintf(out, "&%d ", operand.value.block->id);
@@ -231,9 +234,14 @@ void ir_debug(struct ir* chunk) {
     }
 }
 
-static void block_build_graph(struct block* block, FILE* out) {
-    fprintf(out, "  bb%d [label=\"", block->id);
-    fprintf(out, "BLOCK %d\\l", block->id);
+static void block_build_graph(char* name, struct block* block, FILE* out) {
+    fprintf(out, "  %s_bb%d [label=\"", name, block->id);
+    if (block->entry)
+        fprintf(out, ".ENTRY\\l");
+    else if (block->children_count == 0)
+        fprintf(out, ".EXIT\\l");
+    else
+        fprintf(out, ".BLOCK %d\\l", block->id);
     for (int i = 0; i < block->instructions_count; i++) {
         instruction_debug(block->instructions[i], out);
         fprintf(out, "\\l");
@@ -241,28 +249,33 @@ static void block_build_graph(struct block* block, FILE* out) {
     fprintf(out, "\"];\n");
 }
 
-static void recursive_link(struct block* block, FILE* out) {
+static void recursive_link(char* name, struct block* block, FILE* out) {
     for (int i = 0; i < block->children_count; i++) {
         struct block* child = block->children[i];
-        fprintf(out, "  bb%d -> bb%d [color=black];\n", block->id, child->id);
-        recursive_link(child, out);
+        fprintf(out, "    %s_bb%d -> %s_bb%d [color=black];\n", name, block->id, name, child->id);
+        if (child->parents_count == 1 || child->parents[0] == block)
+            recursive_link(name, child, out);
     }
 }
 
 void ir_build_graph(struct ir* chunk, FILE* out) {
     assert(chunk != NULL);
     assert(chunk->blocks != NULL);
-    fprintf(out, "digraph \"SSA+CFG\" {\n");
-    fprintf(out, "  node [shape=box, fontname=\"Courier\"];\n");
+
+    fprintf(out, "  subgraph cluster_%s {\n", chunk->symbol);
+    fprintf(out, "    label=\"%s()\";\n", chunk->symbol);
+    fprintf(out, "    style=filled;\n");
+    fprintf(out, "    color=lightgrey;\n");
+    fprintf(out, "    node [style=filled, color=white];\n");
     
     for (size_t i = 0; i < chunk->block_count; i++) {
         struct block* block = chunk->blocks[i];
-        block_build_graph(block, out);
+        block_build_graph(chunk->symbol, block, out);
     }
 
-    recursive_link(chunk->blocks[0], out);
+    recursive_link(chunk->symbol, chunk->blocks[0], out);
 
-    fprintf(out, "}\n");
+    fprintf(out, "    }\n");
 }
 
 void ir_module_debug(struct ir_module* module) {
@@ -275,10 +288,17 @@ void ir_module_debug(struct ir_module* module) {
 }
 
 void ir_module_debug_graph(struct ir_module* module, FILE* out) {
+    
+    fprintf(out, "digraph \"SSA+CFG\" {\n");
+    fprintf(out, "  node [shape=box, fontname=\"Courier\"];\n");
+    fprintf(out, "  compound=true;\n");
+    
     for (int i = 0; i < module->count; i++)
     {
         ir_build_graph(module->chunks[i], out);
     }
+
+    fprintf(out, "  }\n");
 }
 
 char* ir_compile(struct ir* chunk, FILE* out) {

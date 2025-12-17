@@ -44,7 +44,11 @@ void ir_add(struct ir* chunk, struct block* block);
 
 void ir_debug(struct ir* chunk);
 
+void ir_build_graph(struct ir* chunk, FILE* out);
+
 void ir_module_debug(struct ir_module* module);
+
+void ir_module_debug_graph(struct ir_module* module, FILE* out);
 
 char* ir_compile(struct ir* chunk, FILE* file);
 

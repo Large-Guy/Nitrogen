@@ -73,7 +73,9 @@ struct compiler {
     uint32_t stack_capacity;
     
     struct register_table* regs;
-    
+
+    enum ssa_type return_type;
+    struct operand return_value_ptr;
     //local variables
     struct block* entry;
     //body of the function
@@ -84,18 +86,16 @@ struct compiler {
 
 static struct compiler* compiler_new(struct ir* ir, enum ssa_type return_type) {
     struct compiler* compiler = malloc(sizeof(struct compiler));
+    assert(compiler);
     compiler->regs = register_table_new();
     compiler->ir = ir;
+    compiler->return_type = return_type;
     compiler->entry = block_new(true, compiler->regs);
     ir_add(compiler->ir, compiler->entry);
     compiler->exit = block_new(false, compiler->regs);
     compiler->body = block_new(false, compiler->regs);
     block_link(compiler->entry, compiler->body);
-    struct ssa_instruction ret = {};
-    ret.result = operand_end();
-    ret.operator = OP_RETURN;
-    ret.type = return_type;
-    block_add(compiler->exit, ret);
+
     ir_add(compiler->ir, compiler->body);
     
     compiler->stack = malloc(sizeof(uint32_t));
@@ -103,6 +103,41 @@ static struct compiler* compiler_new(struct ir* ir, enum ssa_type return_type) {
     compiler->stack_capacity = 1;
     
     return compiler;
+}
+
+static void compiler_begin(struct compiler* compiler) {
+    compiler->return_value_ptr = register_table_add(compiler->regs, (struct token){}, 4)->pointer;
+    struct ssa_instruction ret_val_variable = {};
+    ret_val_variable.result = compiler->return_value_ptr;
+    ret_val_variable.operator = OP_ALLOC;
+    ret_val_variable.type = compiler->return_type;
+    block_add(compiler->entry, ret_val_variable);
+
+    //default it to zero
+    struct ssa_instruction ret_val_value = {};
+    ret_val_value.operator = OP_STORE;
+    ret_val_value.type = compiler->return_type;
+    ret_val_value.operands[0] = compiler->return_value_ptr;
+    ret_val_value.operands[1] = operand_const(0);
+    block_add(compiler->body, ret_val_value);
+}
+
+static void compiler_end(struct compiler* compiler) {
+    struct ssa_instruction load_ret_val = {};
+    load_ret_val.operator = OP_LOAD;
+    load_ret_val.type = compiler->return_type;
+    load_ret_val.operands[0] = compiler->return_value_ptr;
+    load_ret_val.result = register_table_alloc(compiler->regs);
+    block_add(compiler->exit, load_ret_val);
+    
+    struct ssa_instruction ret = {};
+    ret.result = operand_end();
+    ret.operator = OP_RETURN;
+    ret.type = compiler->return_type;
+    ret.operands[0] = load_ret_val.result;
+    block_add(compiler->exit, ret);
+
+    ir_add(compiler->ir, compiler->exit);
 }
 
 static void compiler_free(struct compiler* compiler) {
@@ -176,7 +211,7 @@ static struct operand unary(struct compiler* compiler, struct module* module, st
 //TODO: research how GCC handles return values.
 //Note: GCC seems to only have one return instruction in a function and it's in its own block.
 //Note: GCC pre-allocates a register to be used as the return value %1, which is then assigned to at a return node
-//Note: and a goto statement occurs to jump to the return block
+//Note: and a goto statement occurs to jump to the return block, i guess for later optimizations?
 static struct operand statement(struct compiler* compiler, struct module* module, struct ast_node* node) {
     struct block* current = compiler->body;
     struct register_table* regs = compiler->regs;
@@ -310,14 +345,57 @@ static struct operand statement(struct compiler* compiler, struct module* module
             return instruction.result;
         }
         case AST_NODE_TYPE_RETURN_STATEMENT: {
+            struct ssa_instruction return_store = {};
+            return_store.operator = OP_STORE;
+            return_store.type = TYPE_I32;
+            return_store.operands[0] = compiler->return_value_ptr;
+            return_store.operands[1] = statement(compiler, module, node->children[0]);
+            block_add(current, return_store);
+            
             struct ssa_instruction instruction = {};
             instruction.operator = OP_GOTO;
             instruction.result = operand_end();
             instruction.type = TYPE_I32;
             instruction.operands[0] = operand_block(compiler->exit);
+
+            block_link(current, compiler->exit);
             
-            block_add(compiler->body, instruction);
+            block_add(current, instruction);
             return instruction.result;
+        }
+        case AST_NODE_TYPE_IF: {
+            struct ast_node* condition = node->children[0];
+            struct ssa_instruction instruction = {};
+
+            struct block* after = block_new(false, compiler->regs);
+            
+            instruction.operator = OP_IF;
+            instruction.result = operand_end();
+            instruction.type = TYPE_I32;
+            instruction.operands[0] = statement(compiler, module, condition);
+            instruction.operands[2] = operand_block(after);
+
+            struct ast_node* then = node->children[1];
+            struct block* then_block = block_new(false, compiler->regs);
+            ir_add(compiler->ir, then_block);
+
+            block_link(current, then_block);
+
+            compiler->body = then_block;
+
+            statement(compiler, module, then);
+
+            instruction.operands[1] = operand_block(compiler->body);
+
+            block_add(current, instruction);
+
+            block_link(current, after);
+
+            ir_add(compiler->ir, after);
+
+            compiler->body = after;
+
+            return operand_none();
         }
         default: {
             fprintf(stderr, "unexpected node type: %d\n", node->type);
@@ -335,10 +413,11 @@ static struct ir* definition(struct module* module, struct ast_node* node)
             struct ast_node* type = node->children[1]; //type
             struct ast_node* body = node->children[2]; //function body
             struct compiler* compiler = compiler_new(ir, TYPE_I32);
+            compiler_begin(compiler);
 
             statement(compiler, module, body);
 
-            ir_add(compiler->ir, compiler->exit);
+            compiler_end(compiler);
             
             compiler_free(compiler);
             return ir;

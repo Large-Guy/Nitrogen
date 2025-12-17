@@ -79,17 +79,24 @@ int main(int argc, char** argv) {
 
     printf("building ir...\n\n");
 
+    FILE* graphdot = fopen("graph.dot", "w");
+
     for (int i = 0; i < modules.module_count; i++) {
         struct module* module = modules.modules[i];
         printf("--- MODULE %s ---\n", module->name);
         struct ir_module* ir_module = ir_gen_module(module);
         ir_module_debug(ir_module);
+        ir_module_debug_graph(ir_module, graphdot);
         printf("--- COMPILED ---\n");
         for (int n = 0; n < ir_module->count; n++) {
             ir_compile(ir_module->chunks[n], stdout);
         }
         ir_module_free(ir_module);
     }
+
+    fclose(graphdot);
+
+    system("dot -Tsvg graph.dot > graph.svg");
 
     module_list_free(&modules);
 

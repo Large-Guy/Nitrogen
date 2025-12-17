@@ -166,47 +166,54 @@ static char* operator_name(enum ssa_instruction_code code) {
     }
 }
 
-static void operand_debug(struct operand operand) {
+static void operand_debug(struct operand operand, FILE* out) {
     switch (operand.type) {
         case OPERAND_TYPE_END:
             break;
         case OPERAND_TYPE_CONSTANT:
-            printf("#%llu ", operand.value.integer);
+            fprintf(out, "#%llu ", operand.value.integer);
             break;
         case OPERAND_TYPE_REGISTER:
-            printf("%%%llu ", operand.value.integer);
+            fprintf(out, "%%%llu ", operand.value.integer);
             break;
         case OPERAND_TYPE_BLOCK:
-            printf("&%d ", operand.value.block->id);
+            fprintf(out, "&%d ", operand.value.block->id);
+            break;
+        case OPERAND_TYPE_NONE:
+            break;
     }
 }
 
-static void instruction_debug(struct ssa_instruction instruction) {
-    operand_debug(instruction.result);
+static void instruction_debug(struct ssa_instruction instruction, FILE* out) {
+    operand_debug(instruction.result, out);
 
-    printf("%s ", operator_name(instruction.operator));
+    if (instruction.result.type > OPERAND_TYPE_END)
+        fprintf(out, "= ");
+    
+    fprintf(out, "%s ", operator_name(instruction.operator));
 
     for (int i = 0; i < MAX_OPERANDS; i++)
-        operand_debug(instruction.operands[i]);
+        operand_debug(instruction.operands[i], out);
     
-    printf("%s\n", type_code_name(instruction.type));
+    fprintf(out, "%s", type_code_name(instruction.type));
 }
 
 static void block_debug(struct block* block) {
     if (!block->entry) {
-        printf("dominated by ---> ");
+        printf("dominated by: ");
         for (int i = 0; i < block->parents_count; i++) {
             struct block* parent = block->parents[i];
-            printf("BLOCK [%p] ", parent);
+            printf("BLOCK [%d] ", parent->id);
         }
         printf("---> ");
     }
     printf("BLOCK [%d] ---\n", block->id);
     for (int i = 0; i < block->instructions_count; i++) {
-        instruction_debug(block->instructions[i]);
+        instruction_debug(block->instructions[i], stdout);
+        printf("\n");
     }
     if (block->children_count > 0) {
-        printf("dominates ---> ");
+        printf("dominates: ");
         for (int i = 0; i < block->children_count; i++) {
             struct block* child = block->children[i];
             printf("BLOCK [%d] ", child->id);
@@ -224,12 +231,53 @@ void ir_debug(struct ir* chunk) {
     }
 }
 
+static void block_build_graph(struct block* block, FILE* out) {
+    fprintf(out, "  bb%d [label=\"", block->id);
+    fprintf(out, "BLOCK %d\\l", block->id);
+    for (int i = 0; i < block->instructions_count; i++) {
+        instruction_debug(block->instructions[i], out);
+        fprintf(out, "\\l");
+    }
+    fprintf(out, "\"];\n");
+}
+
+static void recursive_link(struct block* block, FILE* out) {
+    for (int i = 0; i < block->children_count; i++) {
+        struct block* child = block->children[i];
+        fprintf(out, "  bb%d -> bb%d [color=black];\n", block->id, child->id);
+        recursive_link(child, out);
+    }
+}
+
+void ir_build_graph(struct ir* chunk, FILE* out) {
+    assert(chunk != NULL);
+    assert(chunk->blocks != NULL);
+    fprintf(out, "digraph \"SSA+CFG\" {\n");
+    fprintf(out, "  node [shape=box, fontname=\"Courier\"];\n");
+    
+    for (size_t i = 0; i < chunk->block_count; i++) {
+        struct block* block = chunk->blocks[i];
+        block_build_graph(block, out);
+    }
+
+    recursive_link(chunk->blocks[0], out);
+
+    fprintf(out, "}\n");
+}
+
 void ir_module_debug(struct ir_module* module) {
     for (int i = 0; i < module->count; i++)
     {
         printf("CHUNK [%s] ---\n", module->chunks[i]->symbol);
         ir_debug(module->chunks[i]);
         printf("\n");
+    }
+}
+
+void ir_module_debug_graph(struct ir_module* module, FILE* out) {
+    for (int i = 0; i < module->count; i++)
+    {
+        ir_build_graph(module->chunks[i], out);
     }
 }
 

@@ -422,6 +422,52 @@ static struct operand statement(struct compiler* compiler, struct module* module
 
             return operand_none();
         }
+        case AST_NODE_TYPE_WHILE: {
+            struct ast_node* condition = node->children[0];
+            struct ast_node* body = node->children[1];
+            struct block* body_block = block_new(false, compiler->regs);
+            struct block* loop_block = block_new(false, compiler->regs);
+            struct block* after_block = block_new(false, compiler->regs);
+
+            ir_add(compiler->ir, body_block);
+            ir_add(compiler->ir, loop_block);
+            ir_add(compiler->ir, after_block);
+
+            //first we jump to the loop block
+            struct ssa_instruction jump = {};
+            jump.result = operand_end();
+            jump.operator = OP_GOTO;
+            jump.type = TYPE_VOID;
+            jump.operands[0] = operand_block(loop_block);
+            block_add(current, jump);
+
+            //link body to the loop
+            block_link(current, loop_block);
+
+            //build the loop block conditions
+            compiler->body = loop_block;
+            struct ssa_instruction instruction = {};
+            instruction.operator = OP_IF;
+            instruction.result = operand_end();
+            instruction.operands[0] = statement(compiler, module, condition);
+            instruction.operands[1] = operand_block(body_block);
+            instruction.operands[2] = operand_block(after_block);
+            block_add(loop_block, instruction);
+            
+            //link loop to body and after
+            block_link(loop_block, body_block);
+            block_link(loop_block, after_block);
+
+            //build the body of the loop
+            compiler->body = body_block;
+            struct operand result = statement(compiler, module, body);
+            if (result.type != OPERAND_TYPE_END) {
+                block_link(body_block, loop_block);   
+            }
+
+            compiler->body = after_block;
+            return operand_none();
+        }
         default: {
             fprintf(stderr, "unexpected node type: %d\n", node->type);
         }

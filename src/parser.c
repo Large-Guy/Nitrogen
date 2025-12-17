@@ -846,9 +846,12 @@ static struct ast_node* for_statement(struct parser* parser) {
     struct ast_node* body = declaration(parser);
     struct ast_node* root = ast_node_new(AST_NODE_TYPE_SEQUENCE, token_null);
     ast_node_append_child(root, init);
-    ast_node_append_child(root, condition);
-    ast_node_append_child(root, incr);
-    ast_node_append_child(root, body);
+    ast_node_append_child(root, loop);
+    ast_node_append_child(loop, condition);
+    struct ast_node* body_group = ast_node_new(AST_NODE_TYPE_SEQUENCE, token_null);
+    ast_node_append_child(body_group, body);
+    ast_node_append_child(body_group, incr);
+    ast_node_append_child(loop, body_group);
     return root;
 }
 

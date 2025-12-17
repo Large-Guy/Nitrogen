@@ -462,7 +462,8 @@ static struct operand statement(struct compiler* compiler, struct module* module
             compiler->body = body_block;
             struct operand result = statement(compiler, module, body);
             if (result.type != OPERAND_TYPE_END) {
-                block_link(body_block, loop_block);   
+                block_link(body_block, loop_block);
+                block_add(body_block, jump);
             }
 
             compiler->body = after_block;

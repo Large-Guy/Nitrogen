@@ -171,16 +171,16 @@ static void operand_debug(struct operand operand, FILE* out) {
         case OPERAND_TYPE_END:
             break;
         case OPERAND_TYPE_CONSTANT:
-            fprintf(out, "#%llu ", operand.value.integer);
+            fprintf(out, "[const #%llu] ", operand.value.integer);
             break;
         case OPERAND_TYPE_REGISTER:
             if (operand.value.integer == 0)
-                fprintf(out, "%%ret "); // 0 should be return value of all chunks
+                fprintf(out, "[reg %%ret] "); // 0 should be return value of all chunks
             else
-                fprintf(out, "%%%llu ", operand.value.integer);
+                fprintf(out, "[reg %%%llu] ", operand.value.integer);
             break;
         case OPERAND_TYPE_BLOCK:
-            fprintf(out, "&%d ", operand.value.block->id);
+            fprintf(out, "[block &%d] ", operand.value.block->id);
             break;
         case OPERAND_TYPE_NONE:
             break;

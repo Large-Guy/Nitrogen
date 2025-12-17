@@ -2,10 +2,12 @@ module program;
 
 i32 main()
 {
-    i32 a;
-    while(a < 10)
+    i32 res = 1;
+    
+    for(i32 i = 0; i < 10; i++)
     {
-        a++;
+        res *= i;
     }
-    return a;
+    
+    return res;
 }

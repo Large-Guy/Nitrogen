@@ -88,7 +88,7 @@ struct operand operand_end();
 
 struct operand operand_ir(struct ir* ir);
 
-#define MAX_OPERANDS 3
+#define MAX_OPERANDS 16
 
 struct ssa_instruction {
     enum ssa_instruction_code operator;

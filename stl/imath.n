@@ -1,0 +1,33 @@
+module math;
+
+i32 clamp(i32 x, i32 min, i32 max)
+{
+    if(x < min) return min;
+    if(x > max) return max;
+    return x;
+}
+
+i32 abs(i32 x)
+{
+    i32 mask = x >> 31;
+    return (x + mask) ^ mask;
+}
+
+i32 max(i32 x, i32 y)
+{
+    if(x > y) return x;
+    return y;
+}
+
+i32 min(i32 x, i32 y)
+{
+    if(x < y) return x;
+    return y;
+}
+
+i32 factorial(i32 x)
+{
+    i32 y = 1;
+    for(i32 n = 1; n < x; n++) y *= n;
+    return y;
+}

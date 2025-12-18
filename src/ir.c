@@ -146,6 +146,10 @@ static char* operator_name(enum ssa_instruction_code code) {
             return "mul";
         case OP_DIV:
             return "div";
+        case OP_BITWISE_LEFT:
+            return "bitwise-left";
+        case OP_BITWISE_RIGHT:
+            return "bitwise-right";
         case OP_BITWISE_AND:
             return "bitwise-and";
         case OP_BITWISE_OR:

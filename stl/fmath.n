@@ -1,21 +1,5 @@
 module math;
 
-i32 abs(i32 x)
-{
-    i32 mask = x >> 31;
-    return (x + mask) ^ mask;
-}
-
-i32 factorial(i32 x)
-{
-    i32 y = 1;
-    for(i32 n = 1; n < x; n++)
-    {
-        y *= n;
-    }
-    return y;
-}
-
 f32 sin(f32 x)
 {
     i32 D = 10;

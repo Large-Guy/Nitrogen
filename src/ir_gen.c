@@ -352,8 +352,14 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
             instruction.operator = OP_CALL;
             struct ir* call = ir_module_find(ir_module, name->token);
             instruction.type = call->return_type;
-            instruction.result = register_table_alloc(current->symbol_table, TYPE_I32);
             instruction.operands[0] = operand_ir(call);
+
+            for (int i = 1; i < node->children_count; i++) {
+                instruction.operands[i] = statement(compiler, ast_module, ir_module, node->children[i]);
+            }
+
+            instruction.result = register_table_alloc(current->symbol_table, TYPE_I32);
+            
             block_add(current, instruction);
             
             return instruction.result;

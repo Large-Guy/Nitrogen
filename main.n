@@ -1,8 +1,15 @@
 module program;
 
-i32 main()
+f32 abs(f32 x)
 {
-    f32 a = 1.2;
-    i32 b = 2;
-    f32 res = b + a;
+    if(x < 0)
+    {
+        x = -x;
+    }
+    return x;
+}
+
+f32 main(i32 input)
+{
+    return abs(input);
 }

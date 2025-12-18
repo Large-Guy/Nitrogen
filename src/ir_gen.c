@@ -115,12 +115,15 @@ static void compiler_begin(struct compiler* compiler) {
     block_add(compiler->entry, ret_val_variable);
 
     //default it to zero
+    //TODO: figure out proper ZII
+    /*
     struct ssa_instruction ret_val_value = {};
     ret_val_value.operator = OP_STORE;
     ret_val_value.type = compiler->return_type;
     ret_val_value.operands[0] = compiler->return_value_ptr;
     ret_val_value.operands[1] = operand_const_int(0);
     block_add(compiler->body, ret_val_value);
+    */
 }
 
 static void compiler_end(struct compiler* compiler) {
@@ -128,7 +131,7 @@ static void compiler_end(struct compiler* compiler) {
     load_ret_val.operator = OP_LOAD;
     load_ret_val.type = compiler->return_type;
     load_ret_val.operands[0] = compiler->return_value_ptr;
-    load_ret_val.result = register_table_alloc(compiler->regs, TYPE_I32);
+    load_ret_val.result = register_table_alloc(compiler->regs, compiler->ir->return_type);
     block_add(compiler->exit, load_ret_val);
     
     struct ssa_instruction ret = {};
@@ -401,11 +404,12 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
             instruction.type = call->return_type;
             instruction.operands[0] = operand_ir(call);
 
-            for (int i = 1; i < node->children_count; i++) {
-                instruction.operands[i] = statement(compiler, ast_module, ir_module, node->children[i]);
+            for (int i = 0; i < call->argument_count; i++) {
+                struct operand arg = statement(compiler, ast_module, ir_module, node->children[i + 1]);
+                instruction.operands[i + 1] = implicit_cast(compiler, ast_module, ir_module, arg, call->arguments[i].typename);
             }
 
-            instruction.result = register_table_alloc(current->symbol_table, TYPE_I32);
+            instruction.result = register_table_alloc(current->symbol_table, instruction.type);
             
             block_add(current, instruction);
             
@@ -414,9 +418,9 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
         case AST_NODE_TYPE_RETURN_STATEMENT: {
             struct ssa_instruction return_store = {};
             return_store.operator = OP_STORE;
-            return_store.type = TYPE_I32;
+            return_store.type = compiler->return_value_ptr.typename;
             return_store.operands[0] = compiler->return_value_ptr;
-            return_store.operands[1] = statement(compiler, ast_module, ir_module, node->children[0]);
+            return_store.operands[1] = implicit_cast(compiler, ast_module, ir_module, statement(compiler, ast_module, ir_module, node->children[0]), return_store.type);
             block_add(current, return_store);
             
             struct ssa_instruction instruction = {};
@@ -553,24 +557,25 @@ static struct operand argument(struct compiler* compiler, struct ast_module* ast
         }
         case AST_NODE_TYPE_VARIABLE: {
             struct ast_node* name = node->children[0];
+            struct ast_node* type = node->children[1];
 
             //this is special and does not get alloc
-            struct operand variable = register_table_alloc(compiler->regs, TYPE_I32);
+            struct operand variable = register_table_alloc(compiler->regs, get_node_type(ast_module, type));
 
             ir_arg(compiler->ir, variable);
 
             //make a local copy pointer to a variable
             struct ssa_instruction instruction = {};
             instruction.operator = OP_ALLOC;
-            instruction.type = TYPE_I32; //NOTE: assumed i32
-            instruction.result = register_table_add(compiler->regs, name->token, 4)->pointer;
-            instruction.operands[0] = operand_const_int(4); // variable size
+            instruction.type = variable.typename;
+            instruction.result = register_table_add(compiler->regs, name->token, variable.typename)->pointer;
+            instruction.operands[0] = operand_const_int(get_node_size(ast_module, type));
 
             block_add(compiler->entry, instruction);
 
             struct ssa_instruction store = {};
             store.operator = OP_STORE;
-            store.type = TYPE_I32;
+            store.type = variable.typename;
             //location
             store.operands[0] = instruction.result;
             store.operands[1] = variable;
@@ -594,7 +599,7 @@ static void definition(struct ir_module* ir_module, struct ast_module* module, s
             struct ast_node* type = node->children[1]; //type
             struct ast_node* args = node->children[2]; // args sequence
             struct ast_node* body = node->children[3]; //function body
-            struct compiler* compiler = compiler_new(ir, TYPE_I32);
+            struct compiler* compiler = compiler_new(ir, ir->return_type);
             compiler_begin(compiler);
 
             argument(compiler, module, ir_module, args);
@@ -637,8 +642,9 @@ static struct ir* forward(struct ast_module* module, struct ast_node* node) {
         case AST_NODE_TYPE_FUNCTION:
         {
             struct ir* ir = ir_symbol_new(node->children[0]->token, CHUNK_TYPE_FUNCTION);
+            struct ast_node* type = node->children[1]; //type
             ir->global = node->children[1]->token.start[0] != '_';
-            ir->return_type = TYPE_I32; //TODO: assumed i32
+            ir->return_type = get_node_type(module, type);
             return ir;
         }
         case AST_NODE_TYPE_VARIABLE:

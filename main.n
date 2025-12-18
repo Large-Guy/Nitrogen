@@ -13,6 +13,13 @@ i32 factorial()
     return res;
 }
 
+// we don't have function arguments yet
+i32 recursive()
+{
+    recursive();
+    return 0;
+}
+
 i32 main()
 {
     return factorial();

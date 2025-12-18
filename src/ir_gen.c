@@ -353,6 +353,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
             instruction.result = register_table_alloc(current->symbol_table);
             instruction.operands[0] = operand_ir(call);
             block_add(current, instruction);
+            
             return instruction.result;
         }
         case AST_NODE_TYPE_RETURN_STATEMENT: {

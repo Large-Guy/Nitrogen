@@ -187,7 +187,7 @@ static void operand_debug(struct operand operand, FILE* out) {
             break;
         case OPERAND_TYPE_REGISTER:
             if (operand.value.integer == 0)
-                fprintf(out, "[reg %%ret] "); // 0 should be return value of all chunks
+                fprintf(out, "[reg %%ret] "); // 0 should be the return value of all chunks
             else
                 fprintf(out, "[reg %%%llu] ", operand.value.integer);
             break;

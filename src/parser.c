@@ -127,8 +127,11 @@ static bool match_type(struct parser* parser) {
     if (t) {
         return true;
     }
-    
-    if (ast_module_get_symbol(scope(parser), parser->current)) {
+    struct ast_node* symbol = ast_module_get_symbol(scope(parser), parser->current);
+    if (symbol &&
+        (symbol->type == AST_NODE_TYPE_STRUCT ||
+            symbol->type == AST_NODE_TYPE_INTERFACE)
+        ) {
         advance(parser);
         return true;
     }

@@ -145,7 +145,7 @@ static void compiler_free(struct compiler* compiler) {
     free(compiler);
 }
 
-static size_t get_node_size(struct module* module, struct ast_node* node) {
+static size_t get_node_size(struct ast_module* module, struct ast_node* node) {
     switch (node->type) {
         case AST_NODE_TYPE_U8:
         case AST_NODE_TYPE_I8: return 1;
@@ -181,9 +181,9 @@ static struct ir* ir_symbol_new(struct token symbol, enum chunk_type type)
     return ir;
 }
 
-static struct operand statement(struct compiler* compiler, struct module* module, struct ast_node* node);
+static struct operand statement(struct compiler* compiler, struct ast_module* module, struct ast_node* node);
 
-static struct operand binary(struct compiler* compiler, struct module* module, struct ast_node* node, enum ssa_instruction_code type) {
+static struct operand binary(struct compiler* compiler, struct ast_module* module, struct ast_node* node, enum ssa_instruction_code type) {
     struct ast_node* left = node->children[0];
     struct ast_node* right = node->children[1];
     struct ssa_instruction instruction = {};
@@ -196,7 +196,7 @@ static struct operand binary(struct compiler* compiler, struct module* module, s
     return instruction.result;
 }
 
-static struct operand unary(struct compiler* compiler, struct module* module, struct ast_node* node, enum ssa_instruction_code type) {
+static struct operand unary(struct compiler* compiler, struct ast_module* module, struct ast_node* node, enum ssa_instruction_code type) {
     struct ast_node* x = node->children[0];
     struct ssa_instruction instruction = {};
     instruction.operator = type;
@@ -212,7 +212,7 @@ static struct operand unary(struct compiler* compiler, struct module* module, st
 //Note: GCC seems to only have one return instruction in a function and it's in its own block.
 //Note: GCC pre-allocates a register to be used as the return value %1, which is then assigned to at a return node
 //Note: and a goto statement occurs to jump to the return block, i guess for later optimizations?
-static struct operand statement(struct compiler* compiler, struct module* module, struct ast_node* node) {
+static struct operand statement(struct compiler* compiler, struct ast_module* module, struct ast_node* node) {
     struct block* current = compiler->body;
     struct register_table* regs = compiler->regs;
     switch (node->type) {
@@ -475,13 +475,13 @@ static struct operand statement(struct compiler* compiler, struct module* module
     }
 }
 
-static struct ir* definition(struct module* module, struct ast_node* node)
+static void definition(struct ir_module* ir_module, struct ast_module* module, struct ast_node* node)
 {
     switch (node->type)
     {
         case AST_NODE_TYPE_FUNCTION:
         {
-            struct ir* ir = ir_symbol_new(node->children[0]->token, CHUNK_TYPE_FUNCTION);
+            struct ir* ir = ir_module_find(ir_module, node->children[0]->token.start);
             struct ast_node* type = node->children[1]; //type
             struct ast_node* body = node->children[2]; //function body
             struct compiler* compiler = compiler_new(ir, TYPE_I32);
@@ -492,14 +492,37 @@ static struct ir* definition(struct module* module, struct ast_node* node)
             compiler_end(compiler);
             
             compiler_free(compiler);
+            break;
+        }
+        case AST_NODE_TYPE_VARIABLE:
+        {
+            struct ir* ir = ir_module_find(ir_module, node->children[0]->token.start);
+            struct ast_node* type = node->children[0];
+            struct ast_node* value = node->children[1];
+            //TODO: implement IR instructions for generating this stuff
+            break;
+        }
+        default:
+        {
+            fprintf(stderr, "unexpected node type: %d\n", node->type);
+            break;
+        }
+    }
+}
+
+static struct ir* forward(struct ast_module* module, struct ast_node* node) {
+    switch (node->type)
+    {
+        case AST_NODE_TYPE_FUNCTION:
+        {
+            struct ir* ir = ir_symbol_new(node->children[0]->token, CHUNK_TYPE_FUNCTION);
+            ir->global = node->children[1]->token.start[0] != '_';
+            ir->return_type = TYPE_I32; //TODO: assumed i32
             return ir;
         }
         case AST_NODE_TYPE_VARIABLE:
         {
             struct ir* ir = ir_symbol_new(node->children[0]->token, CHUNK_TYPE_VARIABLE);
-            struct ast_node* type = node->children[0];
-            struct ast_node* value = node->children[1];
-            //TODO: implement IR instructions for generating this stuff
             return ir;
         }
         default:
@@ -510,13 +533,17 @@ static struct ir* definition(struct module* module, struct ast_node* node)
     }
 }
 
-struct ir_module* ir_gen_module(struct module* module)
+struct ir_module* ir_gen_module(struct ast_module* module)
 {
     struct ir_module* chunks = ir_module_new(module->name);
 
+    for (int i = 0; i < module->root->children_count; i++) {
+        ir_module_append(chunks, forward(module, module->root->children[i]));
+    }
+    
     for (int i = 0; i < module->root->children_count; i++)
     {
-        ir_module_append(chunks, definition(module, module->root->children[i]));
+        definition(chunks, module, module->root->children[i]);
     }
 
     return chunks;

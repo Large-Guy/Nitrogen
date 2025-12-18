@@ -77,14 +77,14 @@ int main(int argc, char** argv) {
         printf("\nbuilding ast...\n\n");
 #endif
     
-    struct module_list modules = parse(lexers, argc - 1);
+    struct ast_module_list modules = parse(lexers, argc - 1);
 
 #ifdef DEBUG
     printf("\n");
 #endif
     
     for (int i = 0; i < modules.module_count; i++) {
-        struct module* module = modules.modules[i];
+        struct ast_module* module = modules.modules[i];
 #ifdef DEBUG
         printf("--- MODULE %s ---\n", module->name);
         printf("\nSYMBOLS ---\n");
@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
     FILE* cfgdot = fopen("cfg.dot", "w");
     
     for (int i = 0; i < modules.module_count; i++) {
-        struct module* module = modules.modules[i];
+        struct ast_module* module = modules.modules[i];
         struct ir_module* ir_module = ir_gen_module(module);
 #ifdef DEBUG
         printf("--- MODULE %s ---\n", module->name);
@@ -125,7 +125,7 @@ int main(int argc, char** argv) {
     system("dot -Tsvg cfg.dot > cfg.svg");
 #endif
     
-    module_list_free(&modules);
+    ast_module_list_free(&modules);
 
     //close files
     for (int i = 0; i < argc - 1; i++) {

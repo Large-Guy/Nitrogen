@@ -15,6 +15,7 @@ enum chunk_type {
 struct ir {
     char* symbol;
     enum chunk_type type;
+    enum ssa_type return_type;
     bool global;
 
     struct block** blocks;
@@ -35,6 +36,8 @@ struct ir_module* ir_module_new(char* name);
 void ir_module_free(struct ir_module* list);
 
 void ir_module_append(struct ir_module* list, struct ir* chunk);
+
+struct ir* ir_module_find(struct ir_module* list, char* symbol);
 
 struct ir* ir_new(char* symbol, bool global, enum chunk_type type);
 

@@ -2,8 +2,8 @@
 #define COMPILER_IR_GEN_H
 
 #include "ir.h"
-#include "module.h"
+#include "ast_module.h"
 
-struct ir_module* ir_gen_module(struct module* module);
+struct ir_module* ir_gen_module(struct ast_module* module);
 
 #endif //COMPILER_IR_GEN_H

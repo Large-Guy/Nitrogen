@@ -13,7 +13,7 @@ enum definition_type {
     SYMBOL_TYPE_VARIABLE
 };
 
-struct module {
+struct ast_module {
     char* name;
 
     struct ast_node* root;
@@ -24,22 +24,22 @@ struct module {
     size_t lexer_capacity;
 };
 
-struct module* module_new(struct token name);
+struct ast_module* ast_module_new(struct token name);
 
-void module_free(struct module* module);
+void ast_module_free(struct ast_module* module);
 
-void module_add_source(struct module* module, struct lexer* lexer);
+void ast_module_add_source(struct ast_module* module, struct lexer* lexer);
 
-void module_add_symbol(struct module* module, struct ast_node* symbol);
+void ast_module_add_symbol(struct ast_module* module, struct ast_node* symbol);
 
-struct ast_node* module_get_symbol(struct ast_node* scope, struct token name);
+struct ast_node* ast_module_get_symbol(struct ast_node* scope, struct token name);
 
-struct module_list {
-    struct module** modules;
+struct ast_module_list {
+    struct ast_module** modules;
     uint32_t module_count;
 };
 
-void module_list_free(struct module_list* list);
+void ast_module_list_free(struct ast_module_list* list);
 
 
 #endif //COMPILER_MODULE_H

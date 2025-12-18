@@ -70,6 +70,16 @@ void ir_free(struct ir* chunk) {
     free(chunk);
 }
 
+struct ir* ir_module_find(struct ir_module* module, char* symbol) {
+    for (int i = 0; i < module->count; i++) {
+        struct ir* chunk = module->chunks[i];
+        if (memcmp(chunk->symbol, symbol, strlen(chunk->symbol)) == 0) {
+            return module->chunks[i];
+        }
+    }
+    return NULL;
+}
+
 void ir_add(struct ir* chunk, struct block* block) {
     assert(chunk != NULL);
     if (chunk->block_count >= chunk->block_capacity) {

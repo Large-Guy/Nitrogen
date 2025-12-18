@@ -1,5 +1,6 @@
 #ifndef COMPILER_SSA_H
 #define COMPILER_SSA_H
+#include <stdbool.h>
 #include <stdint.h>
 
 enum ssa_instruction_code {
@@ -40,7 +41,8 @@ enum ssa_instruction_code {
     OP_CALL,
     OP_ALLOC,
     OP_LOAD,
-    OP_STORE
+    OP_STORE,
+    OP_CAST,
 };
 
 enum ssa_type {
@@ -61,7 +63,8 @@ enum operand_type {
     OPERAND_TYPE_NONE,
     OPERAND_TYPE_END,
     OPERAND_TYPE_REGISTER,
-    OPERAND_TYPE_CONSTANT,
+    OPERAND_TYPE_INTEGER,
+    OPERAND_TYPE_FLOAT,
     OPERAND_TYPE_BLOCK,
     OPERAND_TYPE_IR,
 };
@@ -71,16 +74,21 @@ struct operand {
     enum ssa_type typename;
     union {
         uint64_t integer;
+        double floating;
         struct block* block;
         struct ir* ir;
     } value;
+    
+    bool pointer;
 };
 
 struct operand operand_none();
 
 struct operand operand_reg(uint32_t reg, enum ssa_type type);
 
-struct operand operand_const(uint64_t constant);
+struct operand operand_const_int(uint64_t constant);
+
+struct operand operand_const_float(double constant);
 
 struct operand operand_block(struct block* block);
 

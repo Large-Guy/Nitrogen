@@ -192,6 +192,8 @@ static char* operator_name(enum ssa_instruction_code code) {
             return "store";
         case OP_LOAD:
             return "load";
+        case OP_CAST:
+            return "cast";
         default:
             return "unsupported";
     }
@@ -200,24 +202,34 @@ static char* operator_name(enum ssa_instruction_code code) {
 static void operand_debug(struct operand operand, FILE* out) {
     switch (operand.type) {
         case OPERAND_TYPE_END:
+            return;
+        case OPERAND_TYPE_INTEGER:
+            fprintf(out, "[const #%llu: ", operand.value.integer);
             break;
-        case OPERAND_TYPE_CONSTANT:
-            fprintf(out, "[const #%llu] ", operand.value.integer);
+        case OPERAND_TYPE_FLOAT:
+            fprintf(out, "[const #%ff: ", operand.value.floating);
             break;
         case OPERAND_TYPE_REGISTER:
-            if (operand.value.integer == 0)
-                fprintf(out, "[reg %%ret] "); // 0 should be the return value of all chunks
+            fprintf(out, "[");
+            if (operand.pointer)
+                fprintf(out, "ptreg ");
             else
-                fprintf(out, "[reg %%%llu] ", operand.value.integer);
+                fprintf(out, "reg ");
+            if (operand.value.integer == 0)
+                fprintf(out, "%%ret: "); // 0 should be the return value of all chunks
+            else
+                fprintf(out, "%%%llu: ", operand.value.integer);
             break;
         case OPERAND_TYPE_BLOCK:
-            fprintf(out, "[block &%d] ", operand.value.block->id);
+            fprintf(out, "[block &%d: ", operand.value.block->id);
             break;
         case OPERAND_TYPE_NONE:
-            break;
+            return;
         case OPERAND_TYPE_IR:
-            fprintf(out, "[func @%s] ", operand.value.ir->symbol);
+            fprintf(out, "[func @%s: ", operand.value.ir->symbol);
+            break;
     }
+    fprintf(out, "%s] ", type_code_name(operand.typename));
 }
 
 static void instruction_debug(struct ssa_instruction instruction, FILE* out) {

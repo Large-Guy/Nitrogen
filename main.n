@@ -1,17 +1,8 @@
 module program;
 
-import math;
-
-i32 fibonacci(i32 a)
-{
-    if(a == 0)
-        return 0;
-    if(a == 1)
-        return 1;
-    return fibonacci(a - 1) + fibonacci(a - 2);
-}
-
 i32 main()
 {
-    return fibonacci(min(2, 10));
+    f32 a = 1.2;
+    i32 b = 2;
+    f32 res = b + a;
 }

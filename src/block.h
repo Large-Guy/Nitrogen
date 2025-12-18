@@ -10,6 +10,7 @@ struct variable {
     struct token name;
     uint64_t size;
     uint32_t scope;
+    enum ssa_type type;
     struct operand pointer;
 };
 

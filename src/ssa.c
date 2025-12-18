@@ -1,12 +1,18 @@
 #include "ssa.h"
 #include "ir.h"
 
+//NOTE: 32 bit assumed
+
 struct operand operand_reg(uint32_t reg, enum ssa_type type) {
     return (struct operand){OPERAND_TYPE_REGISTER, type, reg};
 }
 
-struct operand operand_const(uint64_t constant) {
-    return (struct operand){OPERAND_TYPE_CONSTANT, TYPE_VOID, constant};
+struct operand operand_const_int(uint64_t constant) {
+    return (struct operand){OPERAND_TYPE_INTEGER, TYPE_I32, constant};
+}
+
+struct operand operand_const_float(double constant) {
+    return (struct operand){OPERAND_TYPE_FLOAT, TYPE_F32, {.floating = constant}};
 }
 
 struct operand operand_block(struct block* block) {

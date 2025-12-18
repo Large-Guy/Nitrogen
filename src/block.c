@@ -57,6 +57,8 @@ struct variable* register_table_add(struct register_table* table, struct token n
     symbol.name = name;
     symbol.scope = table->current_scope;
     symbol.pointer = register_table_alloc(table, type);
+    symbol.pointer.pointer = true;
+    symbol.type = type;
     table->symbols[table->symbol_count] = symbol;
     return &table->symbols[table->symbol_count++];
 }

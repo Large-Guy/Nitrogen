@@ -101,11 +101,15 @@ int main(int argc, char** argv) {
     printf("building ir...\n\n");
 
 #endif
-    FILE* cfgdot = fopen("cfg.dot", "w");
     
     for (int i = 0; i < modules.module_count; i++) {
         struct ast_module* module = modules.modules[i];
         struct ir_module* ir_module = ir_gen_module(module);
+
+        char buffer[100];
+        snprintf(buffer, sizeof(buffer), "%s.dot", module->name);
+        
+        FILE* cfgdot = fopen(buffer, "w");
 #ifdef DEBUG
         printf("--- MODULE %s ---\n", module->name);
         ir_module_debug(ir_module);
@@ -117,13 +121,16 @@ int main(int argc, char** argv) {
             ir_compile(ir_module->chunks[n], stdout);
         }
         ir_module_free(ir_module);
+        
+        fclose(cfgdot);
+        
+#ifdef DEBUG
+        char system_buffer[100];
+        snprintf(system_buffer, sizeof(system_buffer), "dot -Tsvg %s.dot > %s.svg", module->name, module->name);
+        system(system_buffer);
+#endif
     }
 
-    fclose(cfgdot);
-
-#ifdef DEBUG
-    system("dot -Tsvg cfg.dot > cfg.svg");
-#endif
     
     ast_module_list_free(&modules);
 

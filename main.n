@@ -1,5 +1,7 @@
 module program;
 
+import math;
+
 i32 fibonacci(i32 a)
 {
     if(a == 0)
@@ -11,5 +13,5 @@ i32 fibonacci(i32 a)
 
 i32 main()
 {
-    return fibonacci(10);
+    return fibonacci(min(2, 10));
 }

@@ -351,6 +351,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
             struct ssa_instruction instruction = {};
             instruction.operator = OP_CALL;
             struct ir* call = ir_module_find(ir_module, name->token);
+            assert(call);
             instruction.type = call->return_type;
             instruction.operands[0] = operand_ir(call);
 

@@ -693,11 +693,13 @@ static struct ast_node* definition(struct parser* parser, bool statement, bool c
         struct ast_node* node = ast_node_new(AST_NODE_TYPE_FUNCTION, token_null);
         ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
         ast_node_append_child(node, type_node);
+        struct ast_node* arguments = ast_node_new(AST_NODE_TYPE_SEQUENCE, token_null);
+        ast_node_append_child(node, arguments);
         //parameters
         if (!check(parser, TOKEN_TYPE_RIGHT_PAREN)) {
             do {
                 advance(parser);
-                ast_node_append_child(node, definition(parser, false, true, true));
+                ast_node_append_child(arguments, definition(parser, false, true, true));
             } while (match(parser, TOKEN_TYPE_COMMA));
         }
         consume(parser, TOKEN_TYPE_RIGHT_PAREN, "expected ')' after declaration");
@@ -991,11 +993,14 @@ static struct ast_node* variable_symbol(struct parser* parser) {
     if (match(parser, TOKEN_TYPE_LEFT_PAREN)) {
         struct ast_node* node = ast_node_new(AST_NODE_TYPE_FUNCTION, type);
         ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
+        ast_node_append_child(node, get_type_node(parser, type));
+        struct ast_node* arguments = ast_node_new(AST_NODE_TYPE_SEQUENCE, token_null);
+        ast_node_append_child(node, arguments);
 
         if (!check(parser, TOKEN_TYPE_RIGHT_PAREN)) {
             do {
                 advance(parser);
-                ast_node_append_child(node, variable_symbol(parser));
+                ast_node_append_child(arguments, variable_symbol(parser));
             } while (match(parser, TOKEN_TYPE_COMMA));
         }
         consume(parser, TOKEN_TYPE_RIGHT_PAREN, "expected ')' after declaration");
@@ -1004,8 +1009,8 @@ static struct ast_node* variable_symbol(struct parser* parser) {
         return node;
     }
     struct ast_node* node = ast_node_new(AST_NODE_TYPE_VARIABLE, type);
-    ast_node_append_child(node, get_type_node(parser, type));
     ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
+    ast_node_append_child(node, get_type_node(parser, type));
     return node;
 }
 

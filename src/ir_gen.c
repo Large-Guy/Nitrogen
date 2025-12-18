@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "block.h"
+#include "parser.h"
 
 struct local {
     uint8_t reg;
@@ -299,6 +300,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
 
             //NOTE: assumed i32
             instruction.result = register_table_add(current->symbol_table, name->token, 4)->pointer;
+            instruction.operands[0] = operand_const(4); //variable size
 
             block_add(compiler->entry, instruction);
 
@@ -487,6 +489,46 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
     }
 }
 
+static struct operand argument(struct compiler* compiler, struct ast_module* ast_module, struct ir_module* ir_module, struct ast_node* node) {
+    switch (node->type) {
+        case AST_NODE_TYPE_SEQUENCE: {
+            for (int i = 0; i < node->children_count; i++) {
+                struct ast_node* child = node->children[i];
+                argument(compiler, ast_module, ir_module, child);
+            }
+            return operand_none();
+        }
+        case AST_NODE_TYPE_VARIABLE: {
+            struct ast_node* name = node->children[0];
+
+            //this is special and does not get alloc
+            struct operand variable = register_table_alloc(compiler->regs);
+
+            //make a local copy pointer to a variable
+            struct ssa_instruction instruction = {};
+            instruction.operator = OP_ALLOC;
+            instruction.type = TYPE_I32; //NOTE: assumed i32
+            instruction.result = register_table_add(compiler->regs, name->token, 4)->pointer;
+            instruction.operands[0] = operand_const(4); // variable size
+
+            block_add(compiler->entry, instruction);
+
+            struct ssa_instruction store = {};
+            store.operator = OP_STORE;
+            store.type = TYPE_I32;
+            //location
+            store.operands[0] = instruction.result;
+            store.operands[1] = variable;
+            block_add(compiler->body, store);
+
+            return operand_none();
+        }
+        default: {
+            fprintf(stderr, "unexpected node type: %d\n", node->type);
+        }
+    }
+}
+
 static void definition(struct ir_module* ir_module, struct ast_module* module, struct ast_node* node)
 {
     switch (node->type)
@@ -495,9 +537,12 @@ static void definition(struct ir_module* ir_module, struct ast_module* module, s
         {
             struct ir* ir = ir_module_find(ir_module, node->children[0]->token);
             struct ast_node* type = node->children[1]; //type
-            struct ast_node* body = node->children[2]; //function body
+            struct ast_node* args = node->children[2]; // args sequence
+            struct ast_node* body = node->children[3]; //function body
             struct compiler* compiler = compiler_new(ir, TYPE_I32);
             compiler_begin(compiler);
+
+            argument(compiler, module, ir_module, args);
 
             struct operand operand = statement(compiler, module, ir_module, body);
 

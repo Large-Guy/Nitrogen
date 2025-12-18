@@ -499,7 +499,16 @@ static void definition(struct ir_module* ir_module, struct ast_module* module, s
             struct compiler* compiler = compiler_new(ir, TYPE_I32);
             compiler_begin(compiler);
 
-            statement(compiler, module, ir_module, body);
+            struct operand operand = statement(compiler, module, ir_module, body);
+
+            if (operand.type != OPERAND_TYPE_END) {
+                struct ssa_instruction goto_instruction = {};
+                goto_instruction.operator = OP_GOTO;
+                goto_instruction.result = operand_end();
+                goto_instruction.operands[0] = operand_block(compiler->exit);
+                block_add(compiler->body, goto_instruction);
+                block_link(compiler->body, compiler->exit);
+            }
 
             compiler_end(compiler);
             

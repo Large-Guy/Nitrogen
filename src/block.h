@@ -35,9 +35,9 @@ void register_table_end(struct register_table* table);
 
 struct variable* register_table_lookup(struct register_table* table, struct token name);
 
-struct variable* register_table_add(struct register_table* table, struct token name, uint64_t size);
+struct variable* register_table_add(struct register_table* table, struct token name, enum ssa_type type);
 
-struct operand register_table_alloc(struct register_table* table);
+struct operand register_table_alloc(struct register_table* table, enum ssa_type type);
 
 struct block {
     uint32_t id;

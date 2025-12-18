@@ -47,23 +47,22 @@ struct variable* register_table_lookup(struct register_table* table, struct toke
     
 }
 
-struct variable* register_table_add(struct register_table* table, struct token name, uint64_t size) {
+struct variable* register_table_add(struct register_table* table, struct token name, enum ssa_type type) {
     if (table->symbol_count >= table->symbol_capacity) {
         table->symbol_capacity *= 2;
         table->symbols = realloc(table->symbols, sizeof(struct variable) * table->symbol_capacity);
         assert(table->symbols);
     }
-    struct variable symbol;
+    struct variable symbol = {};
     symbol.name = name;
-    symbol.size = size;
     symbol.scope = table->current_scope;
-    symbol.pointer = register_table_alloc(table);
+    symbol.pointer = register_table_alloc(table, type);
     table->symbols[table->symbol_count] = symbol;
     return &table->symbols[table->symbol_count++];
 }
 
-struct operand register_table_alloc(struct register_table* table) {
-    return operand_reg(table->register_count++);
+struct operand register_table_alloc(struct register_table* table, enum ssa_type type) {
+    return operand_reg(table->register_count++, type);
 }
 
 
@@ -133,3 +132,4 @@ void block_add(struct block* block, struct ssa_instruction instruction) {
     block->exit = &block->instructions[block->instructions_count-1];
     block->branches = instruction.result.type == OPERAND_TYPE_END;
 }
+

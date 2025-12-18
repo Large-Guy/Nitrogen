@@ -128,7 +128,7 @@ static void compiler_end(struct compiler* compiler) {
     load_ret_val.operator = OP_LOAD;
     load_ret_val.type = compiler->return_type;
     load_ret_val.operands[0] = compiler->return_value_ptr;
-    load_ret_val.result = register_table_alloc(compiler->regs);
+    load_ret_val.result = register_table_alloc(compiler->regs, TYPE_I32);
     block_add(compiler->exit, load_ret_val);
     
     struct ssa_instruction ret = {};
@@ -192,7 +192,7 @@ static struct operand binary(struct compiler* compiler, struct ast_module* ast_m
     instruction.type = TYPE_I32;
     instruction.operands[0] = statement(compiler, ast_module, ir_module, left);
     instruction.operands[1] = statement(compiler, ast_module, ir_module, right);
-    instruction.result = register_table_alloc(compiler->regs);
+    instruction.result = register_table_alloc(compiler->regs, TYPE_I32);
     block_add(compiler->body, instruction);
     return instruction.result;
 }
@@ -203,7 +203,7 @@ static struct operand unary(struct compiler* compiler, struct ast_module* ast_mo
     instruction.operator = type;
     instruction.type = TYPE_I32;
     instruction.operands[0] = statement(compiler, ast_module, ir_module, x);
-    instruction.result = register_table_alloc(compiler->regs);
+    instruction.result = register_table_alloc(compiler->regs, TYPE_I32);
     block_add(compiler->body, instruction);
     return instruction.result;
 }
@@ -341,7 +341,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
             instruction.operator = OP_LOAD;
             instruction.type = TYPE_I32;
             instruction.operands[0] = register_table_lookup(current->symbol_table, node->token)->pointer;
-            instruction.result = register_table_alloc(current->symbol_table);
+            instruction.result = register_table_alloc(current->symbol_table, TYPE_I32);
             block_add(current, instruction);
             
             return instruction.result;
@@ -352,7 +352,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
             instruction.operator = OP_CALL;
             struct ir* call = ir_module_find(ir_module, name->token);
             instruction.type = call->return_type;
-            instruction.result = register_table_alloc(current->symbol_table);
+            instruction.result = register_table_alloc(current->symbol_table, TYPE_I32);
             instruction.operands[0] = operand_ir(call);
             block_add(current, instruction);
             
@@ -502,7 +502,9 @@ static struct operand argument(struct compiler* compiler, struct ast_module* ast
             struct ast_node* name = node->children[0];
 
             //this is special and does not get alloc
-            struct operand variable = register_table_alloc(compiler->regs);
+            struct operand variable = register_table_alloc(compiler->regs, TYPE_I32);
+
+            ir_arg(compiler->ir, variable);
 
             //make a local copy pointer to a variable
             struct ssa_instruction instruction = {};

@@ -11,6 +11,11 @@
 struct ir* ir_new(char* symbol, bool global, enum chunk_type type) {
     struct ir* chunk = malloc(sizeof(struct ir));
     assert(chunk);
+
+    chunk->arguments = malloc(sizeof(struct operand));
+    assert(chunk->arguments);
+    chunk->argument_count = 0;
+    chunk->argument_capacity = 1;
     
     chunk->symbol = malloc(strlen(symbol) + 1);
     assert(chunk->symbol);
@@ -89,6 +94,16 @@ void ir_add(struct ir* chunk, struct block* block) {
     }
     chunk->blocks[chunk->block_count++] = block;
     block->id = chunk->block_count;
+}
+
+void ir_arg(struct ir* chunk, struct operand arg) {
+    assert(chunk != NULL);
+    if (chunk->argument_count >= chunk->argument_capacity) {
+        chunk->argument_capacity *= 2;
+        chunk->arguments = realloc(chunk->arguments, chunk->argument_capacity * sizeof(struct operand));
+        assert(chunk->arguments);
+    }
+    chunk->arguments[chunk->argument_count++] = arg;
 }
 
 static char* type_code_name(enum ssa_type code) {
@@ -251,11 +266,12 @@ void ir_debug(struct ir* chunk) {
 static void block_build_graph(char* name, struct block* block, FILE* out) {
     fprintf(out, "  %s_bb%d [label=\"", name, block->id);
     if (block->entry)
-        fprintf(out, ".ENTRY\\l");
+        fprintf(out, ".ENTRY");
     else if (block->children_count == 0)
-        fprintf(out, ".EXIT\\l");
+        fprintf(out, ".EXIT");
     else
-        fprintf(out, ".BLOCK %d\\l", block->id);
+        fprintf(out, ".BLOCK %d", block->id);
+    fprintf(out, "\\l");
     for (int i = 0; i < block->instructions_count; i++) {
         instruction_debug(block->instructions[i], out);
         fprintf(out, "\\l");
@@ -277,7 +293,14 @@ void ir_build_graph(struct ir* chunk, FILE* out) {
     assert(chunk->blocks != NULL);
 
     fprintf(out, "  subgraph cluster_%s {\n", chunk->symbol);
-    fprintf(out, "    label=\"%s()\";\n", chunk->symbol);
+    fprintf(out, "    label=\"%s(", chunk->symbol);
+    for (int i = 0; i < chunk->argument_count; i++) {
+        if (i > 0) {
+            fprintf(out, ", ");
+        }
+        operand_debug(chunk->arguments[i], out);
+    }
+    fprintf(out, ")\";\n");
     fprintf(out, "    style=filled;\n");
     fprintf(out, "    color=lightgrey;\n");
     fprintf(out, "    node [style=filled, color=white];\n");

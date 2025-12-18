@@ -68,6 +68,7 @@ enum operand_type {
 
 struct operand {
     enum operand_type type;
+    enum ssa_type typename;
     union {
         uint64_t integer;
         struct block* block;
@@ -77,7 +78,7 @@ struct operand {
 
 struct operand operand_none();
 
-struct operand operand_reg(uint32_t reg);
+struct operand operand_reg(uint32_t reg, enum ssa_type type);
 
 struct operand operand_const(uint64_t constant);
 

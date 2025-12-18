@@ -19,6 +19,10 @@ struct ir {
     enum ssa_type return_type;
     bool global;
 
+    struct operand* arguments;
+    uint32_t argument_count;
+    uint32_t argument_capacity;
+
     struct block** blocks;
     uint32_t block_count;
     uint32_t block_capacity;
@@ -45,6 +49,8 @@ struct ir* ir_new(char* symbol, bool global, enum chunk_type type);
 void ir_free(struct ir* chunk);
 
 void ir_add(struct ir* chunk, struct block* block);
+
+void ir_arg(struct ir* chunk, struct operand arg);
 
 void ir_debug(struct ir* chunk);
 

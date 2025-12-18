@@ -70,10 +70,10 @@ void ir_free(struct ir* chunk) {
     free(chunk);
 }
 
-struct ir* ir_module_find(struct ir_module* module, char* symbol) {
+struct ir* ir_module_find(struct ir_module* module, struct token symbol) {
     for (int i = 0; i < module->count; i++) {
         struct ir* chunk = module->chunks[i];
-        if (memcmp(chunk->symbol, symbol, strlen(chunk->symbol)) == 0) {
+        if (symbol.length == strlen(chunk->symbol) && memcmp(chunk->symbol, symbol.start, symbol.length) == 0) {
             return module->chunks[i];
         }
     }
@@ -165,6 +165,8 @@ static char* operator_name(enum ssa_instruction_code code) {
             return "if";
         case OP_RETURN:
             return "return";
+        case OP_CALL:
+            return "call";
         case OP_ALLOC:
             return "alloc";
         case OP_STORE:
@@ -194,6 +196,8 @@ static void operand_debug(struct operand operand, FILE* out) {
             break;
         case OPERAND_TYPE_NONE:
             break;
+        case OPERAND_TYPE_IR:
+            fprintf(out, "[func @%s] ", operand.value.ir->symbol);
     }
 }
 

@@ -1,4 +1,5 @@
 #include "ssa.h"
+#include "ir.h"
 
 struct operand operand_reg(uint32_t reg) {
     return (struct operand){OPERAND_TYPE_REGISTER, reg};
@@ -18,4 +19,8 @@ struct operand operand_end() {
 
 struct operand operand_none() {
     return (struct operand){OPERAND_TYPE_NONE};
+}
+
+struct operand operand_ir(struct ir* ir) {
+    return (struct operand){OPERAND_TYPE_IR, {.ir = ir}};
 }

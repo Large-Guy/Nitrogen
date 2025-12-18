@@ -35,9 +35,9 @@ enum ssa_instruction_code {
 
     OP_GOTO,
     OP_IF,
-    
 
     //variables
+    OP_CALL,
     OP_ALLOC,
     OP_LOAD,
     OP_STORE
@@ -63,6 +63,7 @@ enum operand_type {
     OPERAND_TYPE_REGISTER,
     OPERAND_TYPE_CONSTANT,
     OPERAND_TYPE_BLOCK,
+    OPERAND_TYPE_IR,
 };
 
 struct operand {
@@ -70,6 +71,7 @@ struct operand {
     union {
         uint64_t integer;
         struct block* block;
+        struct ir* ir;
     } value;
 };
 
@@ -82,6 +84,8 @@ struct operand operand_const(uint64_t constant);
 struct operand operand_block(struct block* block);
 
 struct operand operand_end();
+
+struct operand operand_ir(struct ir* ir);
 
 #define MAX_OPERANDS 3
 

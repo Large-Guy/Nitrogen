@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include "lexer.h"
 #include "ssa.h"
 
 enum chunk_type {
@@ -37,7 +38,7 @@ void ir_module_free(struct ir_module* list);
 
 void ir_module_append(struct ir_module* list, struct ir* chunk);
 
-struct ir* ir_module_find(struct ir_module* list, char* symbol);
+struct ir* ir_module_find(struct ir_module* list, struct token symbol);
 
 struct ir* ir_new(char* symbol, bool global, enum chunk_type type);
 

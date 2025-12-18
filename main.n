@@ -15,5 +15,5 @@ i32 factorial()
 
 i32 main()
 {
-    return 0;
+    return factorial();
 }

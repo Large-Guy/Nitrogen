@@ -269,6 +269,33 @@ i32 bits = 0x40490FDB;
 f32 f = (!f32)bits;
 ```
 
+**Smart Cast**
+```c++
+struct A
+{
+    i32 a;
+    i32 b;
+}
+
+struct B
+{
+    str name;
+    i32 a;
+    i32 b;
+}
+
+A a;
+a.a = 1;
+a.b = 2;
+
+B b = (B)a; // structs automatically perform smart casts
+
+//equivalent to:
+
+b.a = a.a;
+b.b = a.b;
+```
+
 ## 10. Memory Management
 
 TODO: This is unknown for now. Leaning towards manual C Style memory management. Likely with some safety features.

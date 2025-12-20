@@ -7,8 +7,8 @@ add_link_options(-fsanitize=address)
 set(CMAKE_C_STANDARD 11)
 
 add_executable(compiler src/main.c
-        src/ir.c
-        src/ir.h
+        src/unit.c
+        src/unit.h
         src/lexer.c
         src/lexer.h
         src/parser.c
@@ -22,4 +22,8 @@ add_executable(compiler src/main.c
         src/block.c
         src/block.h
         src/ssa.c
-        src/ssa.h)
+        src/ssa.h
+        src/ast_gen.c
+        src/ast_gen.h
+        src/register_table.c
+        src/register_table.h)

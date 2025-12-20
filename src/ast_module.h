@@ -5,14 +5,6 @@
 #include "lexer.h"
 #include "ast.h"
 
-enum definition_type {
-    SYMBOL_TYPE_STRUCT,
-    SYMBOL_TYPE_UNION,
-    SYMBOL_TYPE_INTERFACE,
-    SYMBOL_TYPE_FUNCTION,
-    SYMBOL_TYPE_VARIABLE
-};
-
 struct ast_module {
     char* name;
 

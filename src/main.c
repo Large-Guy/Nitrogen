@@ -5,10 +5,10 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "ir.h"
+#include "unit.h"
 #include "ir_gen.h"
 #include "lexer.h"
-#include "parser.h"
+#include "ast_gen.h"
 
 struct file {
     FILE* file;
@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
     
     for (int i = 0; i < modules->module_count; i++) {
         struct ast_module* module = modules->modules[i];
-        struct ir_module* ir_module = ir_gen_module(module);
+        struct unit_module* ir_module = ir_gen_module(module);
 
         char buffer[100];
         snprintf(buffer, sizeof(buffer), "%s.dot", module->name);
@@ -120,11 +120,11 @@ int main(int argc, char** argv) {
         
         printf("--- COMPILED ---\n");
 #endif
-        ir_module_debug_graph(ir_module, cfgdot);
-        for (int n = 0; n < ir_module->count; n++) {
-            ir_compile(ir_module->chunks[n], stdout);
+        unit_module_debug_graph(ir_module, cfgdot);
+        for (int n = 0; n < ir_module->unit_count; n++) {
+            unit_compile(ir_module->units[n], stdout);
         }
-        ir_module_free(ir_module);
+        unit_module_free(ir_module);
         
         fclose(cfgdot);
         

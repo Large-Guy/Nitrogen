@@ -1,4 +1,4 @@
-#include "ir.h"
+#include "unit.h"
 
 #include <assert.h>
 #include <math.h>
@@ -8,8 +8,8 @@
 
 #include "block.h"
 
-struct ir* ir_new(char* symbol, bool global, enum chunk_type type) {
-    struct ir* chunk = malloc(sizeof(struct ir));
+struct unit* unit_new(char* symbol, bool global, enum unit_type type) {
+    struct unit* chunk = malloc(sizeof(struct unit));
     assert(chunk);
 
     chunk->arguments = malloc(sizeof(struct operand));
@@ -34,38 +34,38 @@ struct ir* ir_new(char* symbol, bool global, enum chunk_type type) {
     return chunk;
 }
 
-struct ir_module* ir_module_new(char* name) {
-    struct ir_module* list = malloc(sizeof(struct ir_module));
+struct unit_module* unit_module_new(char* name) {
+    struct unit_module* list = malloc(sizeof(struct unit_module));
     assert(list);
     list->name = malloc(strlen(name) + 1);
     memcpy(list->name, name, strlen(name) + 1);
-    list->chunks = malloc(sizeof(struct ir*));
-    list->count = 0;
-    list->capacity = 1;
+    list->units = malloc(sizeof(struct unit*));
+    list->unit_count = 0;
+    list->unit_capacity = 1;
     return list;
 }
 
-void ir_module_free(struct ir_module* list) {
+void unit_module_free(struct unit_module* list) {
     assert(list);
     free(list->name);
-    for (int i = 0; i < list->count; i++)
+    for (int i = 0; i < list->unit_count; i++)
     {
-        ir_free(list->chunks[i]);
+        unit_free(list->units[i]);
     }
-    free(list->chunks);
+    free(list->units);
     free(list);
 }
 
-void ir_module_append(struct ir_module* list, struct ir* chunk) {
-    if (list->count >= list->capacity) {
-        list->capacity *= 2;
-        list->chunks = realloc(list->chunks, list->capacity * sizeof(struct ir*));
-        assert(list->chunks);
+void unit_module_append(struct unit_module* list, struct unit* chunk) {
+    if (list->unit_count >= list->unit_capacity) {
+        list->unit_capacity *= 2;
+        list->units = realloc(list->units, list->unit_capacity * sizeof(struct unit*));
+        assert(list->units);
     }
-    list->chunks[list->count++] = chunk;
+    list->units[list->unit_count++] = chunk;
 }
 
-void ir_free(struct ir* chunk) {
+void unit_free(struct unit* chunk) {
     assert(chunk != NULL);
     free(chunk->symbol);
     for (int i = 0; i < chunk->block_count; i++) {
@@ -75,17 +75,17 @@ void ir_free(struct ir* chunk) {
     free(chunk);
 }
 
-struct ir* ir_module_find(struct ir_module* module, struct token symbol) {
-    for (int i = 0; i < module->count; i++) {
-        struct ir* chunk = module->chunks[i];
+struct unit* unit_module_find(struct unit_module* module, struct token symbol) {
+    for (int i = 0; i < module->unit_count; i++) {
+        struct unit* chunk = module->units[i];
         if (symbol.length == strlen(chunk->symbol) && memcmp(chunk->symbol, symbol.start, symbol.length) == 0) {
-            return module->chunks[i];
+            return module->units[i];
         }
     }
     return NULL;
 }
 
-void ir_add(struct ir* chunk, struct block* block) {
+void unit_add(struct unit* chunk, struct block* block) {
     assert(chunk != NULL);
     if (chunk->block_count >= chunk->block_capacity) {
         chunk->block_capacity *= 2;
@@ -96,7 +96,7 @@ void ir_add(struct ir* chunk, struct block* block) {
     block->id = chunk->block_count;
 }
 
-void ir_arg(struct ir* chunk, struct operand arg) {
+void unit_arg(struct unit* chunk, struct operand arg) {
     assert(chunk != NULL);
     if (chunk->argument_count >= chunk->argument_capacity) {
         chunk->argument_capacity *= 2;
@@ -271,7 +271,7 @@ static void block_debug(struct block* block) {
     printf("\n");
 }
 
-void ir_debug(struct ir* chunk) {
+void unit_debug(struct unit* chunk) {
     assert(chunk != NULL);
     assert(chunk->blocks != NULL);
     for (size_t i = 0; i < chunk->block_count; i++) {
@@ -304,7 +304,7 @@ static void recursive_link(char* name, struct block* block, FILE* out) {
     }
 }
 
-void ir_build_graph(struct ir* chunk, FILE* out) {
+void unit_build_graph(struct unit* chunk, FILE* out) {
     assert(chunk != NULL);
     assert(chunk->blocks != NULL);
 
@@ -331,29 +331,29 @@ void ir_build_graph(struct ir* chunk, FILE* out) {
     fprintf(out, "    }\n");
 }
 
-void ir_module_debug(struct ir_module* module) {
-    for (int i = 0; i < module->count; i++)
+void unit_module_debug(struct unit_module* module) {
+    for (int i = 0; i < module->unit_count; i++)
     {
-        printf("CHUNK [%s] ---\n", module->chunks[i]->symbol);
-        ir_debug(module->chunks[i]);
+        printf("CHUNK [%s] ---\n", module->units[i]->symbol);
+        unit_debug(module->units[i]);
         printf("\n");
     }
 }
 
-void ir_module_debug_graph(struct ir_module* module, FILE* out) {
+void unit_module_debug_graph(struct unit_module* module, FILE* out) {
     
     fprintf(out, "digraph \"SSA+CFG\" {\n");
     fprintf(out, "  node [shape=box, fontname=\"Maple Mono\"];\n");
     fprintf(out, "  compound=true;\n");
     
-    for (int i = 0; i < module->count; i++)
+    for (int i = 0; i < module->unit_count; i++)
     {
-        ir_build_graph(module->chunks[i], out);
+        unit_build_graph(module->units[i], out);
     }
 
     fprintf(out, "  }\n");
 }
 
-char* ir_compile(struct ir* chunk, FILE* out) {
+char* unit_compile(struct unit* chunk, FILE* out) {
     //TODO: compile to ARM64
 }

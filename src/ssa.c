@@ -1,5 +1,5 @@
 #include "ssa.h"
-#include "ir.h"
+#include "unit.h"
 
 struct operand operand_reg(uint32_t reg, enum ssa_type type) {
     return (struct operand){OPERAND_TYPE_REGISTER, type, reg};
@@ -25,6 +25,6 @@ struct operand operand_none() {
     return (struct operand){OPERAND_TYPE_NONE};
 }
 
-struct operand operand_ir(struct ir* ir) {
+struct operand operand_ir(struct unit* ir) {
     return (struct operand){OPERAND_TYPE_IR, TYPE_VOID, {.ir = ir}};
 }

@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
     
     for (int i = 0; i < modules->module_count; i++) {
         struct ast_module* module = modules->modules[i];
-        struct unit_module* ir_module = ir_gen_module(module);
+        struct unit_module* ir_module = gen_unit_module(module);
 
         char buffer[100];
         snprintf(buffer, sizeof(buffer), "%s.dot", module->name);

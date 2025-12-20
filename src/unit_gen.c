@@ -654,7 +654,7 @@ static struct unit* forward(struct ast_module* module, struct ast_node* node) {
     }
 }
 
-struct unit_module* ir_gen_module(struct ast_module* module)
+struct unit_module* gen_unit_module(struct ast_module* module)
 {
     struct unit_module* chunks = unit_module_new(module->name);
 

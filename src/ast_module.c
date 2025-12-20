@@ -60,9 +60,29 @@ struct ast_node* ast_module_get_symbol(struct ast_node* scope, struct token name
     return scope->parent ? ast_module_get_symbol(scope->parent, name) : NULL;
 }
 
+struct ast_module_list* ast_module_list_new() {
+    struct ast_module_list* list = malloc(sizeof(struct ast_module_list));
+    assert(list);
+    list->modules = malloc(sizeof(struct ast_module*));
+    assert(list->modules);
+    list->module_count = 0;
+    list->module_capacity = 1;
+    return list;
+}
+
+void ast_module_list_add(struct ast_module_list* list, struct ast_module* module) {
+    if (list->module_count >= list->module_capacity) {
+        list->module_capacity *= 2;
+        list->modules = realloc(list->modules, list->module_capacity * sizeof(struct ast_module*));
+        assert(list->modules);
+    }
+    list->modules[list->module_count++] = module;
+}
+
 void ast_module_list_free(struct ast_module_list* list) {
     for (int i = 0; i < list->module_count; i++) {
         ast_module_free(list->modules[i]);
     }
     free(list->modules);
+    free(list);
 }

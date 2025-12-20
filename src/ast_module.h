@@ -37,7 +37,12 @@ struct ast_node* ast_module_get_symbol(struct ast_node* scope, struct token name
 struct ast_module_list {
     struct ast_module** modules;
     uint32_t module_count;
+    uint32_t module_capacity;
 };
+
+struct ast_module_list* ast_module_list_new();
+
+void ast_module_list_add(struct ast_module_list* list, struct ast_module* module);
 
 void ast_module_list_free(struct ast_module_list* list);
 

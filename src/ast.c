@@ -29,6 +29,9 @@ void ast_node_free(struct ast_node* node) {
 }
 
 void ast_node_append_child(struct ast_node* node, struct ast_node* child) {
+    if (child == NULL) {
+        return;
+    }
     assert(node->children_capacity != 0); // if this occurs, the node was not initialized properly
     if (node->children_count >= node->children_capacity) {
         node->children_capacity *= 2;

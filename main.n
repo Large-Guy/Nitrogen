@@ -2,7 +2,7 @@ module program;
 
 f32 abs(f32 x)
 {
-    if(x < 0)
+    if(x < 0f)
     {
         x = -x;
     }

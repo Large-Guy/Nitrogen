@@ -25,6 +25,8 @@ struct parser {
     struct ast_node** scope_stack;
     size_t scope_stack_count;
     size_t scope_stack_capacity;
+
+    bool error;
 };
 
 static struct ast_node* scope(struct parser* parser) {
@@ -45,6 +47,19 @@ static void pop_scope(struct parser* parser) {
     parser->scope_stack_count--;
 }
 
+static void error(struct parser* parser, struct token at, const char* message) {
+    fprintf(stderr, "[line %d] Error ", at.line);
+    if (at.type == TOKEN_TYPE_EOF) {
+        fprintf(stderr, "at end");
+    } else if (at.type == TOKEN_TYPE_ERROR) {
+        
+    } else {
+        fprintf(stderr, "at '%.*s': ", (uint32_t)at.length, at.start);
+    }
+    fprintf(stderr, "%s\n", message);
+    parser->error = true;
+}
+
 static void advance(struct parser* parser) {
     parser->previous = parser->current;
 
@@ -53,7 +68,7 @@ static void advance(struct parser* parser) {
         if (parser->current.type != TOKEN_TYPE_ERROR)
             break;
 
-        //TODO: error out
+        error(parser, parser->current, "Unexpected end of input");
     }
 }
 
@@ -82,22 +97,11 @@ static void consume(struct parser* parser, enum token_type type, const char* err
         return;
     }
 
-    //TODO: properly error out
-    fprintf(stderr, "%s\n", error_message);
-    advance(parser); //TODO: eliminate this once erroring is handled properly
+    error(parser, parser->previous, error_message);
 }
 
 static bool check(struct parser* parser, enum token_type type) {
     return parser->current.type == type;
-}
-
-static void ensure(struct parser* parser, enum token_type type, const char* error_message) {
-    if (check(parser, type)) {
-        return;
-    }
-
-    //TODO: properly error out
-    fprintf(stderr, "%s\n", error_message);
 }
 
 static bool match(struct parser* parser, enum token_type type) {
@@ -153,6 +157,7 @@ struct parser* parser_new(enum parser_stage stage, struct ast_module* module, st
     advance(self);
     if (module)
         push_scope(self, module->definitions);
+    self->error = false;
     return self;
 }
 
@@ -394,7 +399,7 @@ static struct ast_node* variable(struct parser* parser, bool canAssign) {
     return variable;
 }
 
-static struct ast_node* number(struct parser* parser, bool canAssign) { //TODO: floating point numbers
+static struct ast_node* number(struct parser* parser, bool canAssign) {
     struct token token = parser->previous;
     if (parser->previous.type == TOKEN_TYPE_FLOATING)
         return ast_node_new(AST_NODE_TYPE_FLOAT, token);
@@ -429,8 +434,7 @@ static struct ast_node* unary(struct parser* parser, bool canAssign) {
             return node;
         }
         default: {
-            //TODO: error out
-            fprintf(stderr, "unary unexpected token type, this should never happen: %i\n", token.type);
+            error(parser, token, "unary unexpected token type, this should never happen\n");
             return NULL;
         }
     }
@@ -446,8 +450,7 @@ static struct ast_node* literal(struct parser* parser, bool canAssign) {
         case TOKEN_TYPE_TRUE:
             return ast_node_new(AST_NODE_TYPE_INTEGER, token_one);
         default:
-            //TODO: error out
-            fprintf(stderr, "unexpected literal token type, this should never happen: %i\n", token.type);
+            error(parser, token, "unexpected literal token type, this should never happen\n");
     }
     return NULL;
 }
@@ -533,6 +536,7 @@ static struct ast_node* binary(struct parser* parser, struct ast_node* left, boo
             break;
         }
         default: {
+            error(parser, parser->current, "unexpected operator in binary expression");
             return NULL;
         }
     }
@@ -595,7 +599,7 @@ static struct ast_node* parse_precedence(struct parser* parser, enum precedence 
     advance(parser);
     prefix_fn prefix_rule = get_rule(parser->previous.type)->prefix; //NOTE: this has been changed from the tutorial, keep in mind!
     if (prefix_rule == NULL) {
-        fprintf(stderr, "Expect expression.\n"); //TODO: proper error handling
+        error(parser, parser->previous, "expected expression\n");
         return NULL;
     }
 
@@ -757,8 +761,7 @@ static struct ast_node* struct_statement(struct parser* parser) {
         }
         else {
             advance(parser);
-            //TODO: error out
-            fprintf(stderr, "expected type\n");
+            error(parser, parser->current, "expected type\n");
         }
     }
     
@@ -1019,8 +1022,7 @@ static void struct_symbol_resolve(struct parser* parser) {
     struct token name = parser->previous;
     struct ast_node* symbol = ast_module_get_symbol(scope(parser), name);
     if (symbol == NULL) {
-        //TODO: error out
-        fprintf(stderr, "new symbol discovered during resolution pass");
+        error(parser, name, "new symbol discovered during resolution pass");
     }
     if (match(parser, TOKEN_TYPE_COLON)) {
         do {
@@ -1054,8 +1056,7 @@ static void interface_symbol_resolve(struct parser* parser) {
     struct token name = parser->previous;
     struct ast_node* symbol = ast_module_get_symbol(scope(parser), name);
     if (symbol == NULL) {
-        //TODO: error out
-        fprintf(stderr, "new symbol discovered during resolution pass");
+        error(parser, name, "new symbol discovered during resolution pass");
     }
     if (match(parser, TOKEN_TYPE_COLON)) {
         do {
@@ -1081,7 +1082,7 @@ static void interface_symbol_resolve(struct parser* parser) {
     pop_scope(parser);
 }
 
-static void symbol_pass(struct ast_module_list* list) {
+static bool symbol_pass(struct ast_module_list* list) {
     for (int i = 0; i < list->module_count; i++) {
         struct ast_module* module = list->modules[i];
         for (int y = 0; y < module->lexer_count; y++) {
@@ -1105,14 +1106,20 @@ static void symbol_pass(struct ast_module_list* list) {
                 else {
                     advance(parser);
                 }
+
+                if (parser->error) {
+                    parser_free(parser);
+                    return false;
+                }
             }
 
             parser_free(parser);
         }
     }
+    return true;
 }
 
-static void type_pass(struct ast_module_list* list) {
+static bool type_pass(struct ast_module_list* list) {
     for (int i = 0; i < list->module_count; i++) {
         struct ast_module* module = list->modules[i];
         for (int y = 0; y < module->lexer_count; y++) {
@@ -1133,14 +1140,19 @@ static void type_pass(struct ast_module_list* list) {
                 else {
                     advance(parser);
                 }
+                if (parser->error) {
+                    parser_free(parser);
+                    return false;
+                }
             }
 
             parser_free(parser);
         }
     }
+    return true;
 }
 
-static void import_pass(struct ast_module_list* list) {
+static bool import_pass(struct ast_module_list* list) {
     for (int i = 0; i < list->module_count; i++) {
         struct ast_module* module = list->modules[i];
         for (int y = 0; y < module->lexer_count; y++) {
@@ -1160,27 +1172,31 @@ static void import_pass(struct ast_module_list* list) {
                         }
                     }
                     if (import == NULL) {
-                        //TODO error out
-                        fprintf(stderr, "unable to find module to import\n");
-                        goto exit;
+                        error(parser, name, "unable to find module to import\n");
+                        parser_free(parser);
+                        return false;
                     }
                     //TODO: import symbols
                     printf("imported module...\n");
                     consume(parser, TOKEN_TYPE_SEMICOLON, "expected semi colon after import name");
                 }
+                
+                if (parser->error) {
+                    parser_free(parser);
+                    return false;
+                }
                 advance(parser);
             }
 
-            exit:
             parser_free(parser);
         }
     }
+
+    return true;
 }
 
-static struct ast_module_list module_pass(struct lexer** lexers, uint32_t count) {
-    struct ast_module** modules = malloc(sizeof(struct ast_module*));
-    uint32_t modules_count = 0;
-    uint32_t modules_capacity = 1;
+static struct ast_module_list* module_pass(struct lexer** lexers, uint32_t count) {
+    struct ast_module_list* list = ast_module_list_new();
 
     for (uint32_t i = 0; i < count; i++) {
         struct lexer* lexer = lexers[i];
@@ -1194,39 +1210,41 @@ static struct ast_module_list module_pass(struct lexer** lexers, uint32_t count)
                 consume(parser, TOKEN_TYPE_IDENTIFIER, "expected module name");
                 struct token name = parser->previous;
                 struct ast_module* module = NULL;
-                for (uint32_t j = 0; j < modules_count; j++) {
-                    if (strlen(modules[j]->name) == name.length &&
-                        memcmp(modules[j]->name, name.start, name.length) == 0) {
-                        module = modules[j];
+                for (uint32_t j = 0; j < list->module_count; j++) {
+                    if (strlen(list->modules[j]->name) == name.length &&
+                        memcmp(list->modules[j]->name, name.start, name.length) == 0) {
+                        module = list->modules[j];
                     }
                 }
                 if (module == NULL) {
-                    if (modules_count >= modules_capacity) {
-                        modules_capacity *= 2;
-                        modules = realloc(modules, modules_capacity * sizeof(struct ast_module*));
-                        assert(modules != NULL);
-                    }
                     module = ast_module_new(parser->previous);
-                    modules[modules_count++] = module;
+                    ast_module_list_add(list, module);
                 }
                 ast_module_add_source(module, lexer);
                 found = true;
                 break;
             }
+
+            if (parser->error) {
+                parser_free(parser);
+                return NULL;
+            }
+            
             advance(parser);
         }
-
-        if (!found) //todo: error out
-            fprintf(stderr, "failed to find module name in source file");
-
+        
         parser_free(parser);
+        
+        if (!found) {
+            error(parser, parser->current, "failed to find module name in source file");
+            return NULL;
+        }
     }
 
-    struct ast_module_list list = {modules, modules_count};
     return list;
 }
 
-static void tree_gen_pass(struct ast_module_list* list) {
+static bool tree_gen_pass(struct ast_module_list* list) {
     for (int i = 0; i < list->module_count; i++) {
         struct ast_module* module = list->modules[i];
 
@@ -1239,27 +1257,49 @@ static void tree_gen_pass(struct ast_module_list* list) {
                 struct ast_node* node = declaration(parser);
                 if (node != NULL)
                     ast_node_append_child(module->root, node);
+                if (parser->error) {
+                    parser_free(parser);
+                    return false;
+                }
             }
 
             parser_free(parser);
         }
     }
+    return true;
 }
 
 #pragma endregion
 
-struct ast_module_list parse(struct lexer** lexer, uint32_t count) {
+struct ast_module_list* parse(struct lexer** lexer, uint32_t count) {
     
     //resolve modules and sort lexers
-    struct ast_module_list modules = module_pass(lexer, count);
+    struct ast_module_list* modules = module_pass(lexer, count);
 
-    import_pass(&modules); //merge symbol tables
+    if (modules == NULL) {
+        return NULL;
+    }
 
-    type_pass(&modules);
+    if (!import_pass(modules)) //merge symbol tables
+    {
+        goto fail;
+    }
 
-    symbol_pass(&modules);
+    if (!type_pass(modules)) {
+        goto fail;
+    }
 
-    tree_gen_pass(&modules);
+    if (!symbol_pass(modules)) {
+        goto fail;
+    }
+
+    if (!tree_gen_pass(modules)) {
+        goto fail;
+    }
 
     return modules;
+
+    fail:
+    ast_module_list_free(modules);
+    return NULL;
 }

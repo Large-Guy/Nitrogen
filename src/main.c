@@ -77,14 +77,18 @@ int main(int argc, char** argv) {
         printf("\nbuilding ast...\n\n");
 #endif
     
-    struct ast_module_list modules = parse(lexers, argc - 1);
+    struct ast_module_list* modules = parse(lexers, argc - 1);
+
+    if (modules == NULL) {
+        return 1;
+    }
 
 #ifdef DEBUG
     printf("\n");
 #endif
     
-    for (int i = 0; i < modules.module_count; i++) {
-        struct ast_module* module = modules.modules[i];
+    for (int i = 0; i < modules->module_count; i++) {
+        struct ast_module* module = modules->modules[i];
 #ifdef DEBUG
         printf("--- MODULE %s ---\n", module->name);
         printf("\nSYMBOLS ---\n");
@@ -102,8 +106,8 @@ int main(int argc, char** argv) {
 
 #endif
     
-    for (int i = 0; i < modules.module_count; i++) {
-        struct ast_module* module = modules.modules[i];
+    for (int i = 0; i < modules->module_count; i++) {
+        struct ast_module* module = modules->modules[i];
         struct ir_module* ir_module = ir_gen_module(module);
 
         char buffer[100];
@@ -112,7 +116,7 @@ int main(int argc, char** argv) {
         FILE* cfgdot = fopen(buffer, "w");
 #ifdef DEBUG
         printf("--- MODULE %s ---\n", module->name);
-        ir_module_debug(ir_module);
+        //ir_module_debug(ir_module);
         
         printf("--- COMPILED ---\n");
 #endif
@@ -132,7 +136,7 @@ int main(int argc, char** argv) {
     }
 
     
-    ast_module_list_free(&modules);
+    ast_module_list_free(modules);
 
     //close files
     for (int i = 0; i < argc - 1; i++) {

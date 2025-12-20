@@ -24,6 +24,7 @@ enum ast_node_type {
     AST_NODE_TYPE_TYPE,
 
     AST_NODE_TYPE_VOID,
+    AST_NODE_TYPE_POINTER,
     
     AST_NODE_TYPE_I8,
     AST_NODE_TYPE_I16,

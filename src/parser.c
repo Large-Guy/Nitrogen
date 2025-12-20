@@ -334,7 +334,6 @@ static struct ast_node* make_compound_assignment(struct parser* parser, enum ast
 static struct ast_node* variable(struct parser* parser, bool canAssign) {
     
     struct token token = parser->previous;
-    //TODO: proper type handling
     struct ast_node* variable = ast_node_new(AST_NODE_TYPE_NAME, token);
     
     if (canAssign) {
@@ -639,7 +638,7 @@ static struct ast_node* return_statement(struct parser* parser) {
 }
 
 static struct ast_node* get_type_node(struct parser* parser, struct token token) {
-    switch (token.type) { //TODO: most of these nodes should be made static
+    switch (token.type) {
         case TOKEN_TYPE_I8:
             return ast_node_new(AST_NODE_TYPE_I8, token);
         case TOKEN_TYPE_I16:

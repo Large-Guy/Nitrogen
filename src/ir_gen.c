@@ -250,11 +250,6 @@ static struct operand unary(struct compiler* compiler, struct ast_module* ast_mo
     return instruction.result;
 }
 
-//TODO: everything is currently an i32 for simplicity, implement types properly.
-//TODO: research how GCC handles return values.
-//Note: GCC seems to only have one return instruction in a function and it's in its own block.
-//Note: GCC pre-allocates a register to be used as the return value %1, which is then assigned to at a return node
-//Note: and a goto statement occurs to jump to the return block, i guess for later optimizations?
 static struct operand statement(struct compiler* compiler, struct ast_module* ast_module, struct ir_module* ir_module, struct ast_node* node) {
     struct block* current = compiler->body;
     struct register_table* regs = compiler->regs;

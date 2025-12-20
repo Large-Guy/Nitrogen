@@ -1,8 +1,6 @@
 #include "ssa.h"
 #include "ir.h"
 
-//NOTE: 32 bit assumed
-
 struct operand operand_reg(uint32_t reg, enum ssa_type type) {
     return (struct operand){OPERAND_TYPE_REGISTER, type, reg};
 }

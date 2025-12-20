@@ -1,7 +1,6 @@
 #include "parser.h"
 
 #include <assert.h>
-#include <math.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,6 +29,8 @@ struct parser {
 };
 
 static struct ast_node* scope(struct parser* parser) {
+    assert(parser);
+    assert(parser->scope_stack);
     return parser->scope_stack[parser->scope_stack_count - 1];
 }
 
@@ -1232,12 +1233,12 @@ static struct ast_module_list* module_pass(struct lexer** lexers, uint32_t count
             advance(parser);
         }
         
-        parser_free(parser);
-        
         if (!found) {
             error(parser, parser->current, "failed to find module name in source file");
             return NULL;
         }
+        
+        parser_free(parser);
     }
 
     return list;

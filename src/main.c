@@ -6,7 +6,7 @@
 #include <time.h>
 
 #include "unit.h"
-#include "ir_gen.h"
+#include "unit_gen.h"
 #include "lexer.h"
 #include "ast_gen.h"
 

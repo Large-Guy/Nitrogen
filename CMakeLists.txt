@@ -15,8 +15,8 @@ add_executable(compiler src/main.c
         src/parser.h
         src/ast.c
         src/ast.h
-        src/ir_gen.c
-        src/ir_gen.h
+        src/unit_gen.c
+        src/unit_gen.h
         src/ast_module.c
         src/ast_module.h
         src/block.c

@@ -1,4 +1,4 @@
-#include "ir_gen.h"
+#include "unit_gen.h"
 
 #include <assert.h>
 #include <stdlib.h>

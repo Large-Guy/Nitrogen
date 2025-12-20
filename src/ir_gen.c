@@ -341,7 +341,6 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
             instruction.operator = OP_ALLOC;
             instruction.type = type;
 
-            //NOTE: assumed i32
             instruction.result = register_table_add(current->symbol_table, name->token, type)->pointer;
             instruction.operands[0] = operand_const_int(get_node_size(ast_module, type_node)); //variable size
 

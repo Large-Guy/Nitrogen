@@ -102,4 +102,8 @@ void ast_node_remove_child(struct ast_node* node, struct ast_node* child);
 
 void ast_node_debug(struct ast_node* node);
 
+size_t get_node_size(struct ast_module* module, struct ast_node* node);
+
+enum ssa_type get_node_type(struct ast_module* module, struct ast_node* node);
+
 #endif //COMPILER_AST_H

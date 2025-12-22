@@ -89,3 +89,48 @@ static void debug(struct ast_node* node, int32_t depth) {
 void ast_node_debug(struct ast_node* node) {
     debug(node, 0);
 }
+
+size_t get_node_size(struct ast_module* module, struct ast_node* node) {
+    switch (node->type) {
+    case AST_NODE_TYPE_U8:
+    case AST_NODE_TYPE_I8: return 1;
+    case AST_NODE_TYPE_U16:
+    case AST_NODE_TYPE_I16: return 2;
+    case AST_NODE_TYPE_U32:
+    case AST_NODE_TYPE_I32: return 4;
+    case AST_NODE_TYPE_U64:
+    case AST_NODE_TYPE_I64: return 8;
+
+    case AST_NODE_TYPE_F32: return 4;
+    case AST_NODE_TYPE_F64: return 8;
+
+    case AST_NODE_TYPE_VOID: return 0;
+
+    default:
+        fprintf(stderr, "expected a built-in type node\n");
+        return 0;
+    }
+}
+
+enum ssa_type get_node_type(struct ast_module* module, struct ast_node* node) {
+    switch (node->type) {
+    case AST_NODE_TYPE_U8: return TYPE_U8;
+    case AST_NODE_TYPE_I8: return TYPE_I8;
+    case AST_NODE_TYPE_U16: return TYPE_U16;
+    case AST_NODE_TYPE_I16: return TYPE_I16;
+    case AST_NODE_TYPE_U32: return TYPE_U32;
+    case AST_NODE_TYPE_I32: return TYPE_I32;
+    case AST_NODE_TYPE_U64: return TYPE_U64;
+    case AST_NODE_TYPE_I64: return TYPE_I64;
+
+    case AST_NODE_TYPE_F32: return TYPE_F32;
+    case AST_NODE_TYPE_F64: return TYPE_F64;
+
+    case AST_NODE_TYPE_VOID: return TYPE_VOID;
+
+    case AST_NODE_TYPE_TYPE:
+    default:
+        fprintf(stderr, "expected a built-in type node\n");
+        return 0;
+    }
+}

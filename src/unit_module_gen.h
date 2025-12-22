@@ -2,8 +2,7 @@
 #define COMPILER_IR_GEN_H
 
 #include "unit.h"
-#include "ast_module.h"
 
-struct unit_module* gen_unit_module(struct ast_module* module);
+struct unit_module* unit_module_generate(struct ast_module* module);
 
 #endif //COMPILER_IR_GEN_H

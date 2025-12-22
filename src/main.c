@@ -6,9 +6,10 @@
 #include <time.h>
 
 #include "unit.h"
-#include "unit_gen.h"
+#include "unit_module_gen.h"
 #include "lexer.h"
 #include "ast_gen.h"
+#include "ssa_gen.h"
 
 struct file {
     FILE* file;
@@ -108,7 +109,9 @@ int main(int argc, char** argv) {
     
     for (int i = 0; i < modules->module_count; i++) {
         struct ast_module* module = modules->modules[i];
-        struct unit_module* ir_module = gen_unit_module(module);
+        struct unit_module* ir_module = unit_module_generate(module);
+
+        unit_module_build(ir_module);
 
         char buffer[100];
         snprintf(buffer, sizeof(buffer), "%s.dot", module->name);

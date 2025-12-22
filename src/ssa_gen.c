@@ -1,4 +1,4 @@
-#include "unit_gen.h"
+#include "ssa_gen.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -72,7 +72,7 @@ struct compiler {
     uint32_t* stack;
     uint32_t stack_count;
     uint32_t stack_capacity;
-    
+
     struct register_table* regs;
 
     enum ssa_type return_type;
@@ -98,11 +98,11 @@ static struct compiler* compiler_new(struct unit* ir, enum ssa_type return_type)
     block_link(compiler->entry, compiler->body);
 
     unit_add(compiler->ir, compiler->body);
-    
+
     compiler->stack = malloc(sizeof(uint32_t));
     compiler->stack_count = 0;
     compiler->stack_capacity = 1;
-    
+
     return compiler;
 }
 
@@ -133,7 +133,7 @@ static void compiler_end(struct compiler* compiler) {
     load_ret_val.operands[0] = compiler->return_value_ptr;
     load_ret_val.result = register_table_alloc(compiler->regs, compiler->ir->return_type);
     block_add(compiler->exit, load_ret_val);
-    
+
     struct ssa_instruction ret = {};
     ret.result = operand_end();
     ret.operator = OP_RETURN;
@@ -147,67 +147,6 @@ static void compiler_end(struct compiler* compiler) {
 static void compiler_free(struct compiler* compiler) {
     register_table_free(compiler->regs);
     free(compiler);
-}
-
-static size_t get_node_size(struct ast_module* module, struct ast_node* node) {
-    switch (node->type) {
-        case AST_NODE_TYPE_U8:
-        case AST_NODE_TYPE_I8: return 1;
-        case AST_NODE_TYPE_U16:
-        case AST_NODE_TYPE_I16: return 2;
-        case AST_NODE_TYPE_U32:
-        case AST_NODE_TYPE_I32: return 4;
-        case AST_NODE_TYPE_U64:
-        case AST_NODE_TYPE_I64: return 8;
-            
-        case AST_NODE_TYPE_F32: return 4;
-        case AST_NODE_TYPE_F64: return 8;
-            
-        case AST_NODE_TYPE_VOID: return 0;
-            
-        case AST_NODE_TYPE_TYPE: {
-            return 0; //unknown type
-        }
-        default:
-            fprintf(stderr, "unexpected node type\n");
-            return 0;
-    }
-}
-
-static enum ssa_type get_node_type(struct ast_module* module, struct ast_node* node) {
-    switch (node->type) {
-        case AST_NODE_TYPE_U8: return TYPE_U8;
-        case AST_NODE_TYPE_I8: return TYPE_I8;
-        case AST_NODE_TYPE_U16: return TYPE_U16;
-        case AST_NODE_TYPE_I16: return TYPE_I16;
-        case AST_NODE_TYPE_U32: return TYPE_U32;
-        case AST_NODE_TYPE_I32: return TYPE_I32;
-        case AST_NODE_TYPE_U64: return TYPE_U64;
-        case AST_NODE_TYPE_I64: return TYPE_I64;
-            
-        case AST_NODE_TYPE_F32: return TYPE_F32;
-        case AST_NODE_TYPE_F64: return TYPE_F64;
-            
-        case AST_NODE_TYPE_VOID: return TYPE_VOID;
-            
-        case AST_NODE_TYPE_TYPE: {
-            return TYPE_VOID; //unknown type
-        }
-        default:
-            fprintf(stderr, "unexpected node type\n");
-            return 0;
-    }
-}
-
-static struct unit* ir_symbol_new(struct token symbol, enum unit_type type)
-{
-    assert(symbol.length != 0);
-    char* symbol_name = malloc(symbol.length + 1);
-    memcpy(symbol_name, symbol.start, symbol.length);
-    symbol_name[symbol.length] = '\0';
-    struct unit* ir = unit_new(symbol_name, symbol.start[0] != '_', type);
-    free(symbol_name);
-    return ir;
 }
 
 static struct operand statement(struct compiler* compiler, struct ast_module* ast_module, struct unit_module* ir_module, struct ast_node* node);
@@ -351,7 +290,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
             store.operator = OP_STORE;
             store.type = type;
             store.operands[0] = instruction.result;
-            
+
             //store the value
             if (value) {
                 store.operands[1] = implicit_cast(compiler, ast_module, ir_module, statement(compiler, ast_module, ir_module, value), type);
@@ -359,9 +298,9 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
             else {
                 store.operands[1] = operand_const_int(0);
             }
-            
+
             block_add(current, store);
-            
+
             return instruction.result;
         }
         case AST_NODE_TYPE_ASSIGN: {
@@ -370,7 +309,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
             struct ssa_instruction instruction = {};
             instruction.operator = OP_STORE;
             struct variable* symbol = register_table_lookup(current->symbol_table, target->token);
-            
+
             instruction.type = symbol->pointer.typename;
             instruction.result = operand_none();
             instruction.operands[0] = symbol->pointer;
@@ -386,7 +325,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
             instruction.operands[0] = var->pointer;
             instruction.result = register_table_alloc(current->symbol_table, var->type);
             block_add(current, instruction);
-            
+
             return instruction.result;
         }
         case AST_NODE_TYPE_CALL: {
@@ -404,9 +343,9 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
             }
 
             instruction.result = register_table_alloc(current->symbol_table, instruction.type);
-            
+
             block_add(current, instruction);
-            
+
             return instruction.result;
         }
         case AST_NODE_TYPE_RETURN_STATEMENT: {
@@ -416,14 +355,14 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
             return_store.operands[0] = compiler->return_value_ptr;
             return_store.operands[1] = implicit_cast(compiler, ast_module, ir_module, statement(compiler, ast_module, ir_module, node->children[0]), return_store.type);
             block_add(current, return_store);
-            
+
             struct ssa_instruction instruction = {};
             instruction.operator = OP_GOTO;
             instruction.result = operand_end();
             instruction.operands[0] = operand_block(compiler->exit);
 
             block_link(current, compiler->exit);
-            
+
             block_add(current, instruction);
             return instruction.result;
         }
@@ -432,7 +371,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
             struct ssa_instruction instruction = {};
 
             struct block* after = block_new(false, compiler->regs);
-            
+
             instruction.operator = OP_IF;
             instruction.result = operand_end();
             instruction.type = TYPE_I32;
@@ -481,7 +420,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
             }
 
             block_add(current, instruction);
-            
+
             unit_add(compiler->ir, after);
             compiler->body = after;
 
@@ -518,7 +457,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
             instruction.operands[1] = operand_block(body_block);
             instruction.operands[2] = operand_block(after_block);
             block_add(loop_block, instruction);
-            
+
             //link loop to body and after
             block_link(loop_block, body_block);
             block_link(loop_block, after_block);
@@ -581,6 +520,7 @@ static struct operand argument(struct compiler* compiler, struct ast_module* ast
             fprintf(stderr, "unexpected node type: %d\n", node->type);
         }
     }
+    return operand_none();
 }
 
 static void definition(struct unit_module* ir_module, struct ast_module* module, struct ast_node* node)
@@ -610,7 +550,7 @@ static void definition(struct unit_module* ir_module, struct ast_module* module,
             }
 
             compiler_end(compiler);
-            
+
             compiler_free(compiler);
             break;
         }
@@ -630,42 +570,10 @@ static void definition(struct unit_module* ir_module, struct ast_module* module,
     }
 }
 
-static struct unit* forward(struct ast_module* module, struct ast_node* node) {
-    switch (node->type)
-    {
-        case AST_NODE_TYPE_FUNCTION:
-        {
-            struct unit* ir = ir_symbol_new(node->children[0]->token, CHUNK_TYPE_FUNCTION);
-            struct ast_node* type = node->children[1]; //type
-            ir->global = node->children[1]->token.start[0] != '_';
-            ir->return_type = get_node_type(module, type);
-            return ir;
-        }
-        case AST_NODE_TYPE_VARIABLE:
-        {
-            struct unit* ir = ir_symbol_new(node->children[0]->token, CHUNK_TYPE_VARIABLE);
-            return ir;
-        }
-        default:
-        {
-            fprintf(stderr, "unexpected node type: %d\n", node->type);
-            return NULL;
-        }
-    }
-}
-
-struct unit_module* gen_unit_module(struct ast_module* module)
+void unit_module_build(struct unit_module* module)
 {
-    struct unit_module* chunks = unit_module_new(module->name);
-
-    for (int i = 0; i < module->root->children_count; i++) {
-        unit_module_append(chunks, forward(module, module->root->children[i]));
-    }
-    
-    for (int i = 0; i < module->root->children_count; i++)
+    for (int i = 0; i < module->ast->root->children_count; i++)
     {
-        definition(chunks, module, module->root->children[i]);
+        definition(module, module->ast, module->ast->root->children[i]);
     }
-
-    return chunks;
 }

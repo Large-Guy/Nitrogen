@@ -33,6 +33,8 @@ struct unit_module {
     struct unit** units;
     size_t unit_count;
     size_t unit_capacity;
+
+    struct ast_module* ast;
 };
 
 struct unit_module* unit_module_new(char* name);

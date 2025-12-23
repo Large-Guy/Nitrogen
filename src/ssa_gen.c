@@ -97,6 +97,8 @@ static struct compiler* compiler_new(struct unit* ir, enum ssa_type return_type)
     compiler->body = block_new(false, compiler->regs);
     block_link(compiler->entry, compiler->body);
 
+    compiler->return_value_ptr = operand_none();
+
     unit_add(compiler->ir, compiler->body);
 
     compiler->stack = malloc(sizeof(uint32_t));
@@ -107,38 +109,48 @@ static struct compiler* compiler_new(struct unit* ir, enum ssa_type return_type)
 }
 
 static void compiler_begin(struct compiler* compiler) {
-    compiler->return_value_ptr = register_table_add(compiler->regs, (struct token){}, compiler->return_type)->pointer;
-    struct ssa_instruction ret_val_variable = {};
-    ret_val_variable.result = compiler->return_value_ptr;
-    ret_val_variable.operator = OP_ALLOC;
-    ret_val_variable.type = compiler->return_type;
-    block_add(compiler->entry, ret_val_variable);
+    if (compiler->return_type != TYPE_VOID)
+    {
+        compiler->return_value_ptr = register_table_add(compiler->regs, (struct token){}, compiler->return_type)->pointer;
+        struct ssa_instruction ret_val_variable = {};
+        ret_val_variable.result = compiler->return_value_ptr;
+        ret_val_variable.operator = OP_ALLOC;
+        ret_val_variable.type = compiler->return_type;
+        block_add(compiler->entry, ret_val_variable);
 
-    //default it to zero
-    //TODO: figure out proper ZII
-    /*
-    struct ssa_instruction ret_val_value = {};
-    ret_val_value.operator = OP_STORE;
-    ret_val_value.type = compiler->return_type;
-    ret_val_value.operands[0] = compiler->return_value_ptr;
-    ret_val_value.operands[1] = operand_const_int(0);
-    block_add(compiler->body, ret_val_value);
-    */
+        //default it to zero
+        //TODO: figure out proper ZII
+        /*
+        struct ssa_instruction ret_val_value = {};
+        ret_val_value.operator = OP_STORE;
+        ret_val_value.type = compiler->return_type;
+        ret_val_value.operands[0] = compiler->return_value_ptr;
+        ret_val_value.operands[1] = operand_const_int(0);
+        block_add(compiler->body, ret_val_value);
+        */
+    }
 }
 
 static void compiler_end(struct compiler* compiler) {
-    struct ssa_instruction load_ret_val = {};
-    load_ret_val.operator = OP_LOAD;
-    load_ret_val.type = compiler->return_type;
-    load_ret_val.operands[0] = compiler->return_value_ptr;
-    load_ret_val.result = register_table_alloc(compiler->regs, compiler->ir->return_type);
-    block_add(compiler->exit, load_ret_val);
+    struct operand return_op = operand_none();
+
+    if (compiler->return_type != TYPE_VOID)
+    {
+        struct ssa_instruction load_ret_val = {};
+        load_ret_val.operator = OP_LOAD;
+        load_ret_val.type = compiler->return_type;
+        load_ret_val.operands[0] = compiler->return_value_ptr;
+        load_ret_val.result = register_table_alloc(compiler->regs, compiler->ir->return_type);
+        block_add(compiler->exit, load_ret_val);
+
+        return_op = load_ret_val.result;
+    }
 
     struct ssa_instruction ret = {};
     ret.result = operand_end();
     ret.operator = OP_RETURN;
     ret.type = compiler->return_type;
-    ret.operands[0] = load_ret_val.result;
+    ret.operands[0] = return_op;
     block_add(compiler->exit, ret);
 
     unit_add(compiler->ir, compiler->exit);
@@ -349,12 +361,15 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
             return instruction.result;
         }
         case AST_NODE_TYPE_RETURN_STATEMENT: {
-            struct ssa_instruction return_store = {};
-            return_store.operator = OP_STORE;
-            return_store.type = compiler->return_value_ptr.typename;
-            return_store.operands[0] = compiler->return_value_ptr;
-            return_store.operands[1] = implicit_cast(compiler, ast_module, ir_module, statement(compiler, ast_module, ir_module, node->children[0]), return_store.type);
-            block_add(current, return_store);
+            if (node->children_count)
+            {
+                struct ssa_instruction return_store = {};
+                return_store.operator = OP_STORE;
+                return_store.type = compiler->return_value_ptr.typename;
+                return_store.operands[0] = compiler->return_value_ptr;
+                return_store.operands[1] = implicit_cast(compiler, ast_module, ir_module, statement(compiler, ast_module, ir_module, node->children[0]), return_store.type);
+                block_add(current, return_store);
+            }
 
             struct ssa_instruction instruction = {};
             instruction.operator = OP_GOTO;

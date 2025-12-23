@@ -1,15 +1,5 @@
 module program;
 
-f32 abs(f32 x)
+void main()
 {
-    if(x < 0f)
-    {
-        x = -x;
-    }
-    return x;
-}
-
-f32 main(i32 input)
-{
-    return abs(input);
 }

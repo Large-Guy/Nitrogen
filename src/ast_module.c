@@ -22,8 +22,8 @@ struct ast_module* ast_module_new(struct token name) {
 void ast_module_free(struct ast_module* module) {
     free(module->lexers);
     free(module->name);
-    ast_node_free(module->root);
     ast_node_free(module->definitions);
+    ast_node_free(module->root);
     free(module);
 }
 

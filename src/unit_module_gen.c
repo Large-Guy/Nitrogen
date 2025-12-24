@@ -49,7 +49,13 @@ struct unit_module* unit_module_generate(struct ast_module* module)
     chunks->ast = module;
 
     for (int i = 0; i < module->root->children_count; i++) {
-        unit_module_append(chunks, forward(module, module->root->children[i]));
+        struct unit* unit = forward(module, module->root->children[i]);
+        if (unit == NULL)
+        {
+            //TODO: error out
+            continue; //NOTE: skip for now
+        }
+        unit_module_append(chunks, unit);
     }
 
     return chunks;

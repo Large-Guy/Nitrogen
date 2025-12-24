@@ -8,5 +8,5 @@ struct Test
 
 i32[] main(i32*? a, i32[] b)
 {
-    void* a; //SIMD type
+    i32<4> simd; //SIMD type
 }

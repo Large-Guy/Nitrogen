@@ -518,13 +518,74 @@ static struct ast_node* get_sub_symbol(struct ast_node* parent_symbol, struct to
     return NULL;
 }
 
-static struct ast_node* definition(struct parser* parser, bool statement, bool canAssign, bool inlineDeclaration) {
+static struct ast_node* definition_append_attribute(struct parser* parser, struct ast_node* current)
+{
+    if (parser_match(parser, TOKEN_TYPE_STAR))
+    {
+        enum ast_node_type type = AST_NODE_TYPE_REFERENCE;
+        if (parser_match(parser, TOKEN_TYPE_QUESTION))
+        {
+            type = AST_NODE_TYPE_POINTER;
+        }
+        struct ast_node* pointer = ast_node_new(type, parser->previous);
+        ast_node_append_child(pointer, current);
+        return definition_append_attribute(parser, pointer);
+    }
+    if (parser_match(parser, TOKEN_TYPE_STAR_STAR))
+    {
+        struct ast_node* base_pointer = ast_node_new(AST_NODE_TYPE_REFERENCE, parser->previous);
+        ast_node_append_child(base_pointer, current);
+
+        enum ast_node_type type = AST_NODE_TYPE_REFERENCE;
+        if (parser_match(parser, TOKEN_TYPE_QUESTION))
+        {
+            type = AST_NODE_TYPE_POINTER;
+        }
+        struct ast_node* pointer = ast_node_new(type, parser->previous);
+        ast_node_append_child(pointer, base_pointer);
+        return definition_append_attribute(parser, pointer);
+    }
+    if (parser_match(parser, TOKEN_TYPE_LEFT_BRACKET))
+    {
+        struct ast_node* array = ast_node_new(AST_NODE_TYPE_ARRAY, parser->previous);
+
+        ast_node_append_child(array, current);
+        struct ast_node* node = definition_append_attribute(parser, array);
+        if (!parser_check(parser, TOKEN_TYPE_RIGHT_BRACKET))
+        {
+            //TODO: multi-dimensional arrays
+            ast_node_append_child(array, expression(parser));
+        }
+
+        parser_consume(parser, TOKEN_TYPE_RIGHT_BRACKET, "forgotten closing bracket ']'");
+        return node;
+    }
+    if (parser_match(parser, TOKEN_TYPE_LESS))
+    {
+        struct ast_node* simd = ast_node_new(AST_NODE_TYPE_SIMD, parser->previous);
+        parser_consume(parser, TOKEN_TYPE_INTEGER, "SIMD types must have fixed size");
+        struct ast_node* size = ast_node_new(AST_NODE_TYPE_INTEGER, parser->previous);
+        parser_consume(parser, TOKEN_TYPE_GREATER, "forgotten closing '>' for SIMD type");
+        ast_node_append_child(simd, current);
+        ast_node_append_child(simd, size);
+        return definition_append_attribute(parser, simd);
+    }
+    return current;
+}
+
+static struct ast_node* definition_build_type(struct parser* parser)
+{
     struct token type = parser->previous;
     struct ast_node* type_node = get_type_node(parser, type);
     while (parser_match(parser, TOKEN_TYPE_DOT)) {
         parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected sub type after '.'"); //move the dot out of the way
         type_node = get_sub_symbol(type_node, parser->previous);
     }
+    return definition_append_attribute(parser, type_node);
+}
+
+static struct ast_node* definition(struct parser* parser, bool statement, bool canAssign, bool inlineDeclaration) {
+    struct ast_node* type_node = definition_build_type(parser);
     parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected variable name");
     struct token name = parser->previous;
     if (parser_match(parser, TOKEN_TYPE_LEFT_PAREN)) {
@@ -592,7 +653,7 @@ static struct ast_node* struct_statement(struct parser* parser) {
         }
         else if (parser_match_type(parser)) {
             printf("matched type");
-            ast_node_append_child(node, definition(parser, true, false, true));
+            ast_node_free(definition(parser, true, false, true));
         }
         else {
             parser_advance(parser);
@@ -826,12 +887,13 @@ static struct ast_node* struct_type(struct parser* parser) {
 
 static struct ast_node* variable_symbol(struct parser* parser) {
     struct token type = parser->previous;
+    struct ast_node* type_node = definition_build_type(parser);
     parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected identifier after field symbol");
     struct token name = parser->previous;
     if (parser_match(parser, TOKEN_TYPE_LEFT_PAREN)) {
         struct ast_node* node = ast_node_new(AST_NODE_TYPE_FUNCTION, type);
         ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
-        ast_node_append_child(node, get_type_node(parser, type));
+        ast_node_append_child(node, type_node);
         struct ast_node* arguments = ast_node_new(AST_NODE_TYPE_SEQUENCE, token_null);
         ast_node_append_child(node, arguments);
 
@@ -846,9 +908,10 @@ static struct ast_node* variable_symbol(struct parser* parser) {
             skip_block(parser);
         return node;
     }
-    struct ast_node* node = ast_node_new(AST_NODE_TYPE_VARIABLE, type);
+
+    struct ast_node* node = ast_node_new(AST_NODE_TYPE_VARIABLE, token_null);
     ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
-    ast_node_append_child(node, get_type_node(parser, type));
+    ast_node_append_child(node, type_node);
     return node;
 }
 

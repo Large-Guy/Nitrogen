@@ -1,5 +1,12 @@
 module program;
 
-void main()
+struct Test
 {
+    i32[] input;
+    i32[] output;
+}
+
+i32[] main(i32*? a, i32[] b)
+{
+    void* a; //SIMD type
 }

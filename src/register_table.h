@@ -10,7 +10,7 @@ struct variable {
     struct token name;
     uint64_t size;
     uint32_t scope;
-    enum ssa_type type;
+    struct ssa_type type;
     struct operand pointer;
 };
 
@@ -36,8 +36,8 @@ void register_table_end(struct register_table* table);
 
 struct variable* register_table_lookup(struct register_table* table, struct token name);
 
-struct variable* register_table_add(struct register_table* table, struct token name, enum ssa_type type);
+struct variable* register_table_add(struct register_table* table, struct token name, struct ssa_type type);
 
-struct operand register_table_alloc(struct register_table* table, enum ssa_type type);
+struct operand register_table_alloc(struct register_table* table, struct ssa_type type);
 
 #endif //COMPILER_REGISTER_TABLE_H

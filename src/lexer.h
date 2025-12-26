@@ -5,8 +5,12 @@
 
 #include "unit.h"
 
+extern struct token token_null;
+extern struct token token_zero;
+extern struct token token_one;
 
-enum token_type {
+enum token_type
+{
     TOKEN_TYPE_ERROR,
     TOKEN_TYPE_EOF,
 
@@ -124,7 +128,8 @@ enum token_type {
 
 const char* token_type_to_string(enum token_type e);
 
-struct token {
+struct token
+{
     enum token_type type;
     char* start;
     size_t length;

@@ -4,7 +4,8 @@
 #include <stdlib.h>
 
 
-struct ast_node* ast_node_new(enum ast_node_type type, struct token token) {
+struct ast_node* ast_node_new(enum ast_node_type type, struct token token)
+{
     struct ast_node* node = malloc(sizeof(struct ast_node));
     assert(node);
     node->type = type;
@@ -17,23 +18,41 @@ struct ast_node* ast_node_new(enum ast_node_type type, struct token token) {
     return node;
 }
 
-void ast_node_free(struct ast_node* node) {
-    if (node->parent != NULL) {
+void ast_node_free(struct ast_node* node)
+{
+    if (node->parent != NULL)
+    {
         ast_node_remove_child(node->parent, node);
     }
-    for (size_t i = 0; i < node->children_count; i++) {
+    for (size_t i = 0; i < node->children_count; i++)
+    {
         ast_node_free(node->children[i]);
     }
     free(node->children);
     free(node);
 }
 
-void ast_node_append_child(struct ast_node* node, struct ast_node* child) {
-    if (child == NULL) {
+struct ast_node* ast_node_clone(struct ast_node* node)
+{
+    struct ast_node* copy = ast_node_new(node->type, node->token);
+
+    for (size_t i = 0; i < node->children_count; i++)
+    {
+        ast_node_append_child(copy, ast_node_clone(node->children[i]));
+    }
+
+    return copy;
+}
+
+void ast_node_append_child(struct ast_node* node, struct ast_node* child)
+{
+    if (child == NULL)
+    {
         return;
     }
     assert(node->children_capacity != 0); // if this occurs, the node was not initialized properly
-    if (node->children_count >= node->children_capacity) {
+    if (node->children_count >= node->children_capacity)
+    {
         node->children_capacity *= 2;
         node->children = realloc(node->children, node->children_capacity * sizeof(struct ast_node*));
         assert(node->children);
@@ -42,10 +61,14 @@ void ast_node_append_child(struct ast_node* node, struct ast_node* child) {
     child->parent = node;
 }
 
-void ast_node_remove_child(struct ast_node* node, struct ast_node* child) {
-    for (size_t i = 0; i < node->children_count; i++) {
-        if (node->children[i] == child) {
-            for (size_t j = i; j < node->children_count - 1; j++) {
+void ast_node_remove_child(struct ast_node* node, struct ast_node* child)
+{
+    for (size_t i = 0; i < node->children_count; i++)
+    {
+        if (node->children[i] == child)
+        {
+            for (size_t j = i; j < node->children_count - 1; j++)
+            {
                 node->children[j] = node->children[j + 1];
             }
             node->children_count--;
@@ -55,7 +78,8 @@ void ast_node_remove_child(struct ast_node* node, struct ast_node* child) {
     }
 }
 
-static void debug(struct ast_node* node, int32_t depth) {
+static void debug(struct ast_node* node, int32_t depth)
+{
     // Generate a color based on the type number
     const char* colors[] = {
         "\033[31m", // red
@@ -66,71 +90,84 @@ static void debug(struct ast_node* node, int32_t depth) {
         "\033[36m", // cyan
         "\033[37m", // white
     };
-    
-    for (int i = 0; i < depth; i++) {
+
+    for (int i = 0; i < depth; i++)
+    {
         printf("%s| ", colors[i % (sizeof(colors) / sizeof(colors[0]))]);
     }
-    
-    int color_index = node->type % (sizeof(colors)/sizeof(colors[0]));
+
+    int color_index = node->type % (sizeof(colors) / sizeof(colors[0]));
 
     // Print node with type-colored bracket
     printf("%snode\033[0m: [%d] %s %.*s\n",
-           "\033[1;37m",           // "node" in bright white
+           "\033[1;37m", // "node" in bright white
            node->type,
-           colors[color_index],    // color based on type
+           colors[color_index], // color based on type
            (int32_t)node->token.length,
            node->token.start);
 
-    for (int i = 0; i < node->children_count; i++) {
+    for (int i = 0; i < node->children_count; i++)
+    {
         debug(node->children[i], depth + 1);
     }
 }
 
-void ast_node_debug(struct ast_node* node) {
+void ast_node_debug(struct ast_node* node)
+{
     debug(node, 0);
 }
 
-size_t get_node_size(struct ast_module* module, struct ast_node* node) {
-    switch (node->type) {
-    case AST_NODE_TYPE_U8:
-    case AST_NODE_TYPE_I8: return 1;
-    case AST_NODE_TYPE_U16:
-    case AST_NODE_TYPE_I16: return 2;
-    case AST_NODE_TYPE_U32:
-    case AST_NODE_TYPE_I32: return 4;
-    case AST_NODE_TYPE_U64:
-    case AST_NODE_TYPE_I64: return 8;
+struct array_header
+{
+    size_t length;
+    size_t capacity;
+};
 
-    case AST_NODE_TYPE_F32: return 4;
-    case AST_NODE_TYPE_F64: return 8;
+size_t to_power_of_two(size_t x)
+{
+    if (x <= 1) return 1;
+    x--;
+    x |= x >> 1;
+    x |= x >> 2;
+    x |= x >> 4;
+    x |= x >> 8;
+    x |= x >> 16;
+    x |= x >> 32;
+    return x + 1;
+}
 
-    case AST_NODE_TYPE_VOID: return 0;
+size_t get_node_size(struct ast_module* module, struct ast_node* node)
+{
+    switch (node->type)
+    {
+        case AST_NODE_TYPE_U8:
+        case AST_NODE_TYPE_I8: return 1;
+        case AST_NODE_TYPE_U16:
+        case AST_NODE_TYPE_I16: return 2;
+        case AST_NODE_TYPE_U32:
+        case AST_NODE_TYPE_I32: return 4;
+        case AST_NODE_TYPE_U64:
+        case AST_NODE_TYPE_I64: return 8;
 
-    default:
-        fprintf(stderr, "expected a built-in type node\n");
-        return 0;
+        case AST_NODE_TYPE_F32: return 4;
+        case AST_NODE_TYPE_F64: return 8;
+
+        case AST_NODE_TYPE_VOID: return 0;
+
+        case AST_NODE_TYPE_POINTER:
+        case AST_NODE_TYPE_REFERENCE: return sizeof(void*); //TODO: research if you can really just assume this
+
+        case AST_NODE_TYPE_ARRAY: return sizeof(void*) + sizeof(struct array_header);
+
+        case AST_NODE_TYPE_SIMD: return get_node_size(module, node->children[0]) * to_power_of_two(strtol(
+                node->children[1]->token.start, NULL, 10));
+        default:
+            fprintf(stderr, "expected a built-in type node\n");
+            return 0;
     }
 }
 
-enum ssa_type get_node_type(struct ast_module* module, struct ast_node* node) {
-    switch (node->type) {
-    case AST_NODE_TYPE_U8: return TYPE_U8;
-    case AST_NODE_TYPE_I8: return TYPE_I8;
-    case AST_NODE_TYPE_U16: return TYPE_U16;
-    case AST_NODE_TYPE_I16: return TYPE_I16;
-    case AST_NODE_TYPE_U32: return TYPE_U32;
-    case AST_NODE_TYPE_I32: return TYPE_I32;
-    case AST_NODE_TYPE_U64: return TYPE_U64;
-    case AST_NODE_TYPE_I64: return TYPE_I64;
-
-    case AST_NODE_TYPE_F32: return TYPE_F32;
-    case AST_NODE_TYPE_F64: return TYPE_F64;
-
-    case AST_NODE_TYPE_VOID: return TYPE_VOID;
-
-    case AST_NODE_TYPE_TYPE:
-    default:
-        fprintf(stderr, "expected a built-in type node\n");
-        return 0;
-    }
+struct ssa_type get_node_type(struct ast_module* module, struct ast_node* node)
+{
+    return (struct ssa_type){get_node_size(module, node), module, node};
 }

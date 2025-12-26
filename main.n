@@ -1,12 +1,7 @@
 module program;
 
-struct Test
+void main()
 {
-    i32[] input;
-    i32[] output;
-}
-
-i32[] main(i32*? a, i32[] b)
-{
-    i32<4> simd; //SIMD type
+    i32 a;
+    i32* b = &a;
 }

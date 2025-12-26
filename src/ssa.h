@@ -1,9 +1,11 @@
 #ifndef COMPILER_SSA_H
 #define COMPILER_SSA_H
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
-enum ssa_instruction_code {
+enum ssa_instruction_code
+{
     OP_NONE,
     OP_RETURN,
 
@@ -20,13 +22,13 @@ enum ssa_instruction_code {
     OP_BITWISE_NOT,
     OP_BITWISE_LEFT,
     OP_BITWISE_RIGHT,
-    
+
     OP_NEGATE,
     OP_NOT,
 
     OP_AND,
     OP_OR,
-    
+
     OP_LESS,
     OP_LESS_EQUAL,
     OP_GREATER,
@@ -45,21 +47,16 @@ enum ssa_instruction_code {
     OP_CAST,
 };
 
-enum ssa_type {
-    TYPE_VOID,
-    TYPE_U8,
-    TYPE_U16,
-    TYPE_U32,
-    TYPE_U64,
-    TYPE_I8,
-    TYPE_I16,
-    TYPE_I32,
-    TYPE_I64,
-    TYPE_F32,
-    TYPE_F64,
+
+struct ssa_type
+{
+    size_t size;
+    struct ast_module* module;
+    struct ast_node* type;
 };
 
-enum operand_type {
+enum operand_type
+{
     OPERAND_TYPE_NONE,
     OPERAND_TYPE_END,
     OPERAND_TYPE_REGISTER,
@@ -69,26 +66,27 @@ enum operand_type {
     OPERAND_TYPE_IR,
 };
 
-struct operand {
+struct operand
+{
     enum operand_type type;
-    enum ssa_type typename;
-    union {
+    struct ssa_type typename;
+
+    union
+    {
         uint64_t integer;
         double floating;
         struct block* block;
         struct unit* ir;
     } value;
-    
-    bool pointer;
 };
 
 struct operand operand_none();
 
-struct operand operand_reg(uint32_t reg, enum ssa_type type);
+struct operand operand_reg(uint32_t reg, struct ssa_type type);
 
-struct operand operand_const_int(uint64_t constant);
+struct operand operand_const_int(uint64_t value);
 
-struct operand operand_const_float(double constant);
+struct operand operand_const_float(double value);
 
 struct operand operand_block(struct block* block);
 
@@ -98,14 +96,15 @@ struct operand operand_ir(struct unit* ir);
 
 #define MAX_OPERANDS 16
 
-struct ssa_instruction {
+struct ssa_instruction
+{
     enum ssa_instruction_code operator;
 
-    enum ssa_type type;
-    
+    struct ssa_type type;
+
     // this should always be a register
     struct operand result;
-    
+
     // these could be a register or a constant depending on the operator
     struct operand operands[MAX_OPERANDS];
 };

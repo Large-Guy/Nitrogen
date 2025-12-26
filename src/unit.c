@@ -6,9 +6,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ast.h"
 #include "block.h"
 
-struct unit* unit_new(char* symbol, bool global, enum unit_type type) {
+struct unit* unit_new(char* symbol, bool global, enum unit_type type)
+{
     struct unit* chunk = malloc(sizeof(struct unit));
     assert(chunk);
 
@@ -16,25 +18,26 @@ struct unit* unit_new(char* symbol, bool global, enum unit_type type) {
     assert(chunk->arguments);
     chunk->argument_count = 0;
     chunk->argument_capacity = 1;
-    
+
     chunk->symbol = malloc(strlen(symbol) + 1);
     assert(chunk->symbol);
     strcpy(chunk->symbol, symbol);
     chunk->symbol[strlen(symbol)] = '\0';
-    
+
     chunk->type = type;
-    
+
     chunk->global = global;
 
     chunk->blocks = malloc(sizeof(struct block*));
     assert(chunk->blocks);
     chunk->block_count = 0;
     chunk->block_capacity = 1;
-    
+
     return chunk;
 }
 
-struct unit_module* unit_module_new(char* name) {
+struct unit_module* unit_module_new(char* name)
+{
     struct unit_module* list = malloc(sizeof(struct unit_module));
     assert(list);
     list->name = malloc(strlen(name) + 1);
@@ -45,7 +48,8 @@ struct unit_module* unit_module_new(char* name) {
     return list;
 }
 
-void unit_module_free(struct unit_module* list) {
+void unit_module_free(struct unit_module* list)
+{
     assert(list);
     free(list->name);
     for (int i = 0; i < list->unit_count; i++)
@@ -56,8 +60,10 @@ void unit_module_free(struct unit_module* list) {
     free(list);
 }
 
-void unit_module_append(struct unit_module* list, struct unit* chunk) {
-    if (list->unit_count >= list->unit_capacity) {
+void unit_module_append(struct unit_module* list, struct unit* chunk)
+{
+    if (list->unit_count >= list->unit_capacity)
+    {
         list->unit_capacity *= 2;
         list->units = realloc(list->units, list->unit_capacity * sizeof(struct unit*));
         assert(list->units);
@@ -65,29 +71,36 @@ void unit_module_append(struct unit_module* list, struct unit* chunk) {
     list->units[list->unit_count++] = chunk;
 }
 
-void unit_free(struct unit* chunk) {
+void unit_free(struct unit* chunk)
+{
     assert(chunk != NULL);
     free(chunk->symbol);
-    for (int i = 0; i < chunk->block_count; i++) {
+    for (int i = 0; i < chunk->block_count; i++)
+    {
         block_free(chunk->blocks[i]);
     }
     free(chunk->blocks);
     free(chunk);
 }
 
-struct unit* unit_module_find(struct unit_module* module, struct token symbol) {
-    for (int i = 0; i < module->unit_count; i++) {
+struct unit* unit_module_find(struct unit_module* module, struct token symbol)
+{
+    for (int i = 0; i < module->unit_count; i++)
+    {
         struct unit* chunk = module->units[i];
-        if (symbol.length == strlen(chunk->symbol) && memcmp(chunk->symbol, symbol.start, symbol.length) == 0) {
+        if (symbol.length == strlen(chunk->symbol) && memcmp(chunk->symbol, symbol.start, symbol.length) == 0)
+        {
             return module->units[i];
         }
     }
     return NULL;
 }
 
-void unit_add(struct unit* chunk, struct block* block) {
+void unit_add(struct unit* chunk, struct block* block)
+{
     assert(chunk != NULL);
-    if (chunk->block_count >= chunk->block_capacity) {
+    if (chunk->block_count >= chunk->block_capacity)
+    {
         chunk->block_capacity *= 2;
         chunk->blocks = realloc(chunk->blocks, chunk->block_capacity * sizeof(struct ssa_instruction));
         assert(chunk->blocks);
@@ -96,9 +109,11 @@ void unit_add(struct unit* chunk, struct block* block) {
     block->id = chunk->block_count;
 }
 
-void unit_arg(struct unit* chunk, struct operand arg) {
+void unit_arg(struct unit* chunk, struct operand arg)
+{
     assert(chunk != NULL);
-    if (chunk->argument_count >= chunk->argument_capacity) {
+    if (chunk->argument_count >= chunk->argument_capacity)
+    {
         chunk->argument_capacity *= 2;
         chunk->arguments = realloc(chunk->arguments, chunk->argument_capacity * sizeof(struct operand));
         assert(chunk->arguments);
@@ -106,36 +121,83 @@ void unit_arg(struct unit* chunk, struct operand arg) {
     chunk->arguments[chunk->argument_count++] = arg;
 }
 
-static char* type_code_name(enum ssa_type code) {
-    switch (code) {
-        case TYPE_VOID:
-            return "void";
-        case TYPE_U8:
-            return "U8";
-        case TYPE_U16:
-            return "U16";
-        case TYPE_U32:
-            return "U32";
-        case TYPE_U64:
-            return "U64";
-        case TYPE_I8:
-            return "I8";
-        case TYPE_I16:
-            return "I16";
-        case TYPE_I32:
-            return "I32";
-        case TYPE_I64:
-            return "I64";
-        case TYPE_F32:
-            return "F32";
-        case TYPE_F64:
-            return "F64";
+static void ast_node_type_debug(FILE* out, struct ast_node* node)
+{
+    if (node == NULL)
+    {
+        return;
     }
-    return "UNRECOGNIZED TYPE";
+    switch (node->type)
+    {
+        case AST_NODE_TYPE_VOID:
+            fprintf(out, "void");
+            break;
+        case AST_NODE_TYPE_U8:
+            fprintf(out, "u8");
+            break;
+        case AST_NODE_TYPE_U16:
+            fprintf(out, "u16");
+            break;
+        case AST_NODE_TYPE_U32:
+            fprintf(out, "u32");
+            break;
+        case AST_NODE_TYPE_U64:
+            fprintf(out, "u64");
+            break;
+        case AST_NODE_TYPE_I8:
+            fprintf(out, "i8");
+            break;
+        case AST_NODE_TYPE_I16:
+            fprintf(out, "i16");
+            break;
+        case AST_NODE_TYPE_I32:
+            fprintf(out, "i32");
+            break;
+        case AST_NODE_TYPE_I64:
+            fprintf(out, "i64");
+            break;
+        case AST_NODE_TYPE_F32:
+            fprintf(out, "f32");
+            break;
+        case AST_NODE_TYPE_F64:
+            fprintf(out, "f64");
+            break;
+        case AST_NODE_TYPE_REFERENCE:
+            fprintf(out, "ref<");
+            ast_node_type_debug(out, node->children[0]);
+            fprintf(out, ">");
+            break;
+        case AST_NODE_TYPE_POINTER:
+            fprintf(out, "ptr<");
+            ast_node_type_debug(out, node->children[0]);
+            fprintf(out, ">");
+            break;
+        case AST_NODE_TYPE_ARRAY:
+            fprintf(out, "array<");
+            ast_node_type_debug(out, node->children[0]);
+            fprintf(out, ">");
+            break;
+        case AST_NODE_TYPE_SIMD:
+            fprintf(out, "simd<");
+            ast_node_type_debug(out, node->children[0]);
+            fprintf(out, ", %.*s", (int)node->children[1]->token.length, node->children[1]->token.start);
+            fprintf(out, ">");
+            break;
+        default:
+            fprintf(out, "unknown");
+            break;
+    }
 }
 
-static char* operator_name(enum ssa_instruction_code code) {
-    switch (code) {
+static void type_code_name(FILE* out, struct ssa_type code)
+{
+    ast_node_type_debug(out, code.type);
+}
+
+static char* operator_name(enum ssa_instruction_code code)
+{
+    switch (code)
+    {
         case OP_CONST:
             return "const";
         case OP_ADD:
@@ -199,8 +261,10 @@ static char* operator_name(enum ssa_instruction_code code) {
     }
 }
 
-static void operand_debug(struct operand operand, FILE* out) {
-    switch (operand.type) {
+static void operand_debug(struct operand operand, FILE* out)
+{
+    switch (operand.type)
+    {
         case OPERAND_TYPE_END:
             return;
         case OPERAND_TYPE_INTEGER:
@@ -211,14 +275,9 @@ static void operand_debug(struct operand operand, FILE* out) {
             break;
         case OPERAND_TYPE_REGISTER:
             fprintf(out, "[");
-            if (operand.pointer)
-                fprintf(out, "ptreg ");
-            else
-                fprintf(out, "reg ");
-            if (operand.value.integer == 0)
-                fprintf(out, "%%ret: "); // 0 should be the return value of all chunks
-            else
-                fprintf(out, "%%%llu: ", operand.value.integer);
+            fprintf(out, "reg ");
+
+            fprintf(out, "%%%lu: ", operand.value.integer);
             break;
         case OPERAND_TYPE_BLOCK:
             fprintf(out, "[block &%d: ", operand.value.block->id);
@@ -229,40 +288,48 @@ static void operand_debug(struct operand operand, FILE* out) {
             fprintf(out, "[func @%s: ", operand.value.ir->symbol);
             break;
     }
-    fprintf(out, "%s] ", type_code_name(operand.typename));
+    type_code_name(out, operand.typename);
+    fprintf(out, "] ");
 }
 
-static void instruction_debug(struct ssa_instruction instruction, FILE* out) {
+static void instruction_debug(struct ssa_instruction instruction, FILE* out)
+{
     operand_debug(instruction.result, out);
 
     if (instruction.result.type > OPERAND_TYPE_END)
         fprintf(out, "= ");
-    
+
     fprintf(out, "%s ", operator_name(instruction.operator));
 
     for (int i = 0; i < MAX_OPERANDS; i++)
         operand_debug(instruction.operands[i], out);
-    
-    fprintf(out, "%s", type_code_name(instruction.type));
+
+    type_code_name(out, instruction.type);
 }
 
-static void block_debug(struct block* block) {
-    if (!block->entry) {
+static void block_debug(struct block* block)
+{
+    if (!block->entry)
+    {
         printf("dominated by: ");
-        for (int i = 0; i < block->parents_count; i++) {
+        for (int i = 0; i < block->parents_count; i++)
+        {
             struct block* parent = block->parents[i];
             printf("BLOCK [%d] ", parent->id);
         }
         printf("---> ");
     }
     printf("BLOCK [%d] ---\n", block->id);
-    for (int i = 0; i < block->instructions_count; i++) {
+    for (int i = 0; i < block->instructions_count; i++)
+    {
         instruction_debug(block->instructions[i], stdout);
         printf("\n");
     }
-    if (block->children_count > 0) {
+    if (block->children_count > 0)
+    {
         printf("dominates: ");
-        for (int i = 0; i < block->children_count; i++) {
+        for (int i = 0; i < block->children_count; i++)
+        {
             struct block* child = block->children[i];
             printf("BLOCK [%d] ", child->id);
         }
@@ -271,15 +338,18 @@ static void block_debug(struct block* block) {
     printf("\n");
 }
 
-void unit_debug(struct unit* chunk) {
+void unit_debug(struct unit* chunk)
+{
     assert(chunk != NULL);
     assert(chunk->blocks != NULL);
-    for (size_t i = 0; i < chunk->block_count; i++) {
+    for (size_t i = 0; i < chunk->block_count; i++)
+    {
         block_debug(chunk->blocks[i]);
     }
 }
 
-static void block_build_graph(char* name, struct block* block, FILE* out) {
+static void block_build_graph(char* name, struct block* block, FILE* out)
+{
     fprintf(out, "  %s_bb%d [label=\"", name, block->id);
     if (block->entry)
         fprintf(out, ".ENTRY");
@@ -288,15 +358,18 @@ static void block_build_graph(char* name, struct block* block, FILE* out) {
     else
         fprintf(out, ".BLOCK %d", block->id);
     fprintf(out, "\\l");
-    for (int i = 0; i < block->instructions_count; i++) {
+    for (int i = 0; i < block->instructions_count; i++)
+    {
         instruction_debug(block->instructions[i], out);
         fprintf(out, "\\l");
     }
     fprintf(out, "\"];\n");
 }
 
-static void recursive_link(char* name, struct block* block, FILE* out) {
-    for (int i = 0; i < block->children_count; i++) {
+static void recursive_link(char* name, struct block* block, FILE* out)
+{
+    for (int i = 0; i < block->children_count; i++)
+    {
         struct block* child = block->children[i];
         fprintf(out, "    %s_bb%d -> %s_bb%d [color=black];\n", name, block->id, name, child->id);
         if (child->parents_count == 1 || child->parents[0] == block)
@@ -304,14 +377,17 @@ static void recursive_link(char* name, struct block* block, FILE* out) {
     }
 }
 
-void unit_build_graph(struct unit* chunk, FILE* out) {
+void unit_build_graph(struct unit* chunk, FILE* out)
+{
     assert(chunk != NULL);
     assert(chunk->blocks != NULL);
 
     fprintf(out, "  subgraph cluster_%s {\n", chunk->symbol);
     fprintf(out, "    label=\"%s(", chunk->symbol);
-    for (int i = 0; i < chunk->argument_count; i++) {
-        if (i > 0) {
+    for (int i = 0; i < chunk->argument_count; i++)
+    {
+        if (i > 0)
+        {
             fprintf(out, ", ");
         }
         operand_debug(chunk->arguments[i], out);
@@ -320,8 +396,9 @@ void unit_build_graph(struct unit* chunk, FILE* out) {
     fprintf(out, "    style=filled;\n");
     fprintf(out, "    color=lightgrey;\n");
     fprintf(out, "    node [style=filled, color=white];\n");
-    
-    for (size_t i = 0; i < chunk->block_count; i++) {
+
+    for (size_t i = 0; i < chunk->block_count; i++)
+    {
         struct block* block = chunk->blocks[i];
         block_build_graph(chunk->symbol, block, out);
     }
@@ -331,7 +408,8 @@ void unit_build_graph(struct unit* chunk, FILE* out) {
     fprintf(out, "    }\n");
 }
 
-void unit_module_debug(struct unit_module* module) {
+void unit_module_debug(struct unit_module* module)
+{
     for (int i = 0; i < module->unit_count; i++)
     {
         printf("CHUNK [%s] ---\n", module->units[i]->symbol);
@@ -340,12 +418,12 @@ void unit_module_debug(struct unit_module* module) {
     }
 }
 
-void unit_module_debug_graph(struct unit_module* module, FILE* out) {
-    
+void unit_module_debug_graph(struct unit_module* module, FILE* out)
+{
     fprintf(out, "digraph \"SSA+CFG\" {\n");
     fprintf(out, "  node [shape=box, fontname=\"Maple Mono\"];\n");
     fprintf(out, "  compound=true;\n");
-    
+
     for (int i = 0; i < module->unit_count; i++)
     {
         unit_build_graph(module->units[i], out);
@@ -354,6 +432,7 @@ void unit_module_debug_graph(struct unit_module* module, FILE* out) {
     fprintf(out, "  }\n");
 }
 
-char* unit_compile(struct unit* chunk, FILE* out) {
+char* unit_compile(struct unit* chunk, FILE* out)
+{
     //TODO: compile to ARM64
 }

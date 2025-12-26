@@ -6,7 +6,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct lexer {
+struct token token_null = {0, NULL, 0, 0};
+struct token token_zero = {TOKEN_TYPE_INTEGER, "0", 1, 0};
+struct token token_one = {TOKEN_TYPE_INTEGER, "1", 1, 0};
+
+struct lexer
+{
     char* source;
     char* start;
     char* current;
@@ -17,11 +22,13 @@ struct lexer {
     size_t tokens_capacity;
 };
 
-static bool is_end(const struct lexer* lexer) {
+static bool is_end(const struct lexer* lexer)
+{
     return *lexer->current == '\0';
 }
 
-static struct token make_token(const struct lexer* lexer, enum token_type type) {
+static struct token make_token(const struct lexer* lexer, enum token_type type)
+{
     struct token token;
     token.start = lexer->start;
     token.length = lexer->current - lexer->start;
@@ -30,12 +37,14 @@ static struct token make_token(const struct lexer* lexer, enum token_type type) 
     return token;
 }
 
-char advance(struct lexer* lexer) {
+char advance(struct lexer* lexer)
+{
     lexer->current++;
     return lexer->current[-1];
 }
 
-static bool match(struct lexer* lexer, char expected) {
+static bool match(struct lexer* lexer, char expected)
+{
     if (is_end(lexer))
         return false;
     if (*lexer->current != expected)
@@ -44,30 +53,39 @@ static bool match(struct lexer* lexer, char expected) {
     return true;
 }
 
-static char peek(const struct lexer* lexer) {
+static char peek(const struct lexer* lexer)
+{
     return *lexer->current;
 }
 
-static char peek_next(const struct lexer* lexer) {
+static char peek_next(const struct lexer* lexer)
+{
     if (is_end(lexer))
         return '\0';
     return lexer->current[1];
 }
 
-static void skip_whitespace(struct lexer* lexer) {
-    while (true) {
+static void skip_whitespace(struct lexer* lexer)
+{
+    while (true)
+    {
         char c = peek(lexer);
-        switch (c) {
-            case '/': {
-                if (peek_next(lexer) == '/') {
-                    while (peek(lexer) != '\n' && !is_end(lexer)) {
-                        advance(lexer);
+        switch (c)
+        {
+            case '/':
+                {
+                    if (peek_next(lexer) == '/')
+                    {
+                        while (peek(lexer) != '\n' && !is_end(lexer))
+                        {
+                            advance(lexer);
+                        }
+                    }
+                    else
+                    {
+                        return;
                     }
                 }
-                else {
-                    return;
-                }
-            }
             case '\n':
                 lexer->line++;
             case ' ':
@@ -80,9 +98,12 @@ static void skip_whitespace(struct lexer* lexer) {
     }
 }
 
-static struct token string(struct lexer* lexer) {
-    while (peek(lexer) != '"' && !is_end(lexer)) {
-        if (peek_next(lexer) == '\n') {
+static struct token string(struct lexer* lexer)
+{
+    while (peek(lexer) != '"' && !is_end(lexer))
+    {
+        if (peek_next(lexer) == '\n')
+        {
             lexer->line++;
         }
         advance(lexer);
@@ -94,27 +115,33 @@ static struct token string(struct lexer* lexer) {
     return make_token(lexer, TOKEN_TYPE_STRING_LITERAL);
 }
 
-static bool is_digit(char c) {
+static bool is_digit(char c)
+{
     return c >= '0' && c <= '9';
 }
 
-static struct token number(struct lexer* lexer) {
+static struct token number(struct lexer* lexer)
+{
     bool floating = false;
 
-    while (is_digit(peek(lexer))) {
+    while (is_digit(peek(lexer)))
+    {
         advance(lexer);
     }
 
-    if (peek(lexer) == '.' && is_digit(peek_next(lexer))) {
+    if (peek(lexer) == '.' && is_digit(peek_next(lexer)))
+    {
         floating = true;
         advance(lexer);
 
-        while (is_digit(peek(lexer))) {
+        while (is_digit(peek(lexer)))
+        {
             advance(lexer);
         }
     }
 
-    if (peek(lexer) == 'f') {
+    if (peek(lexer) == 'f')
+    {
         floating = true;
         advance(lexer);
     }
@@ -122,111 +149,141 @@ static struct token number(struct lexer* lexer) {
     return make_token(lexer, floating ? TOKEN_TYPE_FLOATING : TOKEN_TYPE_INTEGER);
 }
 
-static bool is_alpha(char c) {
+static bool is_alpha(char c)
+{
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
 }
 
-static enum token_type check_keyword(struct lexer* lexer, uint32_t start, uint32_t length, const char* rest, enum token_type type) {
-    if (lexer->current - lexer->start == start + length && memcmp(lexer->start + start, rest, length) == 0) {
+static enum token_type check_keyword(struct lexer* lexer, uint32_t start, uint32_t length, const char* rest,
+                                     enum token_type type)
+{
+    if (lexer->current - lexer->start == start + length && memcmp(lexer->start + start, rest, length) == 0)
+    {
         return type;
     }
     return TOKEN_TYPE_IDENTIFIER;
 }
 
-static enum token_type type(struct lexer* lexer) {
-    switch (*lexer->start) {
-        case 'r': {
-            if (lexer->current - lexer->start > 1 && lexer->start[1] == 'e' && lexer->current - lexer->start > 2) {
-                switch (lexer->start[2]) {
-                    case 'f': return check_keyword(lexer, 2, 0, "", TOKEN_TYPE_REF);
-                    case 't': return check_keyword(lexer, 2, 4, "turn", TOKEN_TYPE_RETURN);
-                }
-            }
-            break;
-        }
-        case 'v': return check_keyword(lexer, 1, 3, "oid", TOKEN_TYPE_VOID);
-        case 'i': {
-            if (lexer->current - lexer->start > 1) {
-                switch (lexer->start[1]) {
-                    case '8': return check_keyword(lexer, 2, 0, "", TOKEN_TYPE_I8);
-                    case '1': return check_keyword(lexer, 2, 1, "6", TOKEN_TYPE_I16);
-                    case '3': return check_keyword(lexer, 2, 1, "2", TOKEN_TYPE_I32);
-                    case '6': return check_keyword(lexer, 2, 1, "4", TOKEN_TYPE_I64);
-                    case 's': return check_keyword(lexer, 2, 3, "ize", TOKEN_TYPE_ISIZE);
-                    case 'm': return check_keyword(lexer, 2, 4, "port", TOKEN_TYPE_IMPORT);
-                    case 'f': return check_keyword(lexer, 2, 0, "", TOKEN_TYPE_IF);
-                    case 'n': return check_keyword(lexer, 2, 7, "terface", TOKEN_TYPE_INTERFACE);
-                    default: break;
-                }
-            }
-            break;
-        }
-        case 'u': {
-            if (lexer->current - lexer->start > 1) {
-                switch (lexer->start[1]) {
-                    case '8': return check_keyword(lexer, 2, 0, "", TOKEN_TYPE_U8);
-                    case '1': return check_keyword(lexer, 2, 1, "6", TOKEN_TYPE_U16);
-                    case '3': return check_keyword(lexer, 2, 1, "2", TOKEN_TYPE_U32);
-                    case '6': return check_keyword(lexer, 2, 1, "4", TOKEN_TYPE_U64);
-                    case 's': return check_keyword(lexer, 2, 3, "ize", TOKEN_TYPE_USIZE);
-                    case 'n': return check_keyword(lexer, 2, 3, "ion", TOKEN_TYPE_UNION);
-                    default: break;
-                }
-            }
-            break;
-        }
-        case 's': {
-            if (lexer->current - lexer->start > 1 && lexer->start[1] == 't' && lexer->current - lexer->start > 2) {
-                switch (lexer->start[2]) {
-                    case 'r': {
-                        if (lexer->current - lexer->start > 3) {
-                            switch (lexer->start[3]) {
-                                case 'i': return check_keyword(lexer, 4, 2, "ng", TOKEN_TYPE_STRING);
-                                case 'u': return check_keyword(lexer, 4, 2, "ct", TOKEN_TYPE_STRUCT);
-                                default: break;
-                            }
-                        }
-                        break;
+static enum token_type type(struct lexer* lexer)
+{
+    switch (*lexer->start)
+    {
+        case 'r':
+            {
+                if (lexer->current - lexer->start > 1 && lexer->start[1] == 'e' && lexer->current - lexer->start > 2)
+                {
+                    switch (lexer->start[2])
+                    {
+                        case 'f': return check_keyword(lexer, 2, 0, "", TOKEN_TYPE_REF);
+                        case 't': return check_keyword(lexer, 2, 4, "turn", TOKEN_TYPE_RETURN);
                     }
-                    case 'a': return check_keyword(lexer, 3, 3, "tic", TOKEN_TYPE_STATIC);
-                    default: break;
                 }
+                break;
             }
-            break;
-        }
-        case 'm': {
-            if (lexer->current - lexer->start > 1 && lexer->start[1] == 'o' && lexer->current - lexer->start > 2) {
-                switch (lexer->start[2]) {
-                    case 'v': return check_keyword(lexer, 3, 1, "e", TOKEN_TYPE_MOVE);
-                    case 'd': return check_keyword(lexer, 3, 3, "ule", TOKEN_TYPE_MODULE);
-                    default: break;
+        case 'v': return check_keyword(lexer, 1, 3, "oid", TOKEN_TYPE_VOID);
+        case 'i':
+            {
+                if (lexer->current - lexer->start > 1)
+                {
+                    switch (lexer->start[1])
+                    {
+                        case '8': return check_keyword(lexer, 2, 0, "", TOKEN_TYPE_I8);
+                        case '1': return check_keyword(lexer, 2, 1, "6", TOKEN_TYPE_I16);
+                        case '3': return check_keyword(lexer, 2, 1, "2", TOKEN_TYPE_I32);
+                        case '6': return check_keyword(lexer, 2, 1, "4", TOKEN_TYPE_I64);
+                        case 's': return check_keyword(lexer, 2, 3, "ize", TOKEN_TYPE_ISIZE);
+                        case 'm': return check_keyword(lexer, 2, 4, "port", TOKEN_TYPE_IMPORT);
+                        case 'f': return check_keyword(lexer, 2, 0, "", TOKEN_TYPE_IF);
+                        case 'n': return check_keyword(lexer, 2, 7, "terface", TOKEN_TYPE_INTERFACE);
+                        default: break;
+                    }
                 }
+                break;
             }
-            break;
-        }
-        case 'c': {
-            if (lexer->current - lexer->start > 1 && lexer->start[1] == 'o' && lexer->current - lexer->start > 2) {
-                switch (lexer->start[2]) {
-                    case 'p': return check_keyword(lexer, 3, 1, "y", TOKEN_TYPE_COPY);
-                    case 'n': return check_keyword(lexer, 3, 2, "st", TOKEN_TYPE_CONST);
-                    default: break;
+        case 'u':
+            {
+                if (lexer->current - lexer->start > 1)
+                {
+                    switch (lexer->start[1])
+                    {
+                        case '8': return check_keyword(lexer, 2, 0, "", TOKEN_TYPE_U8);
+                        case '1': return check_keyword(lexer, 2, 1, "6", TOKEN_TYPE_U16);
+                        case '3': return check_keyword(lexer, 2, 1, "2", TOKEN_TYPE_U32);
+                        case '6': return check_keyword(lexer, 2, 1, "4", TOKEN_TYPE_U64);
+                        case 's': return check_keyword(lexer, 2, 3, "ize", TOKEN_TYPE_USIZE);
+                        case 'n': return check_keyword(lexer, 2, 3, "ion", TOKEN_TYPE_UNION);
+                        default: break;
+                    }
                 }
+                break;
             }
-            break;
-        }
+        case 's':
+            {
+                if (lexer->current - lexer->start > 1 && lexer->start[1] == 't' && lexer->current - lexer->start > 2)
+                {
+                    switch (lexer->start[2])
+                    {
+                        case 'r':
+                            {
+                                if (lexer->current - lexer->start > 3)
+                                {
+                                    switch (lexer->start[3])
+                                    {
+                                        case 'i': return check_keyword(lexer, 4, 2, "ng", TOKEN_TYPE_STRING);
+                                        case 'u': return check_keyword(lexer, 4, 2, "ct", TOKEN_TYPE_STRUCT);
+                                        default: break;
+                                    }
+                                }
+                                break;
+                            }
+                        case 'a': return check_keyword(lexer, 3, 3, "tic", TOKEN_TYPE_STATIC);
+                        default: break;
+                    }
+                }
+                break;
+            }
+        case 'm':
+            {
+                if (lexer->current - lexer->start > 1 && lexer->start[1] == 'o' && lexer->current - lexer->start > 2)
+                {
+                    switch (lexer->start[2])
+                    {
+                        case 'v': return check_keyword(lexer, 3, 1, "e", TOKEN_TYPE_MOVE);
+                        case 'd': return check_keyword(lexer, 3, 3, "ule", TOKEN_TYPE_MODULE);
+                        default: break;
+                    }
+                }
+                break;
+            }
+        case 'c':
+            {
+                if (lexer->current - lexer->start > 1 && lexer->start[1] == 'o' && lexer->current - lexer->start > 2)
+                {
+                    switch (lexer->start[2])
+                    {
+                        case 'p': return check_keyword(lexer, 3, 1, "y", TOKEN_TYPE_COPY);
+                        case 'n': return check_keyword(lexer, 3, 2, "st", TOKEN_TYPE_CONST);
+                        default: break;
+                    }
+                }
+                break;
+            }
         case 'n': return check_keyword(lexer, 1, 3, "ull", TOKEN_TYPE_NULL);
         case 't': return check_keyword(lexer, 1, 3, "rue", TOKEN_TYPE_TRUE);
-        case 'f': {
-            if (lexer->current - lexer->start > 1) {
-                switch (lexer->start[1]) {
-                    case 'a': return check_keyword(lexer, 2, 3, "lse", TOKEN_TYPE_FALSE);
-                    case 'o': return check_keyword(lexer, 2, 1, "r", TOKEN_TYPE_FOR);
-                    case '3': return check_keyword(lexer, 2, 1, "2", TOKEN_TYPE_F32);
-                    case '6': return check_keyword(lexer, 2, 1, "4", TOKEN_TYPE_F64);
-                    default: break;
+        case 'f':
+            {
+                if (lexer->current - lexer->start > 1)
+                {
+                    switch (lexer->start[1])
+                    {
+                        case 'a': return check_keyword(lexer, 2, 3, "lse", TOKEN_TYPE_FALSE);
+                        case 'o': return check_keyword(lexer, 2, 1, "r", TOKEN_TYPE_FOR);
+                        case '3': return check_keyword(lexer, 2, 1, "2", TOKEN_TYPE_F32);
+                        case '6': return check_keyword(lexer, 2, 1, "4", TOKEN_TYPE_F64);
+                        default: break;
+                    }
                 }
             }
-        }
         case 'e': return check_keyword(lexer, 1, 3, "lse", TOKEN_TYPE_ELSE);
         case 'w': return check_keyword(lexer, 1, 4, "hile", TOKEN_TYPE_WHILE);
         case 'd': return check_keyword(lexer, 1, 1, "o", TOKEN_TYPE_DO);
@@ -236,31 +293,38 @@ static enum token_type type(struct lexer* lexer) {
     return TOKEN_TYPE_IDENTIFIER;
 }
 
-static struct token identifier(struct lexer* lexer) {
+static struct token identifier(struct lexer* lexer)
+{
     while (is_alpha(peek(lexer)) || is_digit(peek(lexer)))
         advance(lexer);
     return make_token(lexer, type(lexer));
 }
 
-static struct token lexer_scan(struct lexer* lexer) {
+static struct token lexer_scan(struct lexer* lexer)
+{
     skip_whitespace(lexer);
 
     lexer->start = lexer->current;
 
-    if (is_end(lexer)) {
+    if (is_end(lexer))
+    {
         return make_token(lexer, TOKEN_TYPE_EOF);
     }
 
     char c = advance(lexer);
 
-    if (is_alpha(c)) {
+    if (is_alpha(c))
+    {
         return identifier(lexer);
-    } else if (is_digit(c)) {
+    }
+    else if (is_digit(c))
+    {
         return number(lexer);
     }
 
     //Common tokens
-    switch (c) {
+    switch (c)
+    {
         case '(': return make_token(lexer, TOKEN_TYPE_LEFT_PAREN);
         case ')': return make_token(lexer, TOKEN_TYPE_RIGHT_PAREN);
         case '{': return make_token(lexer, TOKEN_TYPE_LEFT_BRACE);
@@ -270,23 +334,51 @@ static struct token lexer_scan(struct lexer* lexer) {
         case ';': return make_token(lexer, TOKEN_TYPE_SEMICOLON);
         case '.': return make_token(lexer, TOKEN_TYPE_DOT);
         case ',': return make_token(lexer, TOKEN_TYPE_COMMA);
-            
-        case ':' : return make_token(lexer, match(lexer, ':') ? TOKEN_TYPE_COLON_COLON : TOKEN_TYPE_COLON);
-        case '+': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_PLUS_EQUAL : match(lexer, '+') ? TOKEN_TYPE_PLUS_PLUS : TOKEN_TYPE_PLUS);
-        case '-': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_MINUS_EQUAL : match(lexer, '-') ? TOKEN_TYPE_MINUS_MINUS : TOKEN_TYPE_MINUS);
-        case '*': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_STAR_EQUAL : match(lexer, '*') ? TOKEN_TYPE_STAR_STAR : TOKEN_TYPE_STAR);
+
+        case ':': return make_token(lexer, match(lexer, ':') ? TOKEN_TYPE_COLON_COLON : TOKEN_TYPE_COLON);
+        case '+': return make_token(lexer, match(lexer, '=')
+                                               ? TOKEN_TYPE_PLUS_EQUAL
+                                               : match(lexer, '+')
+                                               ? TOKEN_TYPE_PLUS_PLUS
+                                               : TOKEN_TYPE_PLUS);
+        case '-': return make_token(lexer, match(lexer, '=')
+                                               ? TOKEN_TYPE_MINUS_EQUAL
+                                               : match(lexer, '-')
+                                               ? TOKEN_TYPE_MINUS_MINUS
+                                               : TOKEN_TYPE_MINUS);
+        case '*': return make_token(lexer, match(lexer, '=')
+                                               ? TOKEN_TYPE_STAR_EQUAL
+                                               : match(lexer, '*')
+                                               ? TOKEN_TYPE_STAR_STAR
+                                               : TOKEN_TYPE_STAR);
         case '?': return make_token(lexer, TOKEN_TYPE_QUESTION);
         case '%': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_PERCENT_EQUAL : TOKEN_TYPE_PERCENT);
         case '/': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_SLASH_EQUAL : TOKEN_TYPE_SLASH);
         case '^': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_CARET_EQUAL : TOKEN_TYPE_CARET);
         case '=': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_EQUAL_EQUAL : TOKEN_TYPE_EQUAL);
         case '!': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_BANG_EQUAL : TOKEN_TYPE_BANG);
-        case '<': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_LESS_EQUAL : match(lexer, '<') ? TOKEN_TYPE_LESS_LESS : TOKEN_TYPE_LESS);
-        case '>': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_GREATER_EQUAL : match(lexer, '>') ? TOKEN_TYPE_GREATER_GREATER : TOKEN_TYPE_GREATER);
+        case '<': return make_token(lexer, match(lexer, '=')
+                                               ? TOKEN_TYPE_LESS_EQUAL
+                                               : match(lexer, '<')
+                                               ? TOKEN_TYPE_LESS_LESS
+                                               : TOKEN_TYPE_LESS);
+        case '>': return make_token(lexer, match(lexer, '=')
+                                               ? TOKEN_TYPE_GREATER_EQUAL
+                                               : match(lexer, '>')
+                                               ? TOKEN_TYPE_GREATER_GREATER
+                                               : TOKEN_TYPE_GREATER);
         case '~': return make_token(lexer, match(lexer, '=') ? TOKEN_TYPE_TILDE_EQUAL : TOKEN_TYPE_TILDE);
 
-        case '&': return make_token(lexer, match(lexer, '&') ? TOKEN_TYPE_AND_AND : match(lexer, '=') ? TOKEN_TYPE_AND_EQUAL : TOKEN_TYPE_AND);
-        case '|': return make_token(lexer, match(lexer, '|') ? TOKEN_TYPE_PIPE_PIPE : match(lexer, '=') ? TOKEN_TYPE_PIPE_EQUAL : TOKEN_TYPE_PIPE);
+        case '&': return make_token(lexer, match(lexer, '&')
+                                               ? TOKEN_TYPE_AND_AND
+                                               : match(lexer, '=')
+                                               ? TOKEN_TYPE_AND_EQUAL
+                                               : TOKEN_TYPE_AND);
+        case '|': return make_token(lexer, match(lexer, '|')
+                                               ? TOKEN_TYPE_PIPE_PIPE
+                                               : match(lexer, '=')
+                                               ? TOKEN_TYPE_PIPE_EQUAL
+                                               : TOKEN_TYPE_PIPE);
 
         case '"': return string(lexer);
         default: break;
@@ -295,7 +387,8 @@ static struct token lexer_scan(struct lexer* lexer) {
     return make_token(lexer, TOKEN_TYPE_ERROR);
 }
 
-struct lexer* lexer_new(char* source) {
+struct lexer* lexer_new(char* source)
+{
     struct lexer* lexer = malloc(sizeof(struct lexer));
     lexer->source = source;
     lexer->start = source;
@@ -308,26 +401,30 @@ struct lexer* lexer_new(char* source) {
     lexer->tokens_capacity = 1;
 
     bool loop = true;
-    while (loop) {
-        
+    while (loop)
+    {
         struct token token = lexer_scan(lexer);
-        if (token.type == TOKEN_TYPE_EOF) {
+        if (token.type == TOKEN_TYPE_EOF)
+        {
             loop = false;
         }
 
-        if (lexer->tokens_count >= lexer->tokens_capacity) {
+        if (lexer->tokens_count >= lexer->tokens_capacity)
+        {
             lexer->tokens_capacity *= 2;
             lexer->tokens = realloc(lexer->tokens, sizeof(struct token) * lexer->tokens_capacity);
             assert(lexer->tokens != NULL);
         }
-        
+
         lexer->tokens[lexer->tokens_count++] = token;
     }
     return lexer;
 }
 
-const char* token_type_to_string(enum token_type e) {
-    switch (e) {
+const char* token_type_to_string(enum token_type e)
+{
+    switch (e)
+    {
         case TOKEN_TYPE_ERROR: return "TOKEN_TYPE_ERROR";
         case TOKEN_TYPE_EOF: return "TOKEN_TYPE_EOF";
         case TOKEN_TYPE_LEFT_PAREN: return "TOKEN_TYPE_LEFT_PAREN";
@@ -404,13 +501,16 @@ const char* token_type_to_string(enum token_type e) {
     }
 }
 
-void lexer_free(struct lexer* lexer) {
+void lexer_free(struct lexer* lexer)
+{
     free(lexer->tokens);
     free(lexer);
 }
 
-struct token lexer_read(struct lexer* lexer, uint32_t index) {
-    if (index >= lexer->tokens_count) {
+struct token lexer_read(struct lexer* lexer, uint32_t index)
+{
+    if (index >= lexer->tokens_count)
+    {
         struct token token = {};
         token.type = TOKEN_TYPE_EOF;
         token.start = NULL;

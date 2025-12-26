@@ -15,7 +15,7 @@ enum unit_type {
 struct unit {
     char* symbol;
     enum unit_type type;
-    enum ssa_type return_type;
+    struct ssa_type return_type;
     bool global;
 
     struct operand* arguments;

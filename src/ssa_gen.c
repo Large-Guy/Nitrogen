@@ -79,6 +79,9 @@ void scope_update_local(struct scope* scope, struct token token, int new_reg)
 
 struct compiler
 {
+    struct ast_module* ast_module;
+    struct unit_module* ir_module;
+
     struct unit* ir;
 
     uint32_t* stack;
@@ -97,11 +100,15 @@ struct compiler
     struct block* exit;
 };
 
-static struct compiler* compiler_new(struct unit* ir, struct ssa_type return_type)
+static struct compiler* compiler_new(struct ast_module* ast_module, struct unit_module* ir_module, struct unit* ir,
+                                     struct ssa_type return_type)
 {
     struct compiler* compiler = malloc(sizeof(struct compiler));
     assert(compiler);
+    compiler->ast_module = ast_module;
+    compiler->ir_module = ir_module;
     compiler->regs = register_table_new();
+    assert(compiler->regs);
     compiler->ir = ir;
     compiler->return_type = return_type;
     compiler->entry = block_new(true, compiler->regs);
@@ -178,11 +185,15 @@ static void compiler_free(struct compiler* compiler)
     free(compiler);
 }
 
-static struct operand statement(struct compiler* compiler, struct ast_module* ast_module, struct unit_module* ir_module,
+//implicit casts
+
+typedef struct operand (*cast_emit_fn)(struct compiler* compiler, struct operand operand, struct ssa_type);
+
+
+static struct operand statement(struct compiler* compiler,
                                 struct ast_node* node);
 
-static struct operand implicit_cast(struct compiler* compiler, struct ast_module* ast_module,
-                                    struct unit_module* ir_module, struct operand operand, struct ssa_type type)
+static struct operand implicit_cast(struct compiler* compiler, struct operand operand, struct ssa_type type)
 {
     if (operand.typename.type->type != type.type->type)
     {
@@ -198,38 +209,33 @@ static struct operand implicit_cast(struct compiler* compiler, struct ast_module
     return operand;
 }
 
-static struct operand binary(struct compiler* compiler, struct ast_module* ast_module, struct unit_module* ir_module,
-                             struct ast_node* node, enum ssa_instruction_code type)
+static struct operand binary(struct compiler* compiler, struct ast_node* node, enum ssa_instruction_code type)
 {
     struct ast_node* left = node->children[0];
     struct ast_node* right = node->children[1];
     struct ssa_instruction instruction = {};
     instruction.operator = type;
-    instruction.operands[0] = statement(compiler, ast_module, ir_module, left);
-    instruction.operands[1] = implicit_cast(compiler, ast_module, ir_module,
-                                            statement(compiler, ast_module, ir_module, right),
-                                            instruction.operands[0].typename);
+    instruction.operands[0] = statement(compiler, left);
+    instruction.operands[1] = implicit_cast(compiler, statement(compiler, right), instruction.operands[0].typename);
     instruction.type = instruction.operands[0].typename;
     instruction.result = register_table_alloc(compiler->regs, instruction.type);
     block_add(compiler->body, instruction);
     return instruction.result;
 }
 
-static struct operand unary(struct compiler* compiler, struct ast_module* ast_module, struct unit_module* ir_module,
-                            struct ast_node* node, enum ssa_instruction_code type)
+static struct operand unary(struct compiler* compiler, struct ast_node* node, enum ssa_instruction_code type)
 {
     struct ast_node* x = node->children[0];
     struct ssa_instruction instruction = {};
     instruction.operator = type;
-    instruction.operands[0] = statement(compiler, ast_module, ir_module, x);
+    instruction.operands[0] = statement(compiler, x);
     instruction.type = instruction.operands[0].typename;
     instruction.result = register_table_alloc(compiler->regs, instruction.type);
     block_add(compiler->body, instruction);
     return instruction.result;
 }
 
-static struct operand statement(struct compiler* compiler, struct ast_module* ast_module, struct unit_module* ir_module,
-                                struct ast_node* node)
+static struct operand statement(struct compiler* compiler, struct ast_node* node)
 {
     struct block* current = compiler->body;
     struct register_table* regs = compiler->regs;
@@ -241,7 +247,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
                 for (int i = 0; i < node->children_count; i++)
                 {
                     struct ast_node* child = node->children[i];
-                    last_operand = statement(compiler, ast_module, ir_module, child);
+                    last_operand = statement(compiler, child);
                     if (last_operand.type == OPERAND_TYPE_END)
                         break;
                 }
@@ -259,83 +265,83 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
             }
         case AST_NODE_TYPE_ADD:
             {
-                return binary(compiler, ast_module, ir_module, node, OP_ADD);
+                return binary(compiler, node, OP_ADD);
             }
         case AST_NODE_TYPE_SUBTRACT:
             {
-                return binary(compiler, ast_module, ir_module, node, OP_SUB);
+                return binary(compiler, node, OP_SUB);
             }
         case AST_NODE_TYPE_MULTIPLY:
             {
-                return binary(compiler, ast_module, ir_module, node, OP_MUL);
+                return binary(compiler, node, OP_MUL);
             }
         case AST_NODE_TYPE_DIVIDE:
             {
-                return binary(compiler, ast_module, ir_module, node, OP_DIV);
+                return binary(compiler, node, OP_DIV);
             }
         case AST_NODE_TYPE_LESS_THAN:
             {
-                return binary(compiler, ast_module, ir_module, node, OP_LESS);
+                return binary(compiler, node, OP_LESS);
             }
         case AST_NODE_TYPE_LESS_THAN_EQUAL:
             {
-                return binary(compiler, ast_module, ir_module, node, OP_LESS_EQUAL);
+                return binary(compiler, node, OP_LESS_EQUAL);
             }
         case AST_NODE_TYPE_GREATER_THAN:
             {
-                return binary(compiler, ast_module, ir_module, node, OP_GREATER);
+                return binary(compiler, node, OP_GREATER);
             }
         case AST_NODE_TYPE_GREATER_THAN_EQUAL:
             {
-                return binary(compiler, ast_module, ir_module, node, OP_GREATER_EQUAL);
+                return binary(compiler, node, OP_GREATER_EQUAL);
             }
         case AST_NODE_TYPE_EQUAL:
             {
-                return binary(compiler, ast_module, ir_module, node, OP_EQUAL);
+                return binary(compiler, node, OP_EQUAL);
             }
         case AST_NODE_TYPE_NOT_EQUAL:
             {
-                return binary(compiler, ast_module, ir_module, node, OP_NOT_EQUAL);
+                return binary(compiler, node, OP_NOT_EQUAL);
             }
         case AST_NODE_TYPE_BITWISE_AND:
             {
-                return binary(compiler, ast_module, ir_module, node, OP_BITWISE_AND);
+                return binary(compiler, node, OP_BITWISE_AND);
             }
         case AST_NODE_TYPE_BITWISE_OR:
             {
-                return binary(compiler, ast_module, ir_module, node, OP_BITWISE_OR);
+                return binary(compiler, node, OP_BITWISE_OR);
             }
         case AST_NODE_TYPE_BITWISE_XOR:
             {
-                return binary(compiler, ast_module, ir_module, node, OP_BITWISE_XOR);
+                return binary(compiler, node, OP_BITWISE_XOR);
             }
         case AST_NODE_TYPE_BITWISE_NOT:
             {
-                return binary(compiler, ast_module, ir_module, node, OP_BITWISE_NOT);
+                return binary(compiler, node, OP_BITWISE_NOT);
             }
         case AST_NODE_TYPE_BITWISE_LEFT:
             {
-                return binary(compiler, ast_module, ir_module, node, OP_BITWISE_LEFT);
+                return binary(compiler, node, OP_BITWISE_LEFT);
             }
         case AST_NODE_TYPE_BITWISE_RIGHT:
             {
-                return binary(compiler, ast_module, ir_module, node, OP_BITWISE_RIGHT);
+                return binary(compiler, node, OP_BITWISE_RIGHT);
             }
         case AST_NODE_TYPE_AND:
             {
-                return binary(compiler, ast_module, ir_module, node, OP_AND);
+                return binary(compiler, node, OP_AND);
             }
         case AST_NODE_TYPE_OR:
             {
-                return binary(compiler, ast_module, ir_module, node, OP_OR);
+                return binary(compiler, node, OP_OR);
             }
         case AST_NODE_TYPE_NEGATE:
             {
-                return unary(compiler, ast_module, ir_module, node, OP_NEGATE);
+                return unary(compiler, node, OP_NEGATE);
             }
         case AST_NODE_TYPE_NOT:
             {
-                return unary(compiler, ast_module, ir_module, node, OP_NOT);
+                return unary(compiler, node, OP_NOT);
             }
         case AST_NODE_TYPE_ADDRESS:
             {
@@ -352,7 +358,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
             {
                 struct ast_node* name = node->children[0];
                 struct ast_node* type_node = node->children[1];
-                struct ssa_type type = get_node_type(ast_module, type_node);
+                struct ssa_type type = get_node_type(compiler->ast_module, type_node);
                 struct ast_node* value = node->children_count > 2 ? node->children[2] : NULL;
                 struct ssa_instruction instruction = {};
                 instruction.operator = OP_ALLOC;
@@ -374,8 +380,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
                 //store the value
                 if (value)
                 {
-                    store.operands[1] = implicit_cast(compiler, ast_module, ir_module,
-                                                      statement(compiler, ast_module, ir_module, value), type);
+                    store.operands[1] = implicit_cast(compiler, statement(compiler, value), type);
                 }
                 else
                 {
@@ -403,9 +408,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
                 instruction.type = symbol->pointer.typename;
                 instruction.result = operand_none();
                 instruction.operands[0] = symbol->pointer;
-                instruction.operands[1] = implicit_cast(compiler, ast_module, ir_module,
-                                                        statement(compiler, ast_module, ir_module, value),
-                                                        instruction.type);
+                instruction.operands[1] = implicit_cast(compiler, statement(compiler, value), instruction.type);
                 block_add(current, instruction);
                 return instruction.result;
             }
@@ -426,15 +429,15 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
                 struct ast_node* name = node->children[0];
                 struct ssa_instruction instruction = {};
                 instruction.operator = OP_CALL;
-                struct unit* call = unit_module_find(ir_module, name->token);
+                struct unit* call = unit_module_find(compiler->ir_module, name->token);
                 assert(call);
                 instruction.type = call->return_type;
                 instruction.operands[0] = operand_ir(call);
 
                 for (int i = 0; i < call->argument_count; i++)
                 {
-                    struct operand arg = statement(compiler, ast_module, ir_module, node->children[i + 1]);
-                    instruction.operands[i + 1] = implicit_cast(compiler, ast_module, ir_module, arg,
+                    struct operand arg = statement(compiler, node->children[i + 1]);
+                    instruction.operands[i + 1] = implicit_cast(compiler, arg,
                                                                 call->arguments[i].typename);
                 }
 
@@ -452,9 +455,8 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
                     return_store.operator = OP_STORE;
                     return_store.type = compiler->return_value_ptr.typename;
                     return_store.operands[0] = compiler->return_value_ptr;
-                    return_store.operands[1] = implicit_cast(compiler, ast_module, ir_module,
-                                                             statement(compiler, ast_module, ir_module,
-                                                                       node->children[0]), return_store.type);
+                    return_store.operands[1] = implicit_cast(compiler, statement(compiler, node->children[0]),
+                                                             return_store.type);
                     block_add(current, return_store);
                 }
 
@@ -477,7 +479,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
 
                 instruction.operator = OP_IF;
                 instruction.result = operand_end();
-                instruction.operands[0] = statement(compiler, ast_module, ir_module, condition);
+                instruction.operands[0] = statement(compiler, condition);
                 instruction.operands[2] = operand_block(after);
 
                 struct ast_node* then = node->children[1];
@@ -489,7 +491,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
 
                 compiler->body = then_block;
 
-                struct operand result = statement(compiler, ast_module, ir_module, then);
+                struct operand result = statement(compiler, then);
 
                 if (result.type != OPERAND_TYPE_END)
                 {
@@ -509,7 +511,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
                     struct ast_node* else_node = node->children[2];
                     instruction.operands[2] = operand_block(else_block);
                     compiler->body = else_block;
-                    result = statement(compiler, ast_module, ir_module, else_node);
+                    result = statement(compiler, else_node);
                     if (result.type != OPERAND_TYPE_END)
                     {
                         struct ssa_instruction goto_instruction = {};
@@ -559,7 +561,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
                 struct ssa_instruction instruction = {};
                 instruction.operator = OP_IF;
                 instruction.result = operand_end();
-                instruction.operands[0] = statement(compiler, ast_module, ir_module, condition);
+                instruction.operands[0] = statement(compiler, condition);
                 instruction.operands[1] = operand_block(body_block);
                 instruction.operands[2] = operand_block(after_block);
                 block_add(loop_block, instruction);
@@ -570,7 +572,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
 
                 //build the body of the loop
                 compiler->body = body_block;
-                struct operand result = statement(compiler, ast_module, ir_module, body);
+                struct operand result = statement(compiler, body);
                 if (result.type != OPERAND_TYPE_END)
                 {
                     block_link(body_block, loop_block);
@@ -587,8 +589,7 @@ static struct operand statement(struct compiler* compiler, struct ast_module* as
     }
 }
 
-static struct operand argument(struct compiler* compiler, struct ast_module* ast_module, struct unit_module* ir_module,
-                               struct ast_node* node)
+static struct operand argument(struct compiler* compiler, struct ast_node* node)
 {
     switch (node->type)
     {
@@ -597,7 +598,7 @@ static struct operand argument(struct compiler* compiler, struct ast_module* ast
                 for (int i = 0; i < node->children_count; i++)
                 {
                     struct ast_node* child = node->children[i];
-                    argument(compiler, ast_module, ir_module, child);
+                    argument(compiler, child);
                 }
                 return operand_none();
             }
@@ -607,7 +608,8 @@ static struct operand argument(struct compiler* compiler, struct ast_module* ast
                 struct ast_node* type = node->children[1];
 
                 //this is special and does not get alloc
-                struct operand variable = register_table_alloc(compiler->regs, get_node_type(ast_module, type));
+                struct operand variable = register_table_alloc(compiler->regs,
+                                                               get_node_type(compiler->ast_module, type));
 
                 unit_arg(compiler->ir, variable);
 
@@ -648,12 +650,12 @@ static void definition(struct unit_module* ir_module, struct ast_module* module,
                 struct ast_node* type = node->children[1]; //type
                 struct ast_node* args = node->children[2]; // args sequence
                 struct ast_node* body = node->children[3]; //function body
-                struct compiler* compiler = compiler_new(ir, ir->return_type);
+                struct compiler* compiler = compiler_new(module, ir_module, ir, ir->return_type);
                 compiler_begin(compiler);
 
-                argument(compiler, module, ir_module, args);
+                argument(compiler, args);
 
-                struct operand operand = statement(compiler, module, ir_module, body);
+                struct operand operand = statement(compiler, body);
 
                 if (operand.type != OPERAND_TYPE_END)
                 {

@@ -7,28 +7,15 @@
 
 enum ast_node_type
 {
-    AST_NODE_TYPE_MODULE,
-    AST_NODE_TYPE_SEQUENCE,
-
-    //statements
-    AST_NODE_TYPE_MODULE_STATEMENT,
-    AST_NODE_TYPE_RETURN_STATEMENT,
-
-    //constants
-    AST_NODE_TYPE_INTEGER,
-    AST_NODE_TYPE_FLOAT,
-
     //types
-    AST_NODE_TYPE_MODULE_NAME,
-    AST_NODE_TYPE_NAME,
-    AST_NODE_TYPE_TYPE,
-
     AST_NODE_TYPE_VOID,
     AST_NODE_TYPE_REFERENCE,
     AST_NODE_TYPE_POINTER,
     AST_NODE_TYPE_ARRAY,
     AST_NODE_TYPE_SIMD,
 
+    AST_NODE_TYPE_BOOL,
+    
     AST_NODE_TYPE_I8,
     AST_NODE_TYPE_I16,
     AST_NODE_TYPE_I32,
@@ -41,6 +28,24 @@ enum ast_node_type
 
     AST_NODE_TYPE_F32,
     AST_NODE_TYPE_F64,
+    
+    AST_NODE_TYPE_TYPE_COUNT, // used for implicit cast table
+    
+    AST_NODE_TYPE_MODULE,
+    AST_NODE_TYPE_SEQUENCE,
+
+    //statements
+    AST_NODE_TYPE_MODULE_STATEMENT,
+    AST_NODE_TYPE_RETURN_STATEMENT,
+
+    //constants
+    AST_NODE_TYPE_INTEGER,
+    AST_NODE_TYPE_FLOAT,
+
+    //names
+    AST_NODE_TYPE_MODULE_NAME,
+    AST_NODE_TYPE_NAME,
+    AST_NODE_TYPE_TYPE,
 
     //declarations OR implementations, depending on context
     AST_NODE_TYPE_VARIABLE,

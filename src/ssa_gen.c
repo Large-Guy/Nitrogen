@@ -185,25 +185,223 @@ static void compiler_free(struct compiler* compiler)
     free(compiler);
 }
 
-//implicit casts
-
-typedef struct operand (*cast_emit_fn)(struct compiler* compiler, struct operand operand, struct ssa_type);
-
-
 static struct operand statement(struct compiler* compiler,
                                 struct ast_node* node);
 
-static struct operand implicit_cast(struct compiler* compiler, struct operand operand, struct ssa_type type)
+//casting rules
+
+static struct operand cast_emit_reinterpret(struct compiler* compiler, struct operand operand, struct ssa_type type);
+
+static struct operand cast_emit_simd(struct compiler* compiler, struct operand operand, struct ssa_type type);
+
+static struct operand cast_emit_boolean(struct compiler* compiler, struct operand operand, struct ssa_type type);
+
+static struct operand cast_emit_signed_int_extend(struct compiler* compiler, struct operand operand, struct ssa_type type);
+
+static struct operand cast_emit_unsigned_int_extend(struct compiler* compiler, struct operand operand, struct ssa_type type);
+
+static struct operand cast_emit_signed_int_truncate(struct compiler* compiler, struct operand operand, struct ssa_type type);
+
+static struct operand cast_emit_unsigned_int_truncate(struct compiler* compiler, struct operand operand, struct ssa_type type);
+
+static struct operand cast_emit_float_truncate(struct compiler* compiler, struct operand operand, struct ssa_type type);
+
+static struct operand cast_emit_float_extend(struct compiler* compiler, struct operand operand, struct ssa_type type);
+
+static struct operand cast_emit_float_to_int(struct compiler* compiler, struct operand operand, struct ssa_type type);
+
+
+
+typedef struct operand (*cast_emit_fn)(struct compiler* compiler, struct operand operand, struct ssa_type);
+
+enum cast_type {
+    CAST_TYPE_INVALID, // cannot do this
+    CAST_TYPE_IMPLICIT, // automatic
+    CAST_TYPE_EXPLICIT, // T(value)
+    CAST_TYPE_UNSAFE, // T!(value)
+};
+
+struct cast_rule {
+    enum cast_type type;
+    cast_emit_fn fn;
+};
+
+static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_COUNT] = {
+    [AST_NODE_TYPE_VOID] = {},
+    [AST_NODE_TYPE_REFERENCE] = {
+        [AST_NODE_TYPE_POINTER] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}
+    },
+    [AST_NODE_TYPE_POINTER] = {
+        [AST_NODE_TYPE_BOOL] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret},
+        [AST_NODE_TYPE_POINTER] = {CAST_TYPE_UNSAFE, cast_emit_reinterpret}
+    },
+    [AST_NODE_TYPE_ARRAY] = {}, //consider allowing explicit array casts?
+    [AST_NODE_TYPE_SIMD] = {
+        [AST_NODE_TYPE_SIMD] = {CAST_TYPE_EXPLICIT, cast_emit_simd}
+    },
+    [AST_NODE_TYPE_BOOL] = {
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_boolean},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_boolean},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_boolean},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_boolean},
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_boolean},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_boolean},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_boolean},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_boolean},
+    },
+    [AST_NODE_TYPE_I8] = {
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_IMPLICIT, cast_emit_signed_int_extend},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_IMPLICIT, cast_emit_signed_int_extend},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_signed_int_extend},
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
+    },
+    [AST_NODE_TYPE_I16] = {
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_IMPLICIT, cast_emit_signed_int_extend},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_signed_int_extend},
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
+    },
+    [AST_NODE_TYPE_I32] = {
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_signed_int_extend},
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
+    },
+    [AST_NODE_TYPE_I64] = {
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
+    },
+    
+    [AST_NODE_TYPE_U8] = {
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_IMPLICIT, cast_emit_unsigned_int_extend},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_IMPLICIT, cast_emit_unsigned_int_extend},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_unsigned_int_extend},
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
+    },
+    [AST_NODE_TYPE_U16] = {
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_IMPLICIT, cast_emit_unsigned_int_extend},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_unsigned_int_extend},
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
+    },
+    [AST_NODE_TYPE_U32] = {
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_unsigned_int_extend},
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
+    },
+    [AST_NODE_TYPE_U64] = {
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
+    },
+    [AST_NODE_TYPE_F32] = {
+        [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_float_extend},
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+        
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+    },
+    [AST_NODE_TYPE_F64] = {
+        [AST_NODE_TYPE_F32] = {CAST_TYPE_EXPLICIT, cast_emit_float_truncate},
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+        
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+    }
+};
+
+enum ast_node_type get_root_type(struct ast_node* node) {
+    return node->type;
+}
+
+// implementations
+
+static struct operand cast_emit_reinterpret(struct compiler* compiler, struct operand operand, struct ssa_type type) {
+    operand.typename.type = ast_node_clone(type.type);
+    return operand;
+}
+
+static struct operand cast_emit_simd(struct compiler* compiler, struct operand operand, struct ssa_type type) {
+    return operand;
+}
+
+static struct operand cast_emit_boolean(struct compiler* compiler, struct operand operand, struct ssa_type type) {
+    return operand;
+}
+
+static struct operand cast_emit_signed_int_extend(struct compiler* compiler, struct operand operand, struct ssa_type type) {
+    return operand;
+}
+
+static struct operand cast_emit_unsigned_int_extend(struct compiler* compiler, struct operand operand, struct ssa_type type) {
+    return operand;
+}
+
+static struct operand cast_emit_signed_int_truncate(struct compiler* compiler, struct operand operand, struct ssa_type type) {
+    return operand;
+}
+
+static struct operand cast_emit_unsigned_int_truncate(struct compiler* compiler, struct operand operand, struct ssa_type type) {
+    return operand;
+}
+
+static struct operand cast_emit_float_truncate(struct compiler* compiler, struct operand operand, struct ssa_type type) {
+    return operand;
+}
+
+static struct operand cast_emit_float_extend(struct compiler* compiler, struct operand operand, struct ssa_type type) {
+    return operand;
+}
+
+static struct operand cast_emit_float_to_int(struct compiler* compiler, struct operand operand, struct ssa_type type) {
+    return operand;
+}
+
+static struct operand cast(struct compiler* compiler, struct operand operand, struct ssa_type type, enum cast_type mode)
 {
-    if (operand.typename.type->type != type.type->type)
-    {
-        struct ssa_instruction cast = {};
-        cast.operator = OP_CAST;
-        cast.type = type;
-        cast.operands[0] = operand;
-        cast.result = register_table_alloc(compiler->regs, type);
-        block_add(compiler->body, cast);
-        return cast.result;
+    enum ast_node_type t = get_root_type(operand.typename.type);
+    
+    struct cast_rule rule = cast_rules[t][get_root_type(type.type)];
+    if (rule.type == mode) {
+        return rule.fn(compiler, operand, type);
     }
 
     return operand;
@@ -216,7 +414,7 @@ static struct operand binary(struct compiler* compiler, struct ast_node* node, e
     struct ssa_instruction instruction = {};
     instruction.operator = type;
     instruction.operands[0] = statement(compiler, left);
-    instruction.operands[1] = implicit_cast(compiler, statement(compiler, right), instruction.operands[0].typename);
+    instruction.operands[1] = cast(compiler, statement(compiler, right), instruction.operands[0].typename, CAST_TYPE_IMPLICIT);
     instruction.type = instruction.operands[0].typename;
     instruction.result = register_table_alloc(compiler->regs, instruction.type);
     block_add(compiler->body, instruction);
@@ -380,7 +578,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
                 //store the value
                 if (value)
                 {
-                    store.operands[1] = implicit_cast(compiler, statement(compiler, value), type);
+                    store.operands[1] = cast(compiler, statement(compiler, value), type, CAST_TYPE_IMPLICIT);
                 }
                 else
                 {
@@ -408,7 +606,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
                 instruction.type = symbol->pointer.typename;
                 instruction.result = operand_none();
                 instruction.operands[0] = symbol->pointer;
-                instruction.operands[1] = implicit_cast(compiler, statement(compiler, value), instruction.type);
+                instruction.operands[1] = cast(compiler, statement(compiler, value), instruction.type, CAST_TYPE_IMPLICIT);
                 block_add(current, instruction);
                 return instruction.result;
             }
@@ -419,7 +617,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
                 struct variable* var = register_table_lookup(current->symbol_table, node->token);
                 instruction.type = var->type;
                 instruction.operands[0] = var->pointer;
-                instruction.result = register_table_alloc(current->symbol_table, var->type);
+                instruction.result = register_table_alloc(current->symbol_table, get_node_type(compiler->ast_module, *var->type.type->children));
                 block_add(current, instruction);
 
                 return instruction.result;
@@ -437,8 +635,8 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
                 for (int i = 0; i < call->argument_count; i++)
                 {
                     struct operand arg = statement(compiler, node->children[i + 1]);
-                    instruction.operands[i + 1] = implicit_cast(compiler, arg,
-                                                                call->arguments[i].typename);
+                    instruction.operands[i + 1] = cast(compiler, arg,
+                                                                call->arguments[i].typename, CAST_TYPE_IMPLICIT);
                 }
 
                 instruction.result = register_table_alloc(current->symbol_table, instruction.type);
@@ -455,8 +653,8 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
                     return_store.operator = OP_STORE;
                     return_store.type = compiler->return_value_ptr.typename;
                     return_store.operands[0] = compiler->return_value_ptr;
-                    return_store.operands[1] = implicit_cast(compiler, statement(compiler, node->children[0]),
-                                                             return_store.type);
+                    return_store.operands[1] = cast(compiler, statement(compiler, node->children[0]),
+                                                             return_store.type, CAST_TYPE_IMPLICIT);
                     block_add(current, return_store);
                 }
 
@@ -585,6 +783,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
         default:
             {
                 fprintf(stderr, "unexpected node type: %d\n", node->type);
+                return operand_none();
             }
     }
 }

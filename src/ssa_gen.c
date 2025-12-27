@@ -486,7 +486,11 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
         case AST_NODE_TYPE_NOT: {
             return unary(compiler, node, OP_NOT);
         }
-        case AST_NODE_TYPE_CAST: {
+        case AST_NODE_TYPE_STATIC_CAST: {
+            struct ast_node* cast_type = node->children[0];
+            struct ast_node* value = node->children[1];
+            struct operand x = statement(compiler, value);
+            return cast(compiler, x, get_node_type(compiler->ast_module, cast_type), CAST_TYPE_EXPLICIT);
         }
         case AST_NODE_TYPE_ADDRESS: {
             struct ast_node* x = node->children[0];

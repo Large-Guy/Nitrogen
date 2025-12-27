@@ -429,7 +429,7 @@ static struct ast_node* unary(struct parser* parser, bool canAssign)
 
 static struct ast_node* cast(struct parser* parser, bool canAssign) {
     struct ast_node* type_node = build_type(parser);
-    struct ast_node* cast_node = ast_node_new(AST_NODE_TYPE_CAST, parser->previous);
+    struct ast_node* cast_node = ast_node_new(AST_NODE_TYPE_STATIC_CAST, parser->previous);
     ast_node_append_child(cast_node, type_node);
     ast_node_append_child(cast_node, parse_precedence(parser, PRECEDENCE_UNARY));
     return cast_node;

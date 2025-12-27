@@ -652,7 +652,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
                     return_store.operator = OP_STORE;
                     return_store.operands[0] = compiler->return_value_ptr;
                     return_store.operands[1] = cast(compiler, statement(compiler, node->children[0]),
-                                                             return_store.type, CAST_TYPE_IMPLICIT);
+                                                             compiler->return_type, CAST_TYPE_IMPLICIT);
                     block_add(current, return_store);
                 }
 

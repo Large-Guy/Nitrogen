@@ -572,7 +572,6 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
                 //ZII
                 struct ssa_instruction store = {};
                 store.operator = OP_STORE;
-                store.type = type;
                 store.operands[0] = instruction.result;
 
                 //store the value
@@ -651,7 +650,6 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
                 {
                     struct ssa_instruction return_store = {};
                     return_store.operator = OP_STORE;
-                    return_store.type = compiler->return_value_ptr.typename;
                     return_store.operands[0] = compiler->return_value_ptr;
                     return_store.operands[1] = cast(compiler, statement(compiler, node->children[0]),
                                                              return_store.type, CAST_TYPE_IMPLICIT);
@@ -823,7 +821,6 @@ static struct operand argument(struct compiler* compiler, struct ast_node* node)
 
                 struct ssa_instruction store = {};
                 store.operator = OP_STORE;
-                store.type = variable.typename;
                 //location
                 store.operands[0] = instruction.result;
                 store.operands[1] = variable;

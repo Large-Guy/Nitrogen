@@ -85,6 +85,8 @@ enum ast_node_type
 
     AST_NODE_TYPE_AND,
     AST_NODE_TYPE_OR,
+    
+    AST_NODE_TYPE_CAST,
 
     //control flow
     AST_NODE_TYPE_IF,

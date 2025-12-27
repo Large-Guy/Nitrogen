@@ -4,6 +4,131 @@
 
 #include "parser.h"
 
+#pragma region utilities
+
+static struct ast_node* expression(struct parser* parser);
+
+static struct ast_node* get_type_node(struct parser* parser, struct token token)
+{
+    switch (token.type)
+    {
+        case TOKEN_TYPE_I8:
+            return ast_node_new(AST_NODE_TYPE_I8, token);
+        case TOKEN_TYPE_I16:
+            return ast_node_new(AST_NODE_TYPE_I16, token);
+        case TOKEN_TYPE_I32:
+            return ast_node_new(AST_NODE_TYPE_I32, token);
+        case TOKEN_TYPE_I64:
+            return ast_node_new(AST_NODE_TYPE_I64, token);
+        case TOKEN_TYPE_U8:
+            return ast_node_new(AST_NODE_TYPE_U8, token);
+        case TOKEN_TYPE_U16:
+            return ast_node_new(AST_NODE_TYPE_U16, token);
+        case TOKEN_TYPE_U32:
+            return ast_node_new(AST_NODE_TYPE_U32, token);
+        case TOKEN_TYPE_U64:
+            return ast_node_new(AST_NODE_TYPE_U64, token);
+        case TOKEN_TYPE_F32:
+            return ast_node_new(AST_NODE_TYPE_F32, token);
+        case TOKEN_TYPE_F64:
+            return ast_node_new(AST_NODE_TYPE_F64, token);
+        case TOKEN_TYPE_VOID:
+            return ast_node_new(AST_NODE_TYPE_VOID, token);
+        case TOKEN_TYPE_IDENTIFIER:
+            return ast_module_get_symbol(parser_scope(parser), token);
+        default:
+            return NULL;
+    }
+}
+
+static struct ast_node* get_sub_symbol(struct ast_node* parent_symbol, struct token name)
+{
+    for (int i = 0; i < parent_symbol->children_count; i++)
+    {
+        struct ast_node* child = parent_symbol->children[i];
+        if (child->type != AST_NODE_TYPE_STRUCT)
+            continue;
+        struct token symbol = (*child->children)->token;
+        if (symbol.length == name.length &&
+            memcmp(symbol.start, name.start, name.length) == 0)
+        {
+            return child;
+        }
+    }
+    return NULL;
+}
+
+
+
+static struct ast_node* append_type_attribute(struct parser* parser, struct ast_node* current)
+{
+    if (parser_match(parser, TOKEN_TYPE_STAR))
+    {
+        enum ast_node_type type = AST_NODE_TYPE_REFERENCE;
+        if (parser_match(parser, TOKEN_TYPE_QUESTION))
+        {
+            type = AST_NODE_TYPE_POINTER;
+        }
+        struct ast_node* pointer = ast_node_new(type, parser->previous);
+        ast_node_append_child(pointer, current);
+        return append_type_attribute(parser, pointer);
+    }
+    if (parser_match(parser, TOKEN_TYPE_STAR_STAR))
+    {
+        struct ast_node* base_pointer = ast_node_new(AST_NODE_TYPE_REFERENCE, parser->previous);
+        ast_node_append_child(base_pointer, current);
+
+        enum ast_node_type type = AST_NODE_TYPE_REFERENCE;
+        if (parser_match(parser, TOKEN_TYPE_QUESTION))
+        {
+            type = AST_NODE_TYPE_POINTER;
+        }
+        struct ast_node* pointer = ast_node_new(type, parser->previous);
+        ast_node_append_child(pointer, base_pointer);
+        return append_type_attribute(parser, pointer);
+    }
+    if (parser_match(parser, TOKEN_TYPE_LEFT_BRACKET))
+    {
+        struct ast_node* array = ast_node_new(AST_NODE_TYPE_ARRAY, parser->previous);
+
+        ast_node_append_child(array, current);
+        struct ast_node* node = append_type_attribute(parser, array);
+        if (!parser_check(parser, TOKEN_TYPE_RIGHT_BRACKET))
+        {
+            //TODO: multi-dimensional arrays
+            ast_node_append_child(array, expression(parser));
+        }
+
+        parser_consume(parser, TOKEN_TYPE_RIGHT_BRACKET, "forgotten closing bracket ']'");
+        return node;
+    }
+    if (parser_match(parser, TOKEN_TYPE_LESS))
+    {
+        struct ast_node* simd = ast_node_new(AST_NODE_TYPE_SIMD, parser->previous);
+        parser_consume(parser, TOKEN_TYPE_INTEGER, "SIMD types must have fixed size");
+        struct ast_node* size = ast_node_new(AST_NODE_TYPE_INTEGER, parser->previous);
+        parser_consume(parser, TOKEN_TYPE_GREATER, "forgotten closing '>' for SIMD type");
+        ast_node_append_child(simd, current);
+        ast_node_append_child(simd, size);
+        return append_type_attribute(parser, simd);
+    }
+    return current;
+}
+
+static struct ast_node* build_type(struct parser* parser)
+{
+    struct token type = parser->previous;
+    struct ast_node* type_node = get_type_node(parser, type);
+    while (parser_match(parser, TOKEN_TYPE_DOT))
+    {
+        parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected sub type after '.'"); //move the dot out of the way
+        type_node = get_sub_symbol(type_node, parser->previous);
+    }
+    return append_type_attribute(parser, type_node);
+}
+
+#pragma endregion 
+
 #pragma region expression
 
 enum precedence
@@ -39,13 +164,13 @@ struct parse_rule
 
 static struct ast_node* parse_precedence(struct parser* parser, enum precedence precedence);
 
-static struct ast_node* expression(struct parser* parser);
-
 static struct ast_node* number(struct parser* parser, bool canAssign);
 
 static struct ast_node* grouping(struct parser* parser, bool canAssign);
 
 static struct ast_node* unary(struct parser* parser, bool canAssign);
+
+static struct ast_node* cast(struct parser* parser, bool canAssign);
 
 static struct ast_node* binary(struct parser* parser, struct ast_node* left, bool canAssign);
 
@@ -126,16 +251,16 @@ struct parse_rule rules[] = {
     [TOKEN_TYPE_UNIQUE] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_SHARED] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_VOID] = {NULL, NULL, PRECEDENCE_NONE},
-    [TOKEN_TYPE_I8] = {NULL, NULL, PRECEDENCE_NONE},
-    [TOKEN_TYPE_I16] = {NULL, NULL, PRECEDENCE_NONE},
-    [TOKEN_TYPE_I32] = {NULL, NULL, PRECEDENCE_NONE},
-    [TOKEN_TYPE_I64] = {NULL, NULL, PRECEDENCE_NONE},
-    [TOKEN_TYPE_U8] = {NULL, NULL, PRECEDENCE_NONE},
-    [TOKEN_TYPE_U16] = {NULL, NULL, PRECEDENCE_NONE},
-    [TOKEN_TYPE_U32] = {NULL, NULL, PRECEDENCE_NONE},
-    [TOKEN_TYPE_U64] = {NULL, NULL, PRECEDENCE_NONE},
-    [TOKEN_TYPE_ISIZE] = {NULL, NULL, PRECEDENCE_NONE},
-    [TOKEN_TYPE_USIZE] = {NULL, NULL, PRECEDENCE_NONE},
+    [TOKEN_TYPE_I8] = {cast, NULL, PRECEDENCE_UNARY},
+    [TOKEN_TYPE_I16] = {cast, NULL, PRECEDENCE_UNARY},
+    [TOKEN_TYPE_I32] = {cast, NULL, PRECEDENCE_UNARY},
+    [TOKEN_TYPE_I64] = {cast, NULL, PRECEDENCE_UNARY},
+    [TOKEN_TYPE_U8] = {cast, NULL, PRECEDENCE_UNARY},
+    [TOKEN_TYPE_U16] = {cast, NULL, PRECEDENCE_UNARY},
+    [TOKEN_TYPE_U32] = {cast, NULL, PRECEDENCE_UNARY},
+    [TOKEN_TYPE_U64] = {cast, NULL, PRECEDENCE_UNARY},
+    [TOKEN_TYPE_ISIZE] = {cast, NULL, PRECEDENCE_UNARY},
+    [TOKEN_TYPE_USIZE] = {cast, NULL, PRECEDENCE_UNARY},
     [TOKEN_TYPE_STRING] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_NULL] = {literal, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_TRUE] = {literal, NULL, PRECEDENCE_NONE},
@@ -300,6 +425,14 @@ static struct ast_node* unary(struct parser* parser, bool canAssign)
                 return NULL;
             }
     }
+}
+
+static struct ast_node* cast(struct parser* parser, bool canAssign) {
+    struct ast_node* type_node = build_type(parser);
+    struct ast_node* cast_node = ast_node_new(AST_NODE_TYPE_CAST, parser->previous);
+    ast_node_append_child(cast_node, type_node);
+    ast_node_append_child(cast_node, parse_precedence(parser, PRECEDENCE_UNARY));
+    return cast_node;
 }
 
 static struct ast_node* literal(struct parser* parser, bool canAssign)
@@ -538,126 +671,9 @@ static struct ast_node* return_statement(struct parser* parser)
     return node;
 }
 
-static struct ast_node* get_type_node(struct parser* parser, struct token token)
-{
-    switch (token.type)
-    {
-        case TOKEN_TYPE_I8:
-            return ast_node_new(AST_NODE_TYPE_I8, token);
-        case TOKEN_TYPE_I16:
-            return ast_node_new(AST_NODE_TYPE_I16, token);
-        case TOKEN_TYPE_I32:
-            return ast_node_new(AST_NODE_TYPE_I32, token);
-        case TOKEN_TYPE_I64:
-            return ast_node_new(AST_NODE_TYPE_I64, token);
-        case TOKEN_TYPE_U8:
-            return ast_node_new(AST_NODE_TYPE_U8, token);
-        case TOKEN_TYPE_U16:
-            return ast_node_new(AST_NODE_TYPE_U16, token);
-        case TOKEN_TYPE_U32:
-            return ast_node_new(AST_NODE_TYPE_U32, token);
-        case TOKEN_TYPE_U64:
-            return ast_node_new(AST_NODE_TYPE_U64, token);
-        case TOKEN_TYPE_F32:
-            return ast_node_new(AST_NODE_TYPE_F32, token);
-        case TOKEN_TYPE_F64:
-            return ast_node_new(AST_NODE_TYPE_F64, token);
-        case TOKEN_TYPE_VOID:
-            return ast_node_new(AST_NODE_TYPE_VOID, token);
-        case TOKEN_TYPE_IDENTIFIER:
-            return ast_module_get_symbol(parser_scope(parser), token);
-        default:
-            return NULL;
-    }
-}
-
-static struct ast_node* get_sub_symbol(struct ast_node* parent_symbol, struct token name)
-{
-    for (int i = 0; i < parent_symbol->children_count; i++)
-    {
-        struct ast_node* child = parent_symbol->children[i];
-        if (child->type != AST_NODE_TYPE_STRUCT)
-            continue;
-        struct token symbol = (*child->children)->token;
-        if (symbol.length == name.length &&
-            memcmp(symbol.start, name.start, name.length) == 0)
-        {
-            return child;
-        }
-    }
-    return NULL;
-}
-
-static struct ast_node* definition_append_attribute(struct parser* parser, struct ast_node* current)
-{
-    if (parser_match(parser, TOKEN_TYPE_STAR))
-    {
-        enum ast_node_type type = AST_NODE_TYPE_REFERENCE;
-        if (parser_match(parser, TOKEN_TYPE_QUESTION))
-        {
-            type = AST_NODE_TYPE_POINTER;
-        }
-        struct ast_node* pointer = ast_node_new(type, parser->previous);
-        ast_node_append_child(pointer, current);
-        return definition_append_attribute(parser, pointer);
-    }
-    if (parser_match(parser, TOKEN_TYPE_STAR_STAR))
-    {
-        struct ast_node* base_pointer = ast_node_new(AST_NODE_TYPE_REFERENCE, parser->previous);
-        ast_node_append_child(base_pointer, current);
-
-        enum ast_node_type type = AST_NODE_TYPE_REFERENCE;
-        if (parser_match(parser, TOKEN_TYPE_QUESTION))
-        {
-            type = AST_NODE_TYPE_POINTER;
-        }
-        struct ast_node* pointer = ast_node_new(type, parser->previous);
-        ast_node_append_child(pointer, base_pointer);
-        return definition_append_attribute(parser, pointer);
-    }
-    if (parser_match(parser, TOKEN_TYPE_LEFT_BRACKET))
-    {
-        struct ast_node* array = ast_node_new(AST_NODE_TYPE_ARRAY, parser->previous);
-
-        ast_node_append_child(array, current);
-        struct ast_node* node = definition_append_attribute(parser, array);
-        if (!parser_check(parser, TOKEN_TYPE_RIGHT_BRACKET))
-        {
-            //TODO: multi-dimensional arrays
-            ast_node_append_child(array, expression(parser));
-        }
-
-        parser_consume(parser, TOKEN_TYPE_RIGHT_BRACKET, "forgotten closing bracket ']'");
-        return node;
-    }
-    if (parser_match(parser, TOKEN_TYPE_LESS))
-    {
-        struct ast_node* simd = ast_node_new(AST_NODE_TYPE_SIMD, parser->previous);
-        parser_consume(parser, TOKEN_TYPE_INTEGER, "SIMD types must have fixed size");
-        struct ast_node* size = ast_node_new(AST_NODE_TYPE_INTEGER, parser->previous);
-        parser_consume(parser, TOKEN_TYPE_GREATER, "forgotten closing '>' for SIMD type");
-        ast_node_append_child(simd, current);
-        ast_node_append_child(simd, size);
-        return definition_append_attribute(parser, simd);
-    }
-    return current;
-}
-
-static struct ast_node* definition_build_type(struct parser* parser)
-{
-    struct token type = parser->previous;
-    struct ast_node* type_node = get_type_node(parser, type);
-    while (parser_match(parser, TOKEN_TYPE_DOT))
-    {
-        parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected sub type after '.'"); //move the dot out of the way
-        type_node = get_sub_symbol(type_node, parser->previous);
-    }
-    return definition_append_attribute(parser, type_node);
-}
-
 static struct ast_node* definition(struct parser* parser, bool statement, bool canAssign, bool inlineDeclaration)
 {
-    struct ast_node* type_node = definition_build_type(parser);
+    struct ast_node* type_node = build_type(parser);
     parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected variable name");
     struct token name = parser->previous;
     if (parser_match(parser, TOKEN_TYPE_LEFT_PAREN))
@@ -1018,7 +1034,7 @@ static struct ast_node* struct_type(struct parser* parser)
 static struct ast_node* variable_symbol(struct parser* parser)
 {
     struct token type = parser->previous;
-    struct ast_node* type_node = definition_build_type(parser);
+    struct ast_node* type_node = build_type(parser);
     parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected identifier after field symbol");
     struct token name = parser->previous;
     if (parser_match(parser, TOKEN_TYPE_LEFT_PAREN))

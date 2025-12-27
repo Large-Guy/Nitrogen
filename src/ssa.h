@@ -84,9 +84,17 @@ struct operand operand_none();
 
 struct operand operand_reg(uint32_t reg, struct ssa_type type);
 
-struct operand operand_const_int(uint64_t value);
+struct operand operand_const_i8(int8_t value);
 
-struct operand operand_const_float(double value);
+struct operand operand_const_i16(int16_t value);
+
+struct operand operand_const_i32(int32_t value);
+
+struct operand operand_const_i64(int64_t value);
+
+struct operand operand_const_f32(float value);
+
+struct operand operand_const_f64(double value);
 
 struct operand operand_block(struct block* block);
 

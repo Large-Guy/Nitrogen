@@ -2,6 +2,6 @@ module program;
 
 void main()
 {
-    i32 a = 15;
-    i64 b = a;
+    i16 a = 360;
+    i32 b = a;
 }

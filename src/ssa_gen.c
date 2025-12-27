@@ -1,6 +1,7 @@
 #include "ssa_gen.h"
 
 #include <assert.h>
+#include <float.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -185,8 +186,7 @@ static void compiler_free(struct compiler* compiler)
     free(compiler);
 }
 
-static struct operand statement(struct compiler* compiler,
-                                struct ast_node* node);
+static struct operand statement(struct compiler* compiler, struct ast_node* node);
 
 //casting rules
 
@@ -211,6 +211,7 @@ struct cast_rule {
 static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_COUNT] = {
     [AST_NODE_TYPE_VOID] = {},
     [AST_NODE_TYPE_REFERENCE] = {
+        [AST_NODE_TYPE_REFERENCE] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_POINTER] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}
     },
     [AST_NODE_TYPE_POINTER] = {
@@ -222,6 +223,7 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
         [AST_NODE_TYPE_SIMD] = {CAST_TYPE_EXPLICIT, cast_emit_static}
     },
     [AST_NODE_TYPE_BOOL] = {
+        [AST_NODE_TYPE_BOOL] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
@@ -232,6 +234,7 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
         [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_I8] = {
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_I16] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
@@ -242,6 +245,7 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
     },
     [AST_NODE_TYPE_I16] = {
         [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_I32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
@@ -252,6 +256,7 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
     [AST_NODE_TYPE_I32] = {
         [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
@@ -262,6 +267,7 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
         [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
@@ -269,6 +275,7 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
     },
     
     [AST_NODE_TYPE_U8] = {
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_U16] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
@@ -279,6 +286,7 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
     },
     [AST_NODE_TYPE_U16] = {
         [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_U32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
@@ -289,6 +297,7 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
     [AST_NODE_TYPE_U32] = {
         [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
@@ -299,12 +308,14 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
         [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_F32] = {
+        [AST_NODE_TYPE_F32] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
@@ -318,6 +329,7 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
     },
     [AST_NODE_TYPE_F64] = {
         [AST_NODE_TYPE_F32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
@@ -343,6 +355,7 @@ static struct operand cast_emit_reinterpret(struct compiler* compiler, struct op
 
 static struct operand cast_emit_static(struct compiler* compiler, struct operand operand, struct ssa_type type) {
     struct ssa_instruction instruction = {};
+    instruction.type = type;
     instruction.operator = OP_CAST;
     instruction.operands[0] = operand;
     instruction.result = register_table_alloc(compiler->regs, type);
@@ -355,12 +368,13 @@ static struct operand cast(struct compiler* compiler, struct operand operand, st
     enum ast_node_type t = get_root_type(operand.typename.type);
     
     struct cast_rule rule = cast_rules[t][get_root_type(type.type)];
-    assert(rule.type != CAST_TYPE_INVALID);
     if (rule.type == mode) {
         return rule.fn(compiler, operand, type);
     }
+    
+    assert(false); //TODO: more robust solution needed
 
-    return operand;
+    return operand_none();
 }
 
 static struct operand binary(struct compiler* compiler, struct ast_node* node, enum ssa_instruction_code type)
@@ -389,6 +403,26 @@ static struct operand unary(struct compiler* compiler, struct ast_node* node, en
     return instruction.result;
 }
 
+struct operand get_int(int64_t value) {
+    if (value >= INT8_MIN && value <= INT8_MAX) {
+        return operand_const_i8((int8_t)value);
+    }
+    if (value >= INT16_MIN && value <= INT16_MAX) {
+        return operand_const_i16((int16_t)value);
+    }
+    if (value >= INT32_MIN && value <= INT32_MAX) {
+        return operand_const_i32((int32_t)value);
+    }
+    return operand_const_i64(value);
+}
+
+struct operand get_float(double value) {
+    if (value >= FLT_MIN && value <= FLT_MAX) {
+        return operand_const_f32((float)value);
+    }
+    return operand_const_f64(value);
+}
+
 static struct operand statement(struct compiler* compiler, struct ast_node* node)
 {
     struct block* current = compiler->body;
@@ -410,12 +444,12 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
         case AST_NODE_TYPE_INTEGER:
             {
                 int64_t immediate = strtoll(node->token.start, NULL, 10);
-                return operand_const_int(immediate);
+                return get_int(immediate);
             }
         case AST_NODE_TYPE_FLOAT:
             {
                 double immediate = strtod(node->token.start, NULL);
-                return operand_const_float(immediate);
+                return get_float(immediate);
             }
         case AST_NODE_TYPE_ADD:
             {
@@ -521,7 +555,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
                 instruction.result = register_table_add(current->symbol_table, name->token, type)->pointer;
 
                 //node size
-                instruction.operands[0] = operand_const_int(type.size);
+                instruction.operands[0] = operand_const_i64(type.size);
 
                 block_add(compiler->entry, instruction);
 
@@ -543,7 +577,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
                         fprintf(stderr, "references MUST be assigned\n");
                         return operand_none();
                     }
-                    store.operands[1] = operand_const_int(0);
+                    store.operands[1] = operand_const_i64(0);
                 }
 
                 block_add(current, store);
@@ -771,7 +805,7 @@ static struct operand argument(struct compiler* compiler, struct ast_node* node)
                 instruction.operator = OP_ALLOC;
                 instruction.type = variable.typename;
                 instruction.result = register_table_add(compiler->regs, name->token, variable.typename)->pointer;
-                instruction.operands[0] = operand_const_int(variable.typename.size);
+                instruction.operands[0] = operand_const_i64(variable.typename.size);
 
                 block_add(compiler->entry, instruction);
 

@@ -1,6 +1,7 @@
 module program;
 
-i32 main()
+void main()
 {
-    return 16;
+    i32 a = 15;
+    i64 b = a;
 }

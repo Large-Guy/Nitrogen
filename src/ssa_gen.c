@@ -192,25 +192,7 @@ static struct operand statement(struct compiler* compiler,
 
 static struct operand cast_emit_reinterpret(struct compiler* compiler, struct operand operand, struct ssa_type type);
 
-static struct operand cast_emit_simd(struct compiler* compiler, struct operand operand, struct ssa_type type);
-
-static struct operand cast_emit_boolean(struct compiler* compiler, struct operand operand, struct ssa_type type);
-
-static struct operand cast_emit_signed_int_extend(struct compiler* compiler, struct operand operand, struct ssa_type type);
-
-static struct operand cast_emit_unsigned_int_extend(struct compiler* compiler, struct operand operand, struct ssa_type type);
-
-static struct operand cast_emit_signed_int_truncate(struct compiler* compiler, struct operand operand, struct ssa_type type);
-
-static struct operand cast_emit_unsigned_int_truncate(struct compiler* compiler, struct operand operand, struct ssa_type type);
-
-static struct operand cast_emit_float_truncate(struct compiler* compiler, struct operand operand, struct ssa_type type);
-
-static struct operand cast_emit_float_extend(struct compiler* compiler, struct operand operand, struct ssa_type type);
-
-static struct operand cast_emit_float_to_int(struct compiler* compiler, struct operand operand, struct ssa_type type);
-
-
+static struct operand cast_emit_static(struct compiler* compiler, struct operand operand, struct ssa_type type);
 
 typedef struct operand (*cast_emit_fn)(struct compiler* compiler, struct operand operand, struct ssa_type);
 
@@ -237,114 +219,114 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
     },
     [AST_NODE_TYPE_ARRAY] = {}, //consider allowing explicit array casts?
     [AST_NODE_TYPE_SIMD] = {
-        [AST_NODE_TYPE_SIMD] = {CAST_TYPE_EXPLICIT, cast_emit_simd}
+        [AST_NODE_TYPE_SIMD] = {CAST_TYPE_EXPLICIT, cast_emit_static}
     },
     [AST_NODE_TYPE_BOOL] = {
-        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_boolean},
-        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_boolean},
-        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_boolean},
-        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_boolean},
-        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_boolean},
-        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_boolean},
-        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_boolean},
-        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_boolean},
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_I8] = {
-        [AST_NODE_TYPE_I16] = {CAST_TYPE_IMPLICIT, cast_emit_signed_int_extend},
-        [AST_NODE_TYPE_I32] = {CAST_TYPE_IMPLICIT, cast_emit_signed_int_extend},
-        [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_signed_int_extend},
-        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
-        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
-        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
-        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_I16] = {
-        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
-        [AST_NODE_TYPE_I32] = {CAST_TYPE_IMPLICIT, cast_emit_signed_int_extend},
-        [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_signed_int_extend},
-        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
-        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
-        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
-        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_I32] = {
-        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
-        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
-        [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_signed_int_extend},
-        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
-        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
-        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
-        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_I64] = {
-        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
-        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
-        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
-        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
-        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
-        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
-        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_extend},
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     
     [AST_NODE_TYPE_U8] = {
-        [AST_NODE_TYPE_U16] = {CAST_TYPE_IMPLICIT, cast_emit_unsigned_int_extend},
-        [AST_NODE_TYPE_U32] = {CAST_TYPE_IMPLICIT, cast_emit_unsigned_int_extend},
-        [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_unsigned_int_extend},
-        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
-        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
-        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
-        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_U16] = {
-        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
-        [AST_NODE_TYPE_U32] = {CAST_TYPE_IMPLICIT, cast_emit_unsigned_int_extend},
-        [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_unsigned_int_extend},
-        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
-        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
-        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
-        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_U32] = {
-        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
-        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
-        [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_unsigned_int_extend},
-        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
-        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
-        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
-        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_U64] = {
-        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
-        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
-        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_unsigned_int_truncate},
-        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
-        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
-        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_truncate},
-        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_signed_int_extend},
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_F32] = {
-        [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_float_extend},
-        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
-        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
-        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
-        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+        [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         
-        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
-        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
-        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
-        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_F64] = {
-        [AST_NODE_TYPE_F32] = {CAST_TYPE_EXPLICIT, cast_emit_float_truncate},
-        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
-        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
-        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
-        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+        [AST_NODE_TYPE_F32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         
-        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
-        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
-        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
-        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_float_to_int},
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     }
 };
 
@@ -359,40 +341,13 @@ static struct operand cast_emit_reinterpret(struct compiler* compiler, struct op
     return operand;
 }
 
-static struct operand cast_emit_simd(struct compiler* compiler, struct operand operand, struct ssa_type type) {
-    return operand;
-}
-
-static struct operand cast_emit_boolean(struct compiler* compiler, struct operand operand, struct ssa_type type) {
-    return operand;
-}
-
-static struct operand cast_emit_signed_int_extend(struct compiler* compiler, struct operand operand, struct ssa_type type) {
-    return operand;
-}
-
-static struct operand cast_emit_unsigned_int_extend(struct compiler* compiler, struct operand operand, struct ssa_type type) {
-    return operand;
-}
-
-static struct operand cast_emit_signed_int_truncate(struct compiler* compiler, struct operand operand, struct ssa_type type) {
-    return operand;
-}
-
-static struct operand cast_emit_unsigned_int_truncate(struct compiler* compiler, struct operand operand, struct ssa_type type) {
-    return operand;
-}
-
-static struct operand cast_emit_float_truncate(struct compiler* compiler, struct operand operand, struct ssa_type type) {
-    return operand;
-}
-
-static struct operand cast_emit_float_extend(struct compiler* compiler, struct operand operand, struct ssa_type type) {
-    return operand;
-}
-
-static struct operand cast_emit_float_to_int(struct compiler* compiler, struct operand operand, struct ssa_type type) {
-    return operand;
+static struct operand cast_emit_static(struct compiler* compiler, struct operand operand, struct ssa_type type) {
+    struct ssa_instruction instruction = {};
+    instruction.operator = OP_CAST;
+    instruction.operands[0] = operand;
+    instruction.result = register_table_alloc(compiler->regs, type);
+    block_add(compiler->body, instruction);
+    return instruction.result;
 }
 
 static struct operand cast(struct compiler* compiler, struct operand operand, struct ssa_type type, enum cast_type mode)
@@ -400,6 +355,7 @@ static struct operand cast(struct compiler* compiler, struct operand operand, st
     enum ast_node_type t = get_root_type(operand.typename.type);
     
     struct cast_rule rule = cast_rules[t][get_root_type(type.type)];
+    assert(rule.type != CAST_TYPE_INVALID);
     if (rule.type == mode) {
         return rule.fn(compiler, operand, type);
     }

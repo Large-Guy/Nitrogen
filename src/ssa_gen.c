@@ -8,7 +8,7 @@
 #include "block.h"
 #include "parser.h"
 
-#define ERROR(condition, message) if(!(condition)) { fprintf(stderr, message); exit(1); }
+#define ERROR(condition, message) if(!(condition)) { fprintf(stderr, message); assert(false); }
 
 struct local {
     uint8_t reg;
@@ -176,6 +176,8 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
 
 static struct operand cast_emit_reinterpret(struct compiler* compiler, struct operand operand, struct ssa_type type);
 
+static struct operand cast_emit_dereference(struct compiler* compiler, struct operand operand, struct ssa_type type);
+
 static struct operand cast_emit_static(struct compiler* compiler, struct operand operand, struct ssa_type type);
 
 typedef struct operand (* cast_emit_fn)(struct compiler* compiler, struct operand operand, struct ssa_type);
@@ -194,7 +196,19 @@ struct cast_rule {
 static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_COUNT] = {
     [AST_NODE_TYPE_VOID] = {},
     [AST_NODE_TYPE_REFERENCE] = {
-        [AST_NODE_TYPE_POINTER] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}
+        [AST_NODE_TYPE_POINTER] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret},
+        
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
+        
+        [AST_NODE_TYPE_F32] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
+        [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
     },
     [AST_NODE_TYPE_POINTER] = {
         [AST_NODE_TYPE_BOOL] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret},
@@ -323,6 +337,22 @@ static struct operand cast_emit_reinterpret(struct compiler* compiler, struct op
     return operand;
 }
 
+static struct operand dereference(struct compiler* compiler, struct operand operand) {
+    assert(operand.typename.type->type == AST_NODE_TYPE_REFERENCE);
+    struct ssa_instruction load = {};
+    load.operator = OP_LOAD;
+    load.result = register_table_alloc(compiler->regs, get_node_type(compiler->ast_module, operand.typename.type->children[0]));
+    load.operands[0] = operand;
+    block_add(compiler->body, load);
+    return load.result;
+}
+
+static struct operand cast_emit_dereference(struct compiler* compiler, struct operand operand, struct ssa_type type) {
+    assert(operand.typename.type->type == AST_NODE_TYPE_REFERENCE);
+    assert(operand.typename.type->children[0]->type == type.type->type);
+    return dereference(compiler, operand);
+}
+
 static struct operand cast_emit_static(struct compiler* compiler, struct operand operand, struct ssa_type type) {
     struct ssa_instruction instruction = {};
     instruction.type = type;
@@ -365,9 +395,10 @@ static struct operand cast(struct compiler* compiler, struct operand operand, st
     if (compare_types(operand.typename, type)) {
         return operand;
     }
-    enum ast_node_type t = get_root_type(operand.typename.type);
+    enum ast_node_type from = get_root_type(operand.typename.type);
+    enum ast_node_type to = get_root_type(type.type);
 
-    struct cast_rule rule = cast_rules[t][get_root_type(type.type)];
+    struct cast_rule rule = cast_rules[from][to];
     
     ERROR(rule.type != CAST_TYPE_INVALID, "invalid cast\n");
     
@@ -572,11 +603,27 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
             struct ssa_instruction instruction = {};
             instruction.operator = OP_STORE;
             struct variable* symbol = register_table_lookup(current->symbol_table, target->token);
-
+            
             instruction.type = symbol->type;
             instruction.result = operand_none();
             instruction.operands[0] = symbol->pointer;
+            
+            // references can't be reassigned, so it's always assigning to it's underlying value
+            if (symbol->type.type->type == AST_NODE_TYPE_REFERENCE) {
+                // load in the address
+                struct ssa_instruction load = {};
+                load.operator = OP_LOAD;
+                load.result = register_table_alloc(compiler->regs, symbol->type);
+                load.type = symbol->type;
+                load.operands[0] = symbol->pointer;
+                block_add(current, load);
+                
+                instruction.operands[0] = load.result;
+                instruction.type = get_node_type(compiler->ast_module, *symbol->type.type->children);
+            }
+
             instruction.operands[1] = cast(compiler, statement(compiler, value), instruction.type, CAST_TYPE_IMPLICIT);
+            
             block_add(current, instruction);
             return instruction.result;
         }

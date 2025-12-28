@@ -59,12 +59,12 @@ struct operand operand_const_f32(float value)
 {
     static struct ast_node float_node = {AST_NODE_TYPE_F32, {}, NULL, NULL, 0, 0};
 
-    return (struct operand){OPERAND_TYPE_INTEGER, get_node_type(NULL, &float_node), {.floating = value}};
+    return (struct operand){OPERAND_TYPE_FLOAT, get_node_type(NULL, &float_node), {.floating = value}};
 }
 
 struct operand operand_const_f64(double value)
 {
     static struct ast_node float_node = {AST_NODE_TYPE_F64, {}, NULL, NULL, 0, 0};
 
-    return (struct operand){OPERAND_TYPE_INTEGER, get_node_type(NULL, &float_node), {.floating = value}};
+    return (struct operand){OPERAND_TYPE_FLOAT, get_node_type(NULL, &float_node), {.floating = value}};
 }

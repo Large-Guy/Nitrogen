@@ -1,8 +1,14 @@
 module program;
 
+void scale(f32* x, f32* y, f32 scalar)
+{
+    x = scalar * x;
+    y = scalar * y;
+}
+
 void main()
 {
-    f32 a = 10f;
-    f32* ref = &a;
-    ref = 10;
+    f32 a = 1f;
+    f32 b = 2f;
+    scale(&a, &b, 3f);
 }

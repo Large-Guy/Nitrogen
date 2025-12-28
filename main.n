@@ -4,4 +4,5 @@ void main()
 {
     f32 a = 10f;
     f32* ref = &a;
+    ref = 10;
 }

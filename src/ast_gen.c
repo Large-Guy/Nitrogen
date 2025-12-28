@@ -438,8 +438,10 @@ static struct ast_node* cast(struct parser* parser, bool canAssign) {
     else {
         cast_node = ast_node_new(AST_NODE_TYPE_STATIC_CAST, parser->previous);
     }
+    parser_consume(parser, TOKEN_TYPE_LEFT_PAREN, "expected '(' after cast");
     ast_node_append_child(cast_node, type_node);
-    ast_node_append_child(cast_node, parse_precedence(parser, PRECEDENCE_UNARY));
+    ast_node_append_child(cast_node, expression(parser));
+    parser_consume(parser, TOKEN_TYPE_RIGHT_PAREN, "expected ')' after cast body");
     return cast_node;
 }
 

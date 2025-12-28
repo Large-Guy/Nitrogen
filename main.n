@@ -2,7 +2,6 @@ module program;
 
 void main()
 {
-    i32 a = 64;
-    i8 b = i8 a; // cast without parens
-    i16 c = i16(a); // cast with parens
+    i64 a = 16;
+    f32* a_ptr = f32*!(&a);
 }

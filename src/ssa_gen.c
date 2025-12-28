@@ -8,6 +8,8 @@
 #include "block.h"
 #include "parser.h"
 
+#define ERROR(condition, message) if(!(condition)) { fprintf(stderr, message); exit(1); }
+
 struct local {
     uint8_t reg;
     struct token name;
@@ -182,7 +184,6 @@ enum cast_type {
     CAST_TYPE_INVALID, // cannot do this
     CAST_TYPE_IMPLICIT, // automatic
     CAST_TYPE_EXPLICIT, // T(value)
-    CAST_TYPE_UNSAFE, // T!(value)
 };
 
 struct cast_rule {
@@ -193,19 +194,16 @@ struct cast_rule {
 static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_COUNT] = {
     [AST_NODE_TYPE_VOID] = {},
     [AST_NODE_TYPE_REFERENCE] = {
-        [AST_NODE_TYPE_REFERENCE] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_POINTER] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}
     },
     [AST_NODE_TYPE_POINTER] = {
         [AST_NODE_TYPE_BOOL] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret},
-        [AST_NODE_TYPE_POINTER] = {CAST_TYPE_UNSAFE, cast_emit_reinterpret}
     },
     [AST_NODE_TYPE_ARRAY] = {}, //consider allowing explicit array casts?
     [AST_NODE_TYPE_SIMD] = {
         [AST_NODE_TYPE_SIMD] = {CAST_TYPE_EXPLICIT, cast_emit_static}
     },
     [AST_NODE_TYPE_BOOL] = {
-        [AST_NODE_TYPE_BOOL] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
@@ -216,7 +214,6 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
         [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_I8] = {
-        [AST_NODE_TYPE_I8] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_I16] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
@@ -227,7 +224,6 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
     },
     [AST_NODE_TYPE_I16] = {
         [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
-        [AST_NODE_TYPE_I16] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_I32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
@@ -238,7 +234,6 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
     [AST_NODE_TYPE_I32] = {
         [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
-        [AST_NODE_TYPE_I32] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
@@ -249,7 +244,6 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
         [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
-        [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
@@ -257,7 +251,6 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
     },
 
     [AST_NODE_TYPE_U8] = {
-        [AST_NODE_TYPE_U8] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_U16] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
@@ -268,7 +261,6 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
     },
     [AST_NODE_TYPE_U16] = {
         [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
-        [AST_NODE_TYPE_U16] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_U32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
@@ -279,7 +271,6 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
     [AST_NODE_TYPE_U32] = {
         [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
-        [AST_NODE_TYPE_U32] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
@@ -290,14 +281,12 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
         [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
-        [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_F32] = {
-        [AST_NODE_TYPE_F32] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
@@ -311,7 +300,6 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
     },
     [AST_NODE_TYPE_F64] = {
         [AST_NODE_TYPE_F32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
-        [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret}, // aka no change
         [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
@@ -345,16 +333,49 @@ static struct operand cast_emit_static(struct compiler* compiler, struct operand
     return instruction.result;
 }
 
+static bool compare_nodes(struct ast_node* a, struct ast_node* b) {
+    if (a->children_count != b->children_count) {
+        return false;
+    }
+    //compare subtypes
+    enum ast_node_type a_root = a->type;
+    enum ast_node_type b_root = b->type;
+    if (a_root != b_root) {
+        return false;
+    }
+    //TODO: simd types have number components!
+    for (int i = 0; i < a->children_count; i++) {
+        if (!compare_nodes(a->children[i], b->children[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool compare_types(struct ssa_type a, struct ssa_type b) {
+    if (a.size != b.size) {
+        return false;
+    }
+    
+    return compare_nodes(a.type, b.type);
+}
+
 static struct operand cast(struct compiler* compiler, struct operand operand, struct ssa_type type,
                            enum cast_type mode) {
+    if (compare_types(operand.typename, type)) {
+        return operand;
+    }
     enum ast_node_type t = get_root_type(operand.typename.type);
 
     struct cast_rule rule = cast_rules[t][get_root_type(type.type)];
-    if (rule.type == mode) {
+    
+    ERROR(rule.type != CAST_TYPE_INVALID, "invalid cast\n");
+    
+    if (rule.fn != NULL && rule.type <= mode) {
         return rule.fn(compiler, operand, type);
     }
 
-    assert(false); //TODO: more robust solution needed
+    ERROR(false, "failed to cast\n"); //TODO: more robust solution needed
 
     return operand_none();
 }
@@ -491,6 +512,13 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
             struct ast_node* value = node->children[1];
             struct operand x = statement(compiler, value);
             return cast(compiler, x, get_node_type(compiler->ast_module, cast_type), CAST_TYPE_EXPLICIT);
+        }
+        case AST_NODE_TYPE_REINTERPRET_CAST: {
+            struct ast_node* cast_type = node->children[0];
+            struct ast_node* value = node->children[1];
+            struct operand x = statement(compiler, value);
+            x.typename = get_node_type(compiler->ast_module, cast_type);
+            return x;
         }
         case AST_NODE_TYPE_ADDRESS: {
             struct ast_node* x = node->children[0];

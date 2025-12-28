@@ -259,6 +259,8 @@ struct parse_rule rules[] = {
     [TOKEN_TYPE_U16] = {cast, NULL, PRECEDENCE_UNARY},
     [TOKEN_TYPE_U32] = {cast, NULL, PRECEDENCE_UNARY},
     [TOKEN_TYPE_U64] = {cast, NULL, PRECEDENCE_UNARY},
+    [TOKEN_TYPE_F32] = {cast, NULL, PRECEDENCE_UNARY},
+    [TOKEN_TYPE_F64] = {cast, NULL, PRECEDENCE_UNARY},
     [TOKEN_TYPE_ISIZE] = {cast, NULL, PRECEDENCE_UNARY},
     [TOKEN_TYPE_USIZE] = {cast, NULL, PRECEDENCE_UNARY},
     [TOKEN_TYPE_STRING] = {NULL, NULL, PRECEDENCE_NONE},
@@ -429,7 +431,13 @@ static struct ast_node* unary(struct parser* parser, bool canAssign)
 
 static struct ast_node* cast(struct parser* parser, bool canAssign) {
     struct ast_node* type_node = build_type(parser);
-    struct ast_node* cast_node = ast_node_new(AST_NODE_TYPE_STATIC_CAST, parser->previous);
+    struct ast_node* cast_node;
+    if (parser_match(parser, TOKEN_TYPE_BANG)) {
+        cast_node = ast_node_new(AST_NODE_TYPE_REINTERPRET_CAST, parser->previous);
+    }
+    else {
+        cast_node = ast_node_new(AST_NODE_TYPE_STATIC_CAST, parser->previous);
+    }
     ast_node_append_child(cast_node, type_node);
     ast_node_append_child(cast_node, parse_precedence(parser, PRECEDENCE_UNARY));
     return cast_node;

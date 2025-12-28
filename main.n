@@ -2,10 +2,5 @@ module program;
 
 void main()
 {
-    f32 a = 1f;
-    f32*? ptr = &a;
-    if(ptr == null)
-    {
-        f32* ref = *a;
-    }
+    i32 i = 8 + 360;
 }

@@ -612,6 +612,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
             return var->pointer;
         }
         case AST_NODE_TYPE_LOCK: {
+            //NOTE: pointers need to be checked for null before being locked for safety!
             struct ast_node* x = node->children[0];
             struct variable* var = register_table_lookup(regs, x->token);
             if (var == NULL) {

@@ -421,6 +421,11 @@ static struct ast_node* unary(struct parser* parser, bool canAssign)
                 ast_node_append_child(node, operand);
                 return node;
             }
+        case TOKEN_TYPE_STAR: {
+            struct ast_node* node = ast_node_new(AST_NODE_TYPE_LOCK, token);
+            ast_node_append_child(node, operand);
+            return node;
+        }
         default:
             {
                 parser_error(parser, token, "unary unexpected token type, this should never happen\n");
@@ -452,10 +457,11 @@ static struct ast_node* literal(struct parser* parser, bool canAssign)
     switch (token.type)
     {
         case TOKEN_TYPE_NULL:
+            return ast_node_new(AST_NODE_TYPE_POINTER, token_zero);
         case TOKEN_TYPE_FALSE:
-            return ast_node_new(AST_NODE_TYPE_INTEGER, token_zero);
+            return ast_node_new(AST_NODE_TYPE_BOOL, token_zero);
         case TOKEN_TYPE_TRUE:
-            return ast_node_new(AST_NODE_TYPE_INTEGER, token_one);
+            return ast_node_new(AST_NODE_TYPE_BOOL, token_one);
         default:
             parser_error(parser, token, "unexpected literal token type, this should never happen\n");
     }

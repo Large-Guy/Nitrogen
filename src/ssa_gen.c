@@ -211,6 +211,7 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
         [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
     },
     [AST_NODE_TYPE_POINTER] = {
+        [AST_NODE_TYPE_POINTER] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret},
         [AST_NODE_TYPE_BOOL] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret},
     },
     [AST_NODE_TYPE_ARRAY] = {}, //consider allowing explicit array casts?
@@ -406,6 +407,7 @@ static struct operand cast(struct compiler* compiler, struct operand operand, st
     return operand_none();
 }
 
+//TODO: better type deduction
 static struct operand binary(struct compiler* compiler, struct ast_node* node, enum ssa_instruction_code type) {
     struct ast_node* left = node->children[0];
     struct ast_node* right = node->children[1];
@@ -472,6 +474,13 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
         case AST_NODE_TYPE_FLOAT: {
             double immediate = strtod(node->token.start, NULL);
             return get_float(immediate);
+        }
+        case AST_NODE_TYPE_POINTER: {
+            struct operand op = {};
+            op.type = OPERAND_TYPE_REGISTER;
+            op.typename = get_node_type(compiler->ast_module, node);
+            op.value.integer = 0;
+            return op;
         }
         case AST_NODE_TYPE_ADD: {
             return binary(compiler, node, OP_ADD);
@@ -551,6 +560,15 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
             struct variable* var = register_table_lookup(regs, x->token);
             if (var == NULL) {
                 fprintf(stderr, "cannot reference a temporary value\n");
+                return operand_none();
+            }
+            return var->pointer;
+        }
+        case AST_NODE_TYPE_LOCK: {
+            struct ast_node* x = node->children[0];
+            struct variable* var = register_table_lookup(regs, x->token);
+            if (var == NULL) {
+                fprintf(stderr, "cannot lock a temporary value\n");
                 return operand_none();
             }
             return var->pointer;

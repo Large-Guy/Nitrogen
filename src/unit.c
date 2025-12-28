@@ -163,24 +163,20 @@ static void ast_node_type_debug(FILE* out, struct ast_node* node)
             fprintf(out, "f64");
             break;
         case AST_NODE_TYPE_REFERENCE:
-            fprintf(out, "ref<");
             ast_node_type_debug(out, node->children[0]);
-            fprintf(out, ">");
+            fprintf(out, "*");
             break;
         case AST_NODE_TYPE_POINTER:
-            fprintf(out, "ptr<");
             ast_node_type_debug(out, node->children[0]);
-            fprintf(out, ">");
+            fprintf(out, "*?");
             break;
         case AST_NODE_TYPE_ARRAY:
-            fprintf(out, "array<");
             ast_node_type_debug(out, node->children[0]);
-            fprintf(out, ">");
+            fprintf(out, "[]");
             break;
         case AST_NODE_TYPE_SIMD:
-            fprintf(out, "simd<");
             ast_node_type_debug(out, node->children[0]);
-            fprintf(out, ", %.*s", (int)node->children[1]->token.length, node->children[1]->token.start);
+            fprintf(out, "<%.*s", (int)node->children[1]->token.length, node->children[1]->token.start);
             fprintf(out, ">");
             break;
         default:

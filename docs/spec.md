@@ -90,9 +90,11 @@ private. Meaning things are public by default.
  - **string**: unsure how this will be defined.
 
 ### 3.2 Pointer and Reference Types
- - T*: Non-nullable pointer of type T. A "reference." It must be assigned before it is used, this should be enforced by the compiler.
-Once assigned, the underlying pointer **cannot** change. 
- - T*?: Nullable pointer of type T. A true pointer. Cannot by itself be read or written to, a null check is required first.
+ - T*: Non-nullable owning pointer of type T. A "reference." It must be assigned before it is used, this should be enforced by the compiler.
+Once assigned, the underlying pointer **cannot** change.  
+ - T*?: Nullable owning pointer of type T. A true pointer. Cannot by itself be read or written to, a null check is required first.
+ - T&: Non-nullable borrower, these are mutable, but they do not OWN the memory it's pointing to.
+ - T&?: Nullable borrower, these are borrowed values that may not actually exist. A null check is required to access it.
 
 example:
 ```c++
@@ -106,14 +108,15 @@ if (a != null)
     *a = 67; // this is permitted, because it has been ensured that the pointer is not null.
 }
 
-i32 original;
+i32 original = 10;
 i32* b = &original; // reference pointer assigned immediately
 
-i32 other;
-b = other; // this is NOT allowed by the compiler a reference pointer CANNOT change.
+i32 other = 20;
+b = other; // assign to original
 
-*b = 41; // b is non-nullable, meaning it acts as a reference. 
-// original is now 41.
+b = &other; // invalid, cannot change the address of a reference
+
+// original == 20
 ```
 
 ### 3.3 Array Types

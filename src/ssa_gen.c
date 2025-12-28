@@ -386,6 +386,53 @@ static bool compare_types(struct ssa_type a, struct ssa_type b) {
     return compare_nodes(a.type, b.type);
 }
 
+static bool is_pointer(struct ssa_type a) {
+    return a.type->type == AST_NODE_TYPE_POINTER || a.type->type == AST_NODE_TYPE_REFERENCE;
+}
+
+static bool is_signed(struct ssa_type a) {
+    enum ast_node_type type = a.type->type;
+    switch (type) {
+        case AST_NODE_TYPE_I8:
+        case AST_NODE_TYPE_I16:
+        case AST_NODE_TYPE_I32:
+        case AST_NODE_TYPE_I64:
+            return true;
+        default:
+            return false;
+    }
+}
+
+static struct ssa_type promote_type(struct ssa_type a, struct ssa_type b) {
+    if (compare_types(a, b)) 
+        return a;
+    
+    if (is_pointer(a))
+        return a;
+    if (is_pointer(b))
+        return b;
+    
+    // float promotion
+    if (a.type->type == AST_NODE_TYPE_FLOAT) {
+        return a;
+    }
+    if (b.type->type == AST_NODE_TYPE_FLOAT) {
+        return b;
+    }
+    
+    if (a.size > b.size)
+        return a;
+    if (b.size > a.size)
+        return b;
+    
+    if (is_signed(a))
+        return a;
+    if (is_signed(b))
+        return b;
+    
+    return b;
+}
+
 static struct operand cast(struct compiler* compiler, struct operand operand, struct ssa_type type,
                            enum cast_type mode) {
     if (compare_types(operand.typename, type)) {
@@ -407,16 +454,16 @@ static struct operand cast(struct compiler* compiler, struct operand operand, st
     return operand_none();
 }
 
-//TODO: better type deduction
 static struct operand binary(struct compiler* compiler, struct ast_node* node, enum ssa_instruction_code type) {
     struct ast_node* left = node->children[0];
     struct ast_node* right = node->children[1];
     struct ssa_instruction instruction = {};
     instruction.operator = type;
-    instruction.operands[0] = statement(compiler, left);
-    instruction.operands[1] = cast(compiler, statement(compiler, right), instruction.operands[0].typename,
-                                   CAST_TYPE_IMPLICIT);
-    instruction.type = instruction.operands[0].typename;
+    struct operand x = statement(compiler, left);
+    struct operand y = statement(compiler, right);
+    instruction.type = promote_type(x.typename, y.typename);
+    instruction.operands[0] = cast(compiler, x, instruction.type, CAST_TYPE_IMPLICIT);
+    instruction.operands[1] = cast(compiler, y, instruction.type, CAST_TYPE_IMPLICIT);
     instruction.result = register_table_alloc(compiler->regs, instruction.type);
     block_add(compiler->body, instruction);
     return instruction.result;
@@ -469,11 +516,11 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
         }
         case AST_NODE_TYPE_INTEGER: {
             int64_t immediate = strtoll(node->token.start, NULL, 10);
-            return get_int(immediate);
+            return get_int(immediate); //TODO: implement polymorphic literals
         }
         case AST_NODE_TYPE_FLOAT: {
             double immediate = strtod(node->token.start, NULL);
-            return get_float(immediate);
+            return get_float(immediate); //TODO: implement polymorphic literals
         }
         case AST_NODE_TYPE_POINTER: {
             struct operand op = {};

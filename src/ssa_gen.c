@@ -337,20 +337,15 @@ static struct operand cast_emit_reinterpret(struct compiler* compiler, struct op
     return operand;
 }
 
-static struct operand dereference(struct compiler* compiler, struct operand operand) {
+static struct operand cast_emit_dereference(struct compiler* compiler, struct operand operand, struct ssa_type type) {
     assert(operand.typename.type->type == AST_NODE_TYPE_REFERENCE);
+    assert(operand.typename.type->children[0]->type == type.type->type);
     struct ssa_instruction load = {};
     load.operator = OP_LOAD;
     load.result = register_table_alloc(compiler->regs, get_node_type(compiler->ast_module, operand.typename.type->children[0]));
     load.operands[0] = operand;
     block_add(compiler->body, load);
     return load.result;
-}
-
-static struct operand cast_emit_dereference(struct compiler* compiler, struct operand operand, struct ssa_type type) {
-    assert(operand.typename.type->type == AST_NODE_TYPE_REFERENCE);
-    assert(operand.typename.type->children[0]->type == type.type->type);
-    return dereference(compiler, operand);
 }
 
 static struct operand cast_emit_static(struct compiler* compiler, struct operand operand, struct ssa_type type) {

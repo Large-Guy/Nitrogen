@@ -2,6 +2,6 @@ module program;
 
 void main()
 {
-    i64 a = 16;
-    f32* a_ptr = f32*!(&a);
+    f32 a = 10f;
+    f32* ref = &a;
 }

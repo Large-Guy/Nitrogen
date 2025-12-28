@@ -573,7 +573,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
             instruction.operator = OP_STORE;
             struct variable* symbol = register_table_lookup(current->symbol_table, target->token);
 
-            instruction.type = symbol->pointer.typename;
+            instruction.type = symbol->type;
             instruction.result = operand_none();
             instruction.operands[0] = symbol->pointer;
             instruction.operands[1] = cast(compiler, statement(compiler, value), instruction.type, CAST_TYPE_IMPLICIT);
@@ -586,8 +586,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
             struct variable* var = register_table_lookup(current->symbol_table, node->token);
             instruction.type = var->type;
             instruction.operands[0] = var->pointer;
-            instruction.result = register_table_alloc(current->symbol_table,
-                                                      get_node_type(compiler->ast_module, *var->type.type->children));
+            instruction.result = register_table_alloc(current->symbol_table, var->type);
             block_add(current, instruction);
 
             return instruction.result;

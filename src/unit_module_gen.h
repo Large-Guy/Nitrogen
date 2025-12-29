@@ -3,6 +3,6 @@
 
 #include "unit.h"
 
-struct unit_module* unit_module_generate(struct ast_module* module);
+struct unit_module* unit_module_forward(struct ast_module* module);
 
 #endif //COMPILER_IR_GEN_H

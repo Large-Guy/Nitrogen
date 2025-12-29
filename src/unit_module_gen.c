@@ -42,11 +42,11 @@ static struct unit* forward(struct ast_module* module, struct ast_node* node) {
     }
 }
 
-struct unit_module* unit_module_generate(struct ast_module* module)
+struct unit_module* unit_module_forward(struct ast_module* module)
 {
-    struct unit_module* chunks = unit_module_new(module->name);
+    struct unit_module* unit_module = unit_module_new(module->name);
 
-    chunks->ast = module;
+    unit_module->ast = module;
 
     for (int i = 0; i < module->root->children_count; i++) {
         struct unit* unit = forward(module, module->root->children[i]);
@@ -55,8 +55,8 @@ struct unit_module* unit_module_generate(struct ast_module* module)
             //TODO: error out
             continue; //NOTE: skip for now
         }
-        unit_module_append(chunks, unit);
+        unit_module_append(unit_module, unit);
     }
 
-    return chunks;
+    return unit_module;
 }

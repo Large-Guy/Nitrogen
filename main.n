@@ -2,9 +2,10 @@ module program;
 
 i32 _main()
 {
-    if(true)
+    i32 i = 10;
     {
-        return 1;
+        i32 i = 20;
+        return i;
     }
-    return 0;
+    return i;
 }

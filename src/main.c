@@ -69,7 +69,7 @@ int main(int argc, char** argv) {
     
     for (int i = 0; i < modules->module_count; i++) {
         struct ast_module* module = modules->modules[i];
-        struct unit_module* ir_module = unit_module_generate(module);
+        struct unit_module* ir_module = unit_module_forward(module);
 
         unit_module_build(ir_module);
 

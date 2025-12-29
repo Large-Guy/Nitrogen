@@ -28,4 +28,9 @@ add_executable(compiler src/main.c
         src/register_table.c
         src/register_table.h
         src/ssa_gen.c
-        src/ssa_gen.h)
+        src/ssa_gen.h
+        src/unit_debug.c
+        src/unit_debug.h
+        src/io.c
+        src/io.h
+)

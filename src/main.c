@@ -1,6 +1,4 @@
 #include <assert.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -9,47 +7,9 @@
 #include "unit_module_gen.h"
 #include "lexer.h"
 #include "ast_gen.h"
+#include "io.h"
 #include "ssa_gen.h"
-
-struct file {
-    FILE* file;
-    size_t size;
-    char* contents;
-};
-
-struct file* file_read(const char* filename) {
-    struct file* file = malloc(sizeof(struct file));
-    file->file = fopen(filename, "r");
-    if (file->file == NULL) {
-        fprintf(stderr, "Failed to open file %s\n", filename);
-        exit(EXIT_FAILURE);
-    }
-
-    fseek(file->file, 0L, SEEK_END);
-    file->size = ftell(file->file);
-
-    rewind(file->file);
-    file->contents = malloc(file->size + 1);
-    if (file->contents == NULL) {
-        fprintf(stderr, "Failed to allocate memory for file contents\n");
-        exit(EXIT_FAILURE);
-    }
-
-    fread(file->contents, sizeof(char), file->size, file->file);
-    file->contents[file->size] = '\0';
-
-    return file;
-}
-
-void file_close(struct file* file) {
-    if (file->contents != NULL) {
-        free(file->contents);
-    }
-    fclose(file->file);
-    free(file);
-}
-
-#define DEBUG
+#include "unit_debug.h"
 
 static double get_time_seconds() {
     struct timespec ts;
@@ -60,52 +20,52 @@ static double get_time_seconds() {
 int main(int argc, char** argv) {
     double start = get_time_seconds();
     struct file** files = malloc(sizeof(struct file*) * (argc - 1));
-    struct lexer** lexers = malloc(sizeof(struct lexer*) * (argc - 1));
 
-#ifdef DEBUG
-        printf("compiling... ");
-#endif
+    printf("compiling... ");
+    
+#pragma region lexing
+    
+    struct lexer** lexers = malloc(sizeof(struct lexer*) * (argc - 1));
     
     for (int i = 0; i < argc - 1; i++) {
-#ifdef DEBUG
         printf("%s ", argv[i + 1]);
-#endif
         files[i] = file_read(argv[i + 1]);
         lexers[i] = lexer_new(files[i]->contents);
     }
 
-#ifdef DEBUG
-        printf("\nbuilding ast...\n\n");
-#endif
+#pragma endregion
+    
+#pragma region ast_gen
+    
+    printf("\nbuilding ast...\n\n");
     
     struct ast_module_list* modules = parse(lexers, argc - 1);
 
     if (modules == NULL) {
-        return 1;
+        goto cleanup;
     }
 
-#ifdef DEBUG
+    // debugging
+    
     printf("\n");
-#endif
     
     for (int i = 0; i < modules->module_count; i++) {
         struct ast_module* module = modules->modules[i];
-#ifdef DEBUG
         printf("--- MODULE %s ---\n", module->name);
         printf("\nSYMBOLS ---\n");
-        ast_node_debug(module->definitions);
+        ast_node_debug(stdout, module->definitions);
         printf("\nAST ---\n");
-        ast_node_debug(module->root);
+        ast_node_debug(stdout, module->root);
         printf("\n");
-#endif
     }
 
-#ifdef DEBUG
     printf("\nfinished building ast...\n\n");
+    
+#pragma endregion
 
+#pragma region ssa_gen
+    
     printf("building ir...\n\n");
-
-#endif
     
     for (int i = 0; i < modules->module_count; i++) {
         struct ast_module* module = modules->modules[i];
@@ -117,12 +77,10 @@ int main(int argc, char** argv) {
         snprintf(buffer, sizeof(buffer), "%s.dot", module->name);
         
         FILE* cfgdot = fopen(buffer, "w");
-#ifdef DEBUG
         printf("--- MODULE %s ---\n", module->name);
         //ir_module_debug(ir_module);
         
         printf("--- COMPILED ---\n");
-#endif
         unit_module_debug_graph(ir_module, cfgdot);
         for (int n = 0; n < ir_module->unit_count; n++) {
             unit_compile(ir_module->units[n], stdout);
@@ -131,16 +89,18 @@ int main(int argc, char** argv) {
         
         fclose(cfgdot);
         
-#ifdef DEBUG
         char system_buffer[100];
         snprintf(system_buffer, sizeof(system_buffer), "dot -Tsvg %s.dot > %s.svg", module->name, module->name);
         system(system_buffer);
-#endif
     }
-
     
+#pragma endregion
+
+    // ast cleanup
     ast_module_list_free(modules);
 
+    cleanup:
+    
     //close files
     for (int i = 0; i < argc - 1; i++) {
         file_close(files[i]);

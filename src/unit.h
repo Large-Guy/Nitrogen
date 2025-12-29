@@ -53,14 +53,6 @@ void unit_add(struct unit* chunk, struct block* block);
 
 void unit_arg(struct unit* chunk, struct operand arg);
 
-void unit_debug(struct unit* chunk);
-
-void unit_build_graph(struct unit* chunk, FILE* out);
-
-void unit_module_debug(struct unit_module* module);
-
-void unit_module_debug_graph(struct unit_module* module, FILE* out);
-
 char* unit_compile(struct unit* chunk, FILE* file);
 
 #endif //COMPILER_CHUNK_H

@@ -36,7 +36,7 @@ static struct unit* forward(struct ast_module* module, struct ast_node* node) {
         }
         default:
         {
-            fprintf(stderr, "unexpected node type: %d\n", node->type);
+            fprintf(stderr, "unexpected node type: %s\n", ast_node_get_name(node));
             return NULL;
         }
     }

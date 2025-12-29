@@ -31,7 +31,7 @@ enum ast_node_type
     
     AST_NODE_TYPE_TYPE_COUNT, // used for implicit cast table
     
-    AST_NODE_TYPE_MODULE,
+    AST_NODE_TYPE_TREE,
     AST_NODE_TYPE_SEQUENCE,
 
     //statements
@@ -116,7 +116,9 @@ void ast_node_append_child(struct ast_node* node, struct ast_node* child);
 
 void ast_node_remove_child(struct ast_node* node, struct ast_node* child);
 
-void ast_node_debug(struct ast_node* node);
+const char* ast_node_get_name(struct ast_node* node);
+
+void ast_node_debug(FILE* out, struct ast_node* node);
 
 size_t get_node_size(struct ast_module* module, struct ast_node* node);
 

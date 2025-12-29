@@ -529,6 +529,14 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
             op.value.integer = 0;
             return op;
         }
+        case AST_NODE_TYPE_BOOL: {
+            struct operand op = {};
+            op.type = OPERAND_TYPE_REGISTER;
+            op.typename = get_node_type(compiler->ast_module, node);
+            int64_t immediate = strtoll(node->token.start, NULL, 10);
+            op.value.integer = immediate;
+            return op;
+        }
         case AST_NODE_TYPE_ADD: {
             return binary(compiler, node, OP_ADD);
         }
@@ -845,7 +853,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
             return operand_none();
         }
         default: {
-            fprintf(stderr, "unexpected node type: %d\n", node->type);
+            fprintf(stderr, "unexpected node type: %s\n", ast_node_get_name(node));
             return operand_none();
         }
     }
@@ -889,7 +897,7 @@ static struct operand argument(struct compiler* compiler, struct ast_node* node)
             return operand_none();
         }
         default: {
-            fprintf(stderr, "unexpected node type: %d\n", node->type);
+            fprintf(stderr, "unexpected node type: %s\n", ast_node_get_name(node));
         }
     }
     return operand_none();
@@ -931,7 +939,7 @@ static void definition(struct unit_module* ir_module, struct ast_module* module,
             break;
         }
         default: {
-            fprintf(stderr, "unexpected node type: %d\n", node->type);
+            fprintf(stderr, "unexpected node type: %s\n", ast_node_get_name(node));
             break;
         }
     }

@@ -10,8 +10,8 @@ struct ast_module* ast_module_new(struct token name) {
     module->name = malloc(name.length + 1);
     memcpy(module->name, name.start, name.length);
     module->name[name.length] = '\0';
-    module->root = ast_node_new(AST_NODE_TYPE_MODULE, name);
-    module->definitions = ast_node_new(AST_NODE_TYPE_MODULE, name);
+    module->root = ast_node_new(AST_NODE_TYPE_TREE, name);
+    module->definitions = ast_node_new(AST_NODE_TYPE_TREE, name);
     module->lexers = malloc(sizeof(struct lexer*));
     assert(module->lexers);
     module->lexer_count = 0;

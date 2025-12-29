@@ -1,6 +1,10 @@
 module program;
 
-void main()
+i32 _main()
 {
-    i32 i = 8 + 360;
+    if(true)
+    {
+        return 1;
+    }
+    return 0;
 }

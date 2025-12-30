@@ -75,6 +75,8 @@ enum token_type
     TOKEN_TYPE_MODULE,
     TOKEN_TYPE_IMPORT,
 
+    TOKEN_TYPE_REGION,
+    
     TOKEN_TYPE_RETURN,
 
     TOKEN_TYPE_STRUCT,
@@ -83,7 +85,6 @@ enum token_type
 
     //Qualifiers
     TOKEN_TYPE_STATIC,
-    TOKEN_TYPE_REF,
     TOKEN_TYPE_CONST,
     TOKEN_TYPE_OPERATOR,
 

@@ -32,6 +32,7 @@ enum ast_node_type
     AST_NODE_TYPE_TYPE_COUNT, // used for implicit cast table
     
     AST_NODE_TYPE_TREE,
+    AST_NODE_TYPE_SCOPE,
     AST_NODE_TYPE_SEQUENCE,
 
     //statements

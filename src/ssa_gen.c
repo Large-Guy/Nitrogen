@@ -504,6 +504,8 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
     struct block* current = compiler->body;
     struct register_table* regs = compiler->regs;
     switch (node->type) {
+        case AST_NODE_TYPE_SCOPE:
+            //TODO: begin a new scope
         case AST_NODE_TYPE_SEQUENCE: {
             struct operand last_operand = {};
             for (int i = 0; i < node->children_count; i++) {
@@ -511,6 +513,9 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
                 last_operand = statement(compiler, child);
                 if (last_operand.type == OPERAND_TYPE_END)
                     break;
+            }
+            if (node->type == AST_NODE_TYPE_SCOPE) {
+                //TODO: end scope
             }
             return last_operand;
         }

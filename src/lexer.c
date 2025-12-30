@@ -174,8 +174,9 @@ static enum token_type type(struct lexer* lexer)
                 {
                     switch (lexer->start[2])
                     {
-                        case 'f': return check_keyword(lexer, 2, 0, "", TOKEN_TYPE_REF);
-                        case 't': return check_keyword(lexer, 2, 4, "turn", TOKEN_TYPE_RETURN);
+                        case 'g': return check_keyword(lexer, 3, 3, "ion", TOKEN_TYPE_REGION);
+                        case 't': return check_keyword(lexer, 3, 3, "urn", TOKEN_TYPE_RETURN);
+                        default: break;
                     }
                 }
                 break;
@@ -470,7 +471,7 @@ const char* token_type_to_string(enum token_type e)
         case TOKEN_TYPE_UNION: return "TOKEN_TYPE_UNION";
         case TOKEN_TYPE_INTERFACE: return "TOKEN_TYPE_INTERFACE";
         case TOKEN_TYPE_STATIC: return "TOKEN_TYPE_STATIC";
-        case TOKEN_TYPE_REF: return "TOKEN_TYPE_REF";
+        case TOKEN_TYPE_REGION: return "TOKEN_TYPE_REGION";
         case TOKEN_TYPE_CONST: return "TOKEN_TYPE_CONST";
         case TOKEN_TYPE_OPERATOR: return "TOKEN_TYPE_OPERATOR";
         case TOKEN_TYPE_UNIQUE: return "TOKEN_TYPE_UNIQUE";

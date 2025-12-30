@@ -97,6 +97,7 @@ static const char* ast_node_type_names[] = {
     [AST_NODE_TYPE_F64] = "f64",
     [AST_NODE_TYPE_TYPE_COUNT] = "",
     [AST_NODE_TYPE_TREE] = "ast",
+    [AST_NODE_TYPE_SCOPE] = "scope",
     [AST_NODE_TYPE_SEQUENCE] = "sequence",
     [AST_NODE_TYPE_MODULE_STATEMENT] = "module",
     [AST_NODE_TYPE_RETURN_STATEMENT] = "return",

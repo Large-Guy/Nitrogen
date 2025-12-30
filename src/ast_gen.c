@@ -240,12 +240,12 @@ struct parse_rule rules[] = {
     [TOKEN_TYPE_IDENTIFIER] = {variable, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_MODULE] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_IMPORT] = {NULL, NULL, PRECEDENCE_NONE},
+    [TOKEN_TYPE_REGION] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_RETURN] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_STRUCT] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_UNION] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_INTERFACE] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_STATIC] = {NULL, NULL, PRECEDENCE_NONE},
-    [TOKEN_TYPE_REF] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_CONST] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_OPERATOR] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_UNIQUE] = {NULL, NULL, PRECEDENCE_NONE},
@@ -815,7 +815,7 @@ static struct ast_node* expression_statement(struct parser* parser)
 static struct ast_node* block(struct parser* parser)
 {
     struct token token = parser->previous;
-    struct ast_node* sequence = ast_node_new(AST_NODE_TYPE_SEQUENCE, token);
+    struct ast_node* sequence = ast_node_new(AST_NODE_TYPE_SCOPE, token);
     while (!parser_check(parser, TOKEN_TYPE_RIGHT_BRACE) && !parser_check(parser, TOKEN_TYPE_EOF))
     {
         ast_node_append_child(sequence, declaration(parser));
@@ -894,6 +894,36 @@ static struct ast_node* module_statement(struct parser* parser)
     return NULL;
 }
 
+static struct ast_node* region_statement(struct parser* parser) {
+    struct token op_token = parser->previous;
+    parser_match(parser, TOKEN_TYPE_IDENTIFIER);
+    parser_consume(parser, TOKEN_TYPE_LEFT_PAREN, "expected '(' after region");
+    struct ast_node* sequence = ast_node_new(AST_NODE_TYPE_SEQUENCE, op_token);
+    if (!parser_check(parser, TOKEN_TYPE_RIGHT_PAREN))
+    {
+        do
+        {
+            parser_advance(parser);
+            ast_node_append_child(sequence, definition(parser, false, false, false));
+        }
+        while (parser_match(parser, TOKEN_TYPE_COMMA));
+    }
+    parser_consume(parser, TOKEN_TYPE_RIGHT_PAREN, "expected ')' after region");
+    parser_consume(parser, TOKEN_TYPE_LEFT_BRACE, "regions require braces");
+    
+    // sequences don't being a new scope
+    struct token token = parser->previous;
+    struct ast_node* body = ast_node_new(AST_NODE_TYPE_SEQUENCE, token);
+    while (!parser_check(parser, TOKEN_TYPE_RIGHT_BRACE) && !parser_check(parser, TOKEN_TYPE_EOF))
+    {
+        ast_node_append_child(body, declaration(parser));
+    }
+
+    parser_consume(parser, TOKEN_TYPE_RIGHT_BRACE, "expected '}' after region");
+    ast_node_append_child(sequence, body);
+    return sequence;
+}
+
 static struct ast_node* statement(struct parser* parser)
 {
     if (parser_match(parser, TOKEN_TYPE_RETURN))
@@ -923,6 +953,10 @@ static struct ast_node* statement(struct parser* parser)
     if (parser_match(parser, TOKEN_TYPE_IMPORT))
     {
         return module_statement(parser);
+    }
+    if (parser_match(parser, TOKEN_TYPE_REGION)) 
+    {
+        return region_statement(parser);    
     }
     if (parser_match(parser, TOKEN_TYPE_LEFT_BRACE))
     {

@@ -2,10 +2,14 @@ module program;
 
 i32 _main()
 {
-    i32 i = 10;
+    region i_def(i32 i)
     {
-        i32 i = 20;
-        return i;
+        i32 y = 3;
+        i = 20;
+        i *= y * 3;
+        i /= y;
+        i += 1;
+        i *= y;
     }
     return i;
 }

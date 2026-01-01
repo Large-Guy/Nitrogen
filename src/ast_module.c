@@ -7,13 +7,22 @@
 struct ast_module* ast_module_new(struct token name) {
     struct ast_module* module = malloc(sizeof(struct ast_module));
     assert(module);
+    
     module->name = malloc(name.length + 1);
     memcpy(module->name, name.start, name.length);
     module->name[name.length] = '\0';
+    
+    module->dependencies = malloc(sizeof(struct ast_module*));
+    assert(module->dependencies);
+    module->dependencies_count = 0;
+    module->dependencies_capacity = 1;
+    
     module->root = ast_node_new(AST_NODE_TYPE_TREE, name);
     module->definitions = ast_node_new(AST_NODE_TYPE_TREE, name);
+    
     module->lexers = malloc(sizeof(struct lexer*));
     assert(module->lexers);
+    
     module->lexer_count = 0;
     module->lexer_capacity = 1;
     return module;
@@ -41,6 +50,27 @@ void ast_module_add_symbol(struct ast_module* module, struct ast_node* symbol) {
     ast_node_append_child(module->definitions, symbol);
 }
 
+bool ast_module_add_dependency(struct ast_module* module, struct ast_module* dependency) {
+    if (module == dependency) {
+        return false; // circular dependency
+    }
+    for (int i = 0; i < dependency->dependencies_count; i++) {
+        if (dependency->dependencies[i] == module) {
+            return false; // circular dependency
+        }
+    }
+    
+    if (module->dependencies_count >= module->dependencies_capacity) {
+        module->dependencies_capacity *= 2;
+        module->dependencies = realloc(module->dependencies, module->dependencies_capacity * sizeof(struct ast_module*));
+        assert(module->dependencies);
+    }
+    
+    module->dependencies[module->dependencies_count++] = dependency;
+    
+    return true;
+}
+
 struct ast_node* ast_module_get_symbol(struct ast_node* scope, struct token name) {
     for (size_t i = 0; i < scope->children_count; i++) {
         struct ast_node* child = scope->children[i];
@@ -55,7 +85,6 @@ struct ast_node* ast_module_get_symbol(struct ast_node* scope, struct token name
                 memcmp(name.start, symbol_name.start, symbol_name.length) == 0) {
             return scope->children[i];
         }
-        
     }
     return scope->parent ? ast_module_get_symbol(scope->parent, name) : NULL;
 }

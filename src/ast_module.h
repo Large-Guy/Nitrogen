@@ -7,6 +7,10 @@
 
 struct ast_module {
     char* name;
+    
+    struct ast_module** dependencies;
+    uint32_t dependencies_capacity;
+    uint32_t dependencies_count;
 
     struct ast_node* root;
     struct ast_node* definitions;
@@ -23,6 +27,8 @@ void ast_module_free(struct ast_module* module);
 void ast_module_add_source(struct ast_module* module, struct lexer* lexer);
 
 void ast_module_add_symbol(struct ast_module* module, struct ast_node* symbol);
+
+bool ast_module_add_dependency(struct ast_module* module, struct ast_module* dependency);
 
 struct ast_node* ast_module_get_symbol(struct ast_node* scope, struct token name);
 

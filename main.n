@@ -1,5 +1,21 @@
 module program;
 
+interface Interface
+{
+
+}
+
+struct Struct
+{
+    struct Nested
+    {
+        struct SuperNested
+        {
+
+        }
+    }
+}
+
 i32 _main()
 {
     return 0;

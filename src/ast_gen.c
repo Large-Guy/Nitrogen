@@ -1074,6 +1074,90 @@ static bool dependency_graph(struct ast_module_list* modules) {
     return true;
 }
 
+static struct ast_node* type_declaration_struct(struct parser* parser) {
+    struct ast_node* symbol = ast_node_new(AST_NODE_TYPE_STRUCT, parser->previous);
+    parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected struct name");
+    if (parser->error)
+        return false;
+    struct ast_node* name = ast_node_new(AST_NODE_TYPE_NAME, parser->previous);
+    ast_node_append_child(symbol, name);
+    parser_consume(parser, TOKEN_TYPE_LEFT_BRACE, "expected braces after struct declaration");
+    if (parser->error)
+        goto fail;
+    
+    while (!parser_match(parser, TOKEN_TYPE_RIGHT_BRACE)) {
+        if (parser_match(parser, TOKEN_TYPE_LEFT_BRACE)) {
+            skip_block(parser);
+        }
+        if (parser_match(parser, TOKEN_TYPE_STRUCT)) {
+            struct ast_node* sub_struct = type_declaration_struct(parser);
+            if (!sub_struct) {
+                goto fail;
+            }
+            ast_node_append_child(symbol, sub_struct);
+        }
+    }
+    
+    return symbol;
+    
+    fail:
+    ast_node_free(symbol);
+    return NULL;
+}
+
+static struct ast_node* type_declaration_interface(struct parser* parser) {
+    struct ast_node* symbol = ast_node_new(AST_NODE_TYPE_INTERFACE, parser->previous);
+    parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected interface name");
+    if (parser->error)
+        goto fail;
+    
+    struct ast_node* name = ast_node_new(AST_NODE_TYPE_NAME, parser->previous);
+    ast_node_append_child(symbol, name);
+    
+    return symbol;
+    
+    fail:
+    ast_node_free(symbol);
+    return NULL;
+}
+
+static bool type_symbol_declaration(struct ast_module_list* modules) {
+    for (int i = 0; i < modules->module_count; i++) {
+        struct ast_module* module = modules->modules[i];
+        for (int j = 0; j < module->lexer_count; j++) {
+            struct lexer* lexer = module->lexers[j];
+            
+            struct parser* parser = parser_new(PARSER_STAGE_TYPE_DECLARATION, module, lexer);
+            while (!parser_match(parser, TOKEN_TYPE_EOF)) {
+                if (parser_match(parser, TOKEN_TYPE_STRUCT)) {
+                    struct ast_node* node = type_declaration_struct(parser);
+                    if (!node) {
+                        return false;
+                    }
+                    ast_module_add_symbol(module, node);
+                }
+                else if (parser_match(parser, TOKEN_TYPE_INTERFACE)) {
+                    struct ast_node* node = type_declaration_interface(parser);
+                    if (!node) {
+                        return false;
+                    }
+                    ast_module_add_symbol(module, node);
+                }
+                
+                parser_advance(parser);
+            }
+        }
+    }
+    return true;
+}
+
+static bool function_declaration(struct ast_module_list* modules) {
+    for (int i = 0; i < modules->module_count; i++) {
+        struct ast_module* module = modules->modules[i];
+        
+    }
+}
+
 #pragma endregion
 
 struct ast_module_list* parse(struct lexer** lexers, uint32_t count)
@@ -1085,6 +1169,10 @@ struct ast_module_list* parse(struct lexer** lexers, uint32_t count)
     }
     
     if (!dependency_graph(modules)) {
+        goto fail;
+    }
+    
+    if (!type_symbol_declaration(modules)) {
         goto fail;
     }
     

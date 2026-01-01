@@ -169,7 +169,7 @@ static void operand_debug(FILE* out, struct operand operand)
         case OPERAND_TYPE_NONE:
             return;
         case OPERAND_TYPE_IR:
-            fprintf(out, "[func @%s", operand.value.ir->symbol);
+            fprintf(out, "[func @%s", operand.value.unit->symbol);
             break;
     }
     type_code_name(out, operand.typename);

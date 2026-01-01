@@ -71,9 +71,9 @@ void scope_update_local(struct scope* scope, struct token token, int new_reg) {
 
 struct compiler {
     struct ast_module* ast_module;
-    struct unit_module* ir_module;
+    struct unit_module* unit_module;
 
-    struct unit* ir;
+    struct unit* unit;
 
     uint32_t* stack;
     uint32_t stack_count;
@@ -91,25 +91,25 @@ struct compiler {
     struct block* exit;
 };
 
-static struct compiler* compiler_new(struct ast_module* ast_module, struct unit_module* ir_module, struct unit* ir,
+static struct compiler* compiler_new(struct ast_module* ast_module, struct unit_module* unit_module, struct unit* unit,
                                      struct ssa_type return_type) {
     struct compiler* compiler = malloc(sizeof(struct compiler));
     assert(compiler);
     compiler->ast_module = ast_module;
-    compiler->ir_module = ir_module;
+    compiler->unit_module = unit_module;
     compiler->regs = register_table_new();
     assert(compiler->regs);
-    compiler->ir = ir;
+    compiler->unit = unit;
     compiler->return_type = return_type;
     compiler->entry = block_new(true, compiler->regs);
-    unit_add(compiler->ir, compiler->entry);
+    unit_add(compiler->unit, compiler->entry);
     compiler->exit = block_new(false, compiler->regs);
     compiler->body = block_new(false, compiler->regs);
     block_link(compiler->entry, compiler->body);
 
     compiler->return_value_ptr = operand_none();
 
-    unit_add(compiler->ir, compiler->body);
+    unit_add(compiler->unit, compiler->body);
 
     compiler->stack = malloc(sizeof(uint32_t));
     compiler->stack_count = 0;
@@ -149,7 +149,7 @@ static void compiler_end(struct compiler* compiler) {
         load_ret_val.operator = OP_LOAD;
         load_ret_val.type = compiler->return_type;
         load_ret_val.operands[0] = compiler->return_value_ptr;
-        load_ret_val.result = register_table_alloc(compiler->regs, compiler->ir->return_type);
+        load_ret_val.result = register_table_alloc(compiler->regs, compiler->unit->return_type);
         block_add(compiler->exit, load_ret_val);
 
         return_op = load_ret_val.result;
@@ -162,7 +162,7 @@ static void compiler_end(struct compiler* compiler) {
     ret.operands[0] = return_op;
     block_add(compiler->exit, ret);
 
-    unit_add(compiler->ir, compiler->exit);
+    unit_add(compiler->unit, compiler->exit);
 }
 
 static void compiler_free(struct compiler* compiler) {
@@ -716,10 +716,10 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
             struct ast_node* name = node->children[0];
             struct ssa_instruction instruction = {};
             instruction.operator = OP_CALL;
-            struct unit* call = unit_module_find(compiler->ir_module, name->token);
+            struct unit* call = unit_module_find(compiler->unit_module, name->token);
             assert(call);
             instruction.type = call->return_type;
-            instruction.operands[0] = operand_ir(call);
+            instruction.operands[0] = operand_unit(call);
 
             for (int i = 0; i < call->argument_count; i++) {
                 struct operand arg = statement(compiler, node->children[i + 1]);
@@ -767,7 +767,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
             struct ast_node* then = node->children[1];
             struct block* then_block = block_new(false, compiler->regs);
             instruction.operands[1] = operand_block(then_block);
-            unit_add(compiler->ir, then_block);
+            unit_add(compiler->unit, then_block);
 
             block_link(current, then_block);
 
@@ -786,7 +786,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
 
             if (node->children_count > 2) {
                 struct block* else_block = block_new(false, compiler->regs);
-                unit_add(compiler->ir, else_block);
+                unit_add(compiler->unit, else_block);
                 block_link(current, else_block);
                 struct ast_node* else_node = node->children[2];
                 instruction.operands[2] = operand_block(else_block);
@@ -806,7 +806,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
 
             block_add(current, instruction);
 
-            unit_add(compiler->ir, after);
+            unit_add(compiler->unit, after);
             compiler->body = after;
 
             return operand_none();
@@ -818,11 +818,11 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
             struct block* loop_block = block_new(false, compiler->regs);
             struct block* after_block = block_new(false, compiler->regs);
 
-            unit_add(compiler->ir, body_block);
-            unit_add(compiler->ir, loop_block);
-            unit_add(compiler->ir, after_block);
+            unit_add(compiler->unit, body_block);
+            unit_add(compiler->unit, loop_block);
+            unit_add(compiler->unit, after_block);
 
-            //first we jump to the loop block
+            //funitst we jump to the loop block
             struct ssa_instruction jump = {};
             jump.result = operand_end();
             jump.operator = OP_GOTO;
@@ -881,7 +881,7 @@ static struct operand argument(struct compiler* compiler, struct ast_node* node)
             struct operand variable = register_table_alloc(compiler->regs,
                                                            get_node_type(compiler->ast_module, type));
 
-            unit_arg(compiler->ir, variable);
+            unit_arg(compiler->unit, variable);
 
             //make a local copy pointer to a variable
             struct ssa_instruction instruction = {};
@@ -908,14 +908,14 @@ static struct operand argument(struct compiler* compiler, struct ast_node* node)
     return operand_none();
 }
 
-static void definition(struct unit_module* ir_module, struct ast_module* module, struct ast_node* node) {
+static void definition(struct unit_module* unit_module, struct ast_module* module, struct ast_node* node) {
     switch (node->type) {
         case AST_NODE_TYPE_FUNCTION: {
-            struct unit* ir = unit_module_find(ir_module, node->children[0]->token);
+            struct unit* unit = unit_module_find(unit_module, node->children[0]->token);
             struct ast_node* type = node->children[1]; //type
             struct ast_node* args = node->children[2]; // args sequence
             struct ast_node* body = node->children[3]; //function body
-            struct compiler* compiler = compiler_new(module, ir_module, ir, ir->return_type);
+            struct compiler* compiler = compiler_new(module, unit_module, unit, unit->return_type);
             compiler_begin(compiler);
 
             argument(compiler, args);
@@ -937,7 +937,7 @@ static void definition(struct unit_module* ir_module, struct ast_module* module,
             break;
         }
         case AST_NODE_TYPE_VARIABLE: {
-            struct unit* ir = unit_module_find(ir_module, node->children[0]->token);
+            struct unit* unit = unit_module_find(unit_module, node->children[0]->token);
             struct ast_node* type = node->children[0];
             struct ast_node* value = node->children[1];
             //TODO: implement IR instructions for generating this stuff

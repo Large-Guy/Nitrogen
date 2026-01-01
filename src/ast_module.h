@@ -38,5 +38,7 @@ void ast_module_list_add(struct ast_module_list* list, struct ast_module* module
 
 void ast_module_list_free(struct ast_module_list* list);
 
+struct ast_module* ast_module_list_find(struct ast_module_list* list, struct token name);
+
 
 #endif //COMPILER_MODULE_H

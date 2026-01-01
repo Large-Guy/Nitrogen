@@ -86,3 +86,13 @@ void ast_module_list_free(struct ast_module_list* list) {
     free(list->modules);
     free(list);
 }
+
+struct ast_module* ast_module_list_find(struct ast_module_list* list, struct token name) {
+    for (int i = 0; i < list->module_count; i++) {
+        if (strlen(list->modules[i]->name) == name.length &&
+            memcmp(list->modules[i]->name, name.start, name.length) == 0) {
+            return list->modules[i];
+        }
+    }
+    return NULL;
+}

@@ -23,9 +23,9 @@ struct operand operand_none()
     return (struct operand){OPERAND_TYPE_NONE};
 }
 
-struct operand operand_ir(struct unit* ir)
+struct operand operand_unit(struct unit* unit)
 {
-    return (struct operand){OPERAND_TYPE_IR, {}, {.ir = ir}};
+    return (struct operand){OPERAND_TYPE_IR, {}, {.unit = unit}};
 }
 struct operand operand_const_i8(int8_t value)
 {

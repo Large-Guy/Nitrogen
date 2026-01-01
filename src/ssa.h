@@ -76,7 +76,7 @@ struct operand
         uint64_t integer;
         double floating;
         struct block* block;
-        struct unit* ir;
+        struct unit* unit;
     } value;
 };
 
@@ -100,7 +100,7 @@ struct operand operand_block(struct block* block);
 
 struct operand operand_end();
 
-struct operand operand_ir(struct unit* ir);
+struct operand operand_unit(struct unit* unit);
 
 #define MAX_OPERANDS 16
 

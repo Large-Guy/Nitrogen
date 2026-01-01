@@ -65,27 +65,27 @@ int main(int argc, char** argv) {
 
 #pragma region ssa_gen
     
-    printf("building ir...\n\n");
+    printf("building unit...\n\n");
     
     for (int i = 0; i < modules->module_count; i++) {
         struct ast_module* module = modules->modules[i];
-        struct unit_module* ir_module = unit_module_forward(module);
+        struct unit_module* unit_module = unit_module_forward(module);
 
-        unit_module_build(ir_module);
+        unit_module_build(unit_module);
 
         char buffer[100];
         snprintf(buffer, sizeof(buffer), "%s.dot", module->name);
         
         FILE* cfgdot = fopen(buffer, "w");
         printf("--- MODULE %s ---\n", module->name);
-        //ir_module_debug(ir_module);
+        //unit_module_debug(unit_module);
         
         printf("--- COMPILED ---\n");
-        unit_module_debug_graph(ir_module, cfgdot);
-        for (int n = 0; n < ir_module->unit_count; n++) {
-            unit_compile(ir_module->units[n], stdout);
+        unit_module_debug_graph(unit_module, cfgdot);
+        for (int n = 0; n < unit_module->unit_count; n++) {
+            unit_compile(unit_module->units[n], stdout);
         }
-        unit_module_free(ir_module);
+        unit_module_free(unit_module);
         
         fclose(cfgdot);
         

@@ -33,4 +33,6 @@ add_executable(compiler src/main.c
         src/unit_debug.h
         src/io.c
         src/io.h
+        src/ast_debug.c
+        src/ast_debug.h
 )

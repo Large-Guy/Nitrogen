@@ -1,7 +1,3 @@
-//
-// Created by Ravi Lebgue on 12/28/25.
-//
-
 #include "io.h"
 
 #include <stdlib.h>

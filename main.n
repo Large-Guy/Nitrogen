@@ -12,6 +12,7 @@ struct Counter
     static Counter new(i32 initial)
     {
         Counter counter;
+        counter._value = initial;
         return counter;
     }
 }

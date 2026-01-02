@@ -35,4 +35,10 @@ add_executable(compiler src/main.c
         src/io.h
         src/ast_debug.c
         src/ast_debug.h
+        src/dependency_graph_gen.c
+        src/dependency_graph_gen.h
+        src/type_declaration_gen.c
+        src/type_declaration_gen.h
+        src/signature_gen.c
+        src/signature_gen.h
 )

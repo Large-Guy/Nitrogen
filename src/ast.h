@@ -121,10 +121,8 @@ void ast_node_remove_child(struct ast_node* node, struct ast_node* child);
 
 const char* ast_node_get_name(struct ast_node* node);
 
-void ast_node_debug(FILE* out, struct ast_node* node);
+size_t ast_node_symbol_size(struct ast_module* module, struct ast_node* node);
 
-size_t get_node_size(struct ast_module* module, struct ast_node* node);
-
-struct ssa_type get_node_type(struct ast_module* module, struct ast_node* node);
+struct ast_node* ast_node_symbol_sub(struct ast_node* parent_symbol, struct token name);
 
 #endif //COMPILER_AST_H

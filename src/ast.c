@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 struct ast_node* ast_node_new(enum ast_node_type type, struct token token)
@@ -97,11 +98,11 @@ size_t to_power_of_two(size_t x)
     return x + 1;
 }
 
-size_t get_node_size(struct ast_module* module, struct ast_node* node)
+size_t ast_node_symbol_size(struct ast_module* module, struct ast_node* node)
 {
     switch (node->type)
     {
-        case AST_NODE_TYPE_BOOL: return 1;
+        case AST_NODE_TYPE_BOOL:
         case AST_NODE_TYPE_U8:
         case AST_NODE_TYPE_I8: return 1;
         case AST_NODE_TYPE_U16:
@@ -121,15 +122,30 @@ size_t get_node_size(struct ast_module* module, struct ast_node* node)
 
         case AST_NODE_TYPE_ARRAY: return sizeof(void*) + sizeof(struct array_header);
 
-        case AST_NODE_TYPE_SIMD: return get_node_size(module, node->children[0]) * to_power_of_two(strtol(
+        case AST_NODE_TYPE_SIMD: return ast_node_symbol_size(module, node->children[0]) * to_power_of_two(strtol(
                 node->children[1]->token.start, NULL, 10));
+        case AST_NODE_TYPE_STRUCT:
+            //TODO: implement
+            return 0;
+            
         default:
             fprintf(stderr, "expected a built-in type node\n");
             return 0;
     }
 }
 
-struct ssa_type get_node_type(struct ast_module* module, struct ast_node* node)
-{
-    return (struct ssa_type){get_node_size(module, node), module, node};
+struct ast_node* ast_node_symbol_sub(struct ast_node* parent_symbol, struct token name) {
+    for (int i = 0; i < parent_symbol->children_count; i++)
+    {
+        struct ast_node* child = parent_symbol->children[i];
+        if (child->type != AST_NODE_TYPE_STRUCT)
+            continue;
+        struct token symbol = (*child->children)->token;
+        if (symbol.length == name.length &&
+            memcmp(symbol.start, name.start, name.length) == 0)
+        {
+            return child;
+        }
+    }
+    return NULL;
 }

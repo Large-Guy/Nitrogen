@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include "ast_debug.h"
 #include "unit.h"
 #include "unit_module_gen.h"
 #include "lexer.h"

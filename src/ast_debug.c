@@ -115,6 +115,7 @@ static void debug(struct ast_node* node, int32_t depth)
     }
 }
 
+//TODO: because of how symbols are stored this is making some pretty messy debug
 void ast_node_debug(FILE* out, struct ast_node* node)
 {
     debug(node, 0);

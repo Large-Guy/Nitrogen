@@ -1,131 +1,13 @@
 #include "ast_gen.h"
 
-#include <string.h>
-
+#include "dependency_graph_gen.h"
 #include "parser.h"
+#include "signature_gen.h"
+#include "type_declaration_gen.h"
 
 #pragma region utilities
 
 static struct ast_node* expression(struct parser* parser);
-
-static struct ast_node* get_type_node(struct parser* parser, struct token token)
-{
-    switch (token.type)
-    {
-        case TOKEN_TYPE_I8:
-            return ast_node_new(AST_NODE_TYPE_I8, token);
-        case TOKEN_TYPE_I16:
-            return ast_node_new(AST_NODE_TYPE_I16, token);
-        case TOKEN_TYPE_I32:
-            return ast_node_new(AST_NODE_TYPE_I32, token);
-        case TOKEN_TYPE_I64:
-            return ast_node_new(AST_NODE_TYPE_I64, token);
-        case TOKEN_TYPE_U8:
-            return ast_node_new(AST_NODE_TYPE_U8, token);
-        case TOKEN_TYPE_U16:
-            return ast_node_new(AST_NODE_TYPE_U16, token);
-        case TOKEN_TYPE_U32:
-            return ast_node_new(AST_NODE_TYPE_U32, token);
-        case TOKEN_TYPE_U64:
-            return ast_node_new(AST_NODE_TYPE_U64, token);
-        case TOKEN_TYPE_F32:
-            return ast_node_new(AST_NODE_TYPE_F32, token);
-        case TOKEN_TYPE_F64:
-            return ast_node_new(AST_NODE_TYPE_F64, token);
-        case TOKEN_TYPE_VOID:
-            return ast_node_new(AST_NODE_TYPE_VOID, token);
-        case TOKEN_TYPE_IDENTIFIER:
-            return ast_module_get_symbol(parser_scope(parser), token);
-        default:
-            return NULL;
-    }
-}
-
-static struct ast_node* get_sub_symbol(struct ast_node* parent_symbol, struct token name)
-{
-    for (int i = 0; i < parent_symbol->children_count; i++)
-    {
-        struct ast_node* child = parent_symbol->children[i];
-        if (child->type != AST_NODE_TYPE_STRUCT)
-            continue;
-        struct token symbol = (*child->children)->token;
-        if (symbol.length == name.length &&
-            memcmp(symbol.start, name.start, name.length) == 0)
-        {
-            return child;
-        }
-    }
-    return NULL;
-}
-
-
-
-static struct ast_node* append_type_attribute(struct parser* parser, struct ast_node* current)
-{
-    if (parser_match(parser, TOKEN_TYPE_STAR))
-    {
-        enum ast_node_type type = AST_NODE_TYPE_REFERENCE;
-        if (parser_match(parser, TOKEN_TYPE_QUESTION))
-        {
-            type = AST_NODE_TYPE_POINTER;
-        }
-        struct ast_node* pointer = ast_node_new(type, parser->previous);
-        ast_node_append_child(pointer, current);
-        return append_type_attribute(parser, pointer);
-    }
-    if (parser_match(parser, TOKEN_TYPE_STAR_STAR))
-    {
-        struct ast_node* base_pointer = ast_node_new(AST_NODE_TYPE_REFERENCE, parser->previous);
-        ast_node_append_child(base_pointer, current);
-
-        enum ast_node_type type = AST_NODE_TYPE_REFERENCE;
-        if (parser_match(parser, TOKEN_TYPE_QUESTION))
-        {
-            type = AST_NODE_TYPE_POINTER;
-        }
-        struct ast_node* pointer = ast_node_new(type, parser->previous);
-        ast_node_append_child(pointer, base_pointer);
-        return append_type_attribute(parser, pointer);
-    }
-    if (parser_match(parser, TOKEN_TYPE_LEFT_BRACKET))
-    {
-        struct ast_node* array = ast_node_new(AST_NODE_TYPE_ARRAY, parser->previous);
-
-        ast_node_append_child(array, current);
-        struct ast_node* node = append_type_attribute(parser, array);
-        if (!parser_check(parser, TOKEN_TYPE_RIGHT_BRACKET))
-        {
-            //TODO: multi-dimensional arrays
-            ast_node_append_child(array, expression(parser));
-        }
-
-        parser_consume(parser, TOKEN_TYPE_RIGHT_BRACKET, "forgotten closing bracket ']'");
-        return node;
-    }
-    if (parser_match(parser, TOKEN_TYPE_LESS))
-    {
-        struct ast_node* simd = ast_node_new(AST_NODE_TYPE_SIMD, parser->previous);
-        parser_consume(parser, TOKEN_TYPE_INTEGER, "SIMD types must have fixed size");
-        struct ast_node* size = ast_node_new(AST_NODE_TYPE_INTEGER, parser->previous);
-        parser_consume(parser, TOKEN_TYPE_GREATER, "forgotten closing '>' for SIMD type");
-        ast_node_append_child(simd, current);
-        ast_node_append_child(simd, size);
-        return append_type_attribute(parser, simd);
-    }
-    return current;
-}
-
-static struct ast_node* build_type(struct parser* parser)
-{
-    struct token type = parser->previous;
-    struct ast_node* type_node = get_type_node(parser, type);
-    while (parser_match(parser, TOKEN_TYPE_DOT))
-    {
-        parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected sub type after '.'"); //move the dot out of the way
-        type_node = get_sub_symbol(type_node, parser->previous);
-    }
-    return append_type_attribute(parser, type_node);
-}
 
 #pragma endregion 
 
@@ -435,7 +317,7 @@ static struct ast_node* unary(struct parser* parser, bool canAssign)
 }
 
 static struct ast_node* cast(struct parser* parser, bool canAssign) {
-    struct ast_node* type_node = build_type(parser);
+    struct ast_node* type_node = parser_build_type(parser);
     struct ast_node* cast_node;
     if (parser_match(parser, TOKEN_TYPE_BANG)) {
         cast_node = ast_node_new(AST_NODE_TYPE_REINTERPRET_CAST, parser->previous);
@@ -689,7 +571,7 @@ static struct ast_node* return_statement(struct parser* parser)
 
 static struct ast_node* definition(struct parser* parser, bool statement, bool canAssign, bool inlineDeclaration)
 {
-    struct ast_node* type_node = build_type(parser);
+    struct ast_node* type_node = parser_build_type(parser);
     parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected variable name");
     struct token name = parser->previous;
     if (parser_match(parser, TOKEN_TYPE_LEFT_PAREN))
@@ -743,7 +625,7 @@ static struct ast_node* struct_statement(struct parser* parser)
     parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected struct name");
     struct token name = parser->previous;
     struct ast_node* node = ast_node_new(AST_NODE_TYPE_STRUCT, type);
-    struct ast_node* symbol = get_type_node(parser, name);
+    struct ast_node* symbol = ast_module_get_symbol(parser_scope(parser), name);
     ast_node_append_child(node, symbol);
 
     if (parser_match(parser, TOKEN_TYPE_COLON))
@@ -990,23 +872,6 @@ static struct ast_node* declaration(struct parser* parser)
 
 #pragma region passes
 
-static void skip_block(struct parser* parser)
-{
-    while (!parser_check(parser, TOKEN_TYPE_RIGHT_BRACE))
-    {
-        if (parser_match(parser, TOKEN_TYPE_LEFT_BRACE))
-        {
-            skip_block(parser);
-        }
-        else
-        {
-            parser_advance(parser);
-        }
-    }
-
-    parser_consume(parser, TOKEN_TYPE_RIGHT_BRACE, "expected '}' after block");
-}
-
 static struct ast_module_list* modules_pass(struct lexer** lexers, uint32_t count) {
     struct ast_module_list* modules = ast_module_list_new();
     
@@ -1040,278 +905,6 @@ fail:
     return NULL;
 }
 
-static bool dependency_graph(struct ast_module_list* modules) {
-    for (int i = 0; i < modules->module_count; i++) {
-        struct ast_module* module = modules->modules[i];
-        for (int j = 0; j < module->lexer_count; j++) {
-            struct lexer* lexer = module->lexers[j];
-            struct parser* parser = parser_new(PARSER_STAGE_DEPENDENCY_GRAPH, module, lexer);
-            
-            while (!parser_match(parser, TOKEN_TYPE_EOF)) {
-                if (parser_match(parser, TOKEN_TYPE_IMPORT)) {
-                    parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected import name");
-                    
-                    if (parser->error)
-                        return false;
-                    
-                    struct token name = parser->previous;
-                    struct ast_module* import = ast_module_list_find(modules, name);
-                    
-                    if (!import) {
-                        parser_error(parser, parser->previous, "unknown module symbol");
-                        return false;
-                    }
-                    
-                    if (!ast_module_add_dependency(module, import)) {
-                        parser_error(parser, parser->previous, "circular dependency in modules");
-                        return false;
-                    }
-                }
-                parser_advance(parser);
-            }
-        }
-    }
-    return true;
-}
-
-static struct ast_node* type_declaration_struct(struct parser* parser) {
-    struct ast_node* symbol = ast_node_new(AST_NODE_TYPE_STRUCT, parser->previous);
-    parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected struct name");
-    if (parser->error)
-        return false;
-    struct ast_node* name = ast_node_new(AST_NODE_TYPE_NAME, parser->previous);
-    ast_node_append_child(symbol, name);
-    parser_consume(parser, TOKEN_TYPE_LEFT_BRACE, "expected brace after struct declaration");
-    if (parser->error)
-        goto fail;
-    
-    while (!parser_match(parser, TOKEN_TYPE_RIGHT_BRACE)) {
-        if (parser_match(parser, TOKEN_TYPE_LEFT_BRACE)) {
-            skip_block(parser);
-        }
-        else if (parser_match(parser, TOKEN_TYPE_STRUCT)) {
-            struct ast_node* sub_struct = type_declaration_struct(parser);
-            if (!sub_struct) {
-                goto fail;
-            }
-            ast_node_append_child(symbol, sub_struct);
-        }
-        else {
-            parser_advance(parser);
-        }
-    }
-    
-    return symbol;
-    
-    fail:
-    ast_node_free(symbol);
-    return NULL;
-}
-
-static struct ast_node* type_declaration_interface(struct parser* parser) {
-    struct ast_node* symbol = ast_node_new(AST_NODE_TYPE_INTERFACE, parser->previous);
-    parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected interface name");
-    if (parser->error)
-        goto fail;
-    
-    struct ast_node* name = ast_node_new(AST_NODE_TYPE_NAME, parser->previous);
-    ast_node_append_child(symbol, name);
-    
-    return symbol;
-    
-    fail:
-    ast_node_free(symbol);
-    return NULL;
-}
-
-static bool type_symbol_declaration(struct ast_module* module) {
-    for (int i = 0; i < module->lexer_count; i++) {
-        struct lexer* lexer = module->lexers[i];
-        
-        struct parser* parser = parser_new(PARSER_STAGE_TYPE_DECLARATION, module, lexer);
-        while (!parser_match(parser, TOKEN_TYPE_EOF)) {
-            if (parser_match(parser, TOKEN_TYPE_STRUCT)) {
-                struct ast_node* node = type_declaration_struct(parser);
-                if (!node) {
-                    goto fail;
-                }
-                ast_module_add_symbol(module, node);
-            }
-            else if (parser_match(parser, TOKEN_TYPE_INTERFACE)) {
-                struct ast_node* node = type_declaration_interface(parser);
-                if (!node) {
-                    goto fail;
-                }
-                ast_module_add_symbol(module, node);
-            }
-            else {
-                parser_advance(parser);
-            }
-        }
-        
-        parser_free(parser);
-        continue;
-        
-        fail:
-        parser_free(parser);
-        return false;
-    }
-    return true;
-}
-
-static struct ast_node* function_arg(struct parser* parser) {
-    struct ast_node* type = build_type(parser);
-    if (!type) {
-        return NULL;
-    }
-    
-    parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected variable name");
-    struct token identifier = parser->previous;
-    if (parser->error)
-        return NULL;
-    
-    struct ast_node* arg = ast_node_new(AST_NODE_TYPE_VARIABLE, parser->previous);
-    struct ast_node* name = ast_node_new(AST_NODE_TYPE_NAME, identifier);
-    ast_node_append_child(arg, name);
-    ast_node_append_child(arg, type);
- 
-    return arg;
-}
-
-static bool symbol_declaration(struct parser* parser, bool is_static) {
-    struct ast_node* type = build_type(parser);
-    if (!type) {
-        return false;
-    }
-    
-    parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected variable name");
-    struct token identifier = parser->previous;
-    if (parser->error)
-        return false;
-    
-    if (parser_match(parser, TOKEN_TYPE_LEFT_PAREN)) {
-        // it's a method
-        struct ast_node* function = ast_node_new(is_static ? AST_NODE_TYPE_FUNCTION : AST_NODE_TYPE_METHOD, token_null);
-        struct ast_node* name = ast_node_new(AST_NODE_TYPE_NAME, identifier);
-        ast_node_append_child(function, name);
-        ast_node_append_child(function, type); // return
-        struct ast_node* args = ast_node_new(AST_NODE_TYPE_SEQUENCE, parser->previous);
-        ast_node_append_child(function, args);
-        
-        if (!parser_check(parser, TOKEN_TYPE_RIGHT_PAREN)) {
-            do {
-                if (parser_match_type(parser)) {
-                    struct ast_node* arg = function_arg(parser);
-                    ast_node_append_child(args, arg);
-                }
-                else {
-                    parser_error(parser, parser->current, "expected type");
-                }
-            } while (parser_match(parser, TOKEN_TYPE_COMMA));
-        }
-        
-        parser_consume(parser, TOKEN_TYPE_RIGHT_PAREN, "expected ')' after argument list");
-        if (parser->error)
-            return false;
-        
-        parser_consume(parser, TOKEN_TYPE_LEFT_BRACE, "expected '{' after method declaration");
-        if (parser->error)
-            return false;
-        
-        skip_block(parser);
-        
-        ast_node_append_child(parser_scope(parser), function);
-        
-        return true;
-    }
-    
-    parser_consume(parser, TOKEN_TYPE_SEMICOLON, "expected semicolon after field definition");
-    if (parser->error)
-        return false;
-    
-    struct ast_node* field = ast_node_new(is_static ? AST_NODE_TYPE_VARIABLE : AST_NODE_TYPE_FIELD, token_null);
-    struct ast_node* name = ast_node_new(AST_NODE_TYPE_NAME, identifier);
-    ast_node_append_child(field, name);
-    ast_node_append_child(field, type);
-    
-    ast_node_append_child(parser_scope(parser), field);
-    
-    return true;
-}
-
-static bool type_definition_struct(struct parser* parser) {
-    parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected struct name");
-    if (parser->error)
-        return false;
-    struct ast_node* symbol = ast_module_get_symbol(parser_scope(parser), parser->previous);
-    parser_push_scope(parser, symbol);
-    
-    parser_consume(parser, TOKEN_TYPE_LEFT_BRACE, "expected brace after struct declaration");
-    if (parser->error)
-        return false;
-    
-    while (!parser_match(parser, TOKEN_TYPE_RIGHT_BRACE)) {
-        if (parser_match(parser, TOKEN_TYPE_LEFT_BRACE)) {
-            skip_block(parser);
-        }
-        else if (parser_match(parser, TOKEN_TYPE_STRUCT)) {
-            if (!type_definition_struct(parser)) {
-                return false;
-            }
-        }
-        else if (parser_match_type(parser)) {
-            if (!symbol_declaration(parser, false)) {
-                return false;
-            }
-        }
-        else if (parser_match(parser, TOKEN_TYPE_STATIC)) {
-            if (parser_match_type(parser)) {
-                if (!symbol_declaration(parser, true)) {
-                    return false;
-                }
-            }
-            else {
-                parser_error(parser, parser->current, "expected type after static");
-                return false;
-            }
-        }
-        else {
-            parser_error(parser, parser->current, "unexpected token in struct definition");
-            return false;
-        }
-    }
-    parser_pop_scope(parser);
-    
-    return true;
-}
-
-static bool type_definition(struct ast_module* module) {
-    for (int i = 0; i < module->lexer_count; i++) {
-        struct lexer* lexer = module->lexers[i];
-        
-        struct parser* parser = parser_new(PARSER_STAGE_TYPE_DEFINITION, module, lexer);
-        while (!parser_match(parser, TOKEN_TYPE_EOF)) {
-            if (parser_match(parser, TOKEN_TYPE_STRUCT)) {
-                if (!type_definition_struct(parser)) {
-                    goto fail;
-                }
-            }
-            else {
-                parser_advance(parser);
-            }
-        }
-        
-        parser_free(parser);
-        continue;
-        
-        fail:
-        parser_free(parser);
-        return false;
-    }
-    
-    return true;
-}
-
 #pragma endregion
 
 struct ast_module_list* parse(struct lexer** lexers, uint32_t count)
@@ -1322,22 +915,20 @@ struct ast_module_list* parse(struct lexer** lexers, uint32_t count)
         goto fail;
     }
     
-    if (!dependency_graph(modules)) {
+    if (!dependency_graph_gen(modules)) {
         goto fail;
     }
     
     for (int i = 0; i < modules->module_count; i++) {
         struct ast_module* module = modules->modules[i];
-        if (!type_symbol_declaration(module)) {
+        if (!type_declaration_gen(module)) {
             goto fail;
         }
         
-        if (!type_definition(module)) {
+        if (!signature_gen(module)) {
             goto fail;
         }
     }
-    
-    
     
     return modules;
 

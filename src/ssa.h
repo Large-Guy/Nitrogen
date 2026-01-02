@@ -55,6 +55,8 @@ struct ssa_type
     struct ast_node* type;
 };
 
+struct ssa_type ssa_type_from_ast(struct ast_module* module, struct ast_node* node);
+
 enum operand_type
 {
     OPERAND_TYPE_NONE,

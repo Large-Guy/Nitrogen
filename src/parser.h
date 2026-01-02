@@ -56,5 +56,9 @@ bool parser_match(struct parser* parser, enum token_type type);
 
 bool parser_match_type(struct parser* parser);
 
+void skip_block(struct parser* parser);
+
+struct ast_node* parser_build_type(struct parser* parser);
+
 
 #endif //COMPILER_PARSER_H

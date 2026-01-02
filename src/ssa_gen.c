@@ -343,7 +343,7 @@ static struct operand cast_emit_dereference(struct compiler* compiler, struct op
     assert(operand.typename.type->children[0]->type == type.type->type);
     struct ssa_instruction load = {};
     load.operator = OP_LOAD;
-    load.result = register_table_alloc(compiler->regs, get_node_type(compiler->ast_module, operand.typename.type->children[0]));
+    load.result = register_table_alloc(compiler->regs, ssa_type_from_ast(compiler->ast_module, operand.typename.type->children[0]));
     load.operands[0] = operand;
     block_add(compiler->body, load);
     return load.result;
@@ -530,14 +530,14 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
         case AST_NODE_TYPE_POINTER: {
             struct operand op = {};
             op.type = OPERAND_TYPE_REGISTER;
-            op.typename = get_node_type(compiler->ast_module, node);
+            op.typename = ssa_type_from_ast(compiler->ast_module, node);
             op.value.integer = 0;
             return op;
         }
         case AST_NODE_TYPE_BOOL: {
             struct operand op = {};
             op.type = OPERAND_TYPE_REGISTER;
-            op.typename = get_node_type(compiler->ast_module, node);
+            op.typename = ssa_type_from_ast(compiler->ast_module, node);
             int64_t immediate = strtoll(node->token.start, NULL, 10);
             op.value.integer = immediate;
             return op;
@@ -606,13 +606,13 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
             struct ast_node* cast_type = node->children[0];
             struct ast_node* value = node->children[1];
             struct operand x = statement(compiler, value);
-            return cast(compiler, x, get_node_type(compiler->ast_module, cast_type), CAST_TYPE_EXPLICIT);
+            return cast(compiler, x, ssa_type_from_ast(compiler->ast_module, cast_type), CAST_TYPE_EXPLICIT);
         }
         case AST_NODE_TYPE_REINTERPRET_CAST: {
             struct ast_node* cast_type = node->children[0];
             struct ast_node* value = node->children[1];
             struct operand x = statement(compiler, value);
-            x.typename = get_node_type(compiler->ast_module, cast_type);
+            x.typename = ssa_type_from_ast(compiler->ast_module, cast_type);
             return x;
         }
         case AST_NODE_TYPE_ADDRESS: {
@@ -637,7 +637,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
         case AST_NODE_TYPE_VARIABLE: {
             struct ast_node* name = node->children[0];
             struct ast_node* type_node = node->children[1];
-            struct ssa_type type = get_node_type(compiler->ast_module, type_node);
+            struct ssa_type type = ssa_type_from_ast(compiler->ast_module, type_node);
             struct ast_node* value = node->children_count > 2 ? node->children[2] : NULL;
             struct ssa_instruction instruction = {};
             instruction.operator = OP_ALLOC;
@@ -693,7 +693,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
                 block_add(current, load);
                 
                 instruction.operands[0] = load.result;
-                instruction.type = get_node_type(compiler->ast_module, *symbol->type.type->children);
+                instruction.type = ssa_type_from_ast(compiler->ast_module, *symbol->type.type->children);
             }
 
             instruction.operands[1] = cast(compiler, statement(compiler, value), instruction.type, CAST_TYPE_IMPLICIT);
@@ -879,7 +879,7 @@ static struct operand argument(struct compiler* compiler, struct ast_node* node)
 
             //this is special and does not get alloc
             struct operand variable = register_table_alloc(compiler->regs,
-                                                           get_node_type(compiler->ast_module, type));
+                                                           ssa_type_from_ast(compiler->ast_module, type));
 
             unit_arg(compiler->unit, variable);
 

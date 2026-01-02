@@ -1,15 +1,19 @@
 module program;
 
-struct ListI32
+struct Counter
 {
-    struct Node
+    i32 _value;
+
+    void increment()
     {
-        i32 value;
-        Node*? next;
+        _value++;
     }
 
-    Node*? head;
-    u32 length;
+    static Counter new(i32 initial)
+    {
+        Counter counter;
+        return counter;
+    }
 }
 
 i32 _main()

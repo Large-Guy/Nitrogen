@@ -51,6 +51,8 @@ enum ast_node_type
     //declarations OR implementations, depending on context
     AST_NODE_TYPE_VARIABLE,
     AST_NODE_TYPE_FUNCTION,
+    AST_NODE_TYPE_FIELD,
+    AST_NODE_TYPE_METHOD,
     AST_NODE_TYPE_STRUCT,
     AST_NODE_TYPE_INTERFACE,
 

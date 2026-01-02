@@ -124,9 +124,17 @@ size_t ast_node_symbol_size(struct ast_module* module, struct ast_node* node)
 
         case AST_NODE_TYPE_SIMD: return ast_node_symbol_size(module, node->children[0]) * to_power_of_two(strtol(
                 node->children[1]->token.start, NULL, 10));
-        case AST_NODE_TYPE_STRUCT:
-            //TODO: implement
-            return 0;
+        case AST_NODE_TYPE_STRUCT: {
+            size_t total = 0;
+            for (size_t i = 0; i < node->children_count; i++) {
+                struct ast_node* child = node->children[i];
+                if (child->type == AST_NODE_TYPE_FIELD) {
+                    struct ast_node* type = child->children[1];
+                    total += ast_node_symbol_size(module, type);
+                }
+            }
+            return total;
+        }
             
         default:
             fprintf(stderr, "expected a built-in type node\n");

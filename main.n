@@ -1,19 +1,15 @@
 module program;
 
-interface Interface
+struct ListI32
 {
-
-}
-
-struct Struct
-{
-    struct Nested
+    struct Node
     {
-        struct SuperNested
-        {
-
-        }
+        i32 value;
+        Node*? next;
     }
+
+    Node*? head;
+    u32 length;
 }
 
 i32 _main()

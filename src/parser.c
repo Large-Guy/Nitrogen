@@ -17,7 +17,7 @@ struct parser* parser_new(enum parser_stage stage, struct ast_module* module, st
     self->scope_stack_capacity = 1;
     parser_advance(self);
     if (module)
-        parser_push_scope(self, module->definitions);
+        parser_push_scope(self, module->symbols);
     self->error = false;
     return self;
 }

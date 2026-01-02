@@ -91,6 +91,11 @@ static void debug(struct ast_node* node, int32_t depth)
     {
         printf("%s| ", colors[i % (sizeof(colors) / sizeof(colors[0]))]);
     }
+    
+    if (depth > 16) {
+        printf("{...}\n");
+        return;
+    }
 
     int color_index = node->type % (sizeof(colors) / sizeof(colors[0]));
 

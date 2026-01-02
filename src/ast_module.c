@@ -18,7 +18,7 @@ struct ast_module* ast_module_new(struct token name) {
     module->dependencies_capacity = 1;
     
     module->root = ast_node_new(AST_NODE_TYPE_TREE, name);
-    module->definitions = ast_node_new(AST_NODE_TYPE_TREE, name);
+    module->symbols = ast_node_new(AST_NODE_TYPE_TREE, name);
     
     module->lexers = malloc(sizeof(struct lexer*));
     assert(module->lexers);
@@ -31,7 +31,7 @@ struct ast_module* ast_module_new(struct token name) {
 void ast_module_free(struct ast_module* module) {
     free(module->lexers);
     free(module->name);
-    ast_node_free(module->definitions);
+    ast_node_free(module->symbols);
     ast_node_free(module->root);
     free(module);
 }
@@ -47,7 +47,7 @@ void ast_module_add_source(struct ast_module* module, struct lexer* lexer) {
 }
 
 void ast_module_add_symbol(struct ast_module* module, struct ast_node* symbol) {
-    ast_node_append_child(module->definitions, symbol);
+    ast_node_append_child(module->symbols, symbol);
 }
 
 bool ast_module_add_dependency(struct ast_module* module, struct ast_module* dependency) {

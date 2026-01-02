@@ -13,7 +13,7 @@ struct ast_module {
     uint32_t dependencies_count;
 
     struct ast_node* root;
-    struct ast_node* definitions;
+    struct ast_node* symbols;
     
     struct lexer** lexers;
     size_t lexer_count;

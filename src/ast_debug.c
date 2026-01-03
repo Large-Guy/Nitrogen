@@ -38,6 +38,7 @@ static const char* ast_node_type_names[] = {
     [AST_NODE_TYPE_FUNCTION] = "function",
     [AST_NODE_TYPE_STRUCT] = "struct",
     [AST_NODE_TYPE_INTERFACE] = "interface",
+    [AST_NODE_TYPE_IMPLEMENTATION] = "implementation",
     [AST_NODE_TYPE_ASSIGN] = "assign",
     [AST_NODE_TYPE_NEGATE] = "negate",
     [AST_NODE_TYPE_ADDRESS] = "address",

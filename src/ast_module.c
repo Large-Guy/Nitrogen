@@ -72,6 +72,7 @@ bool ast_module_add_dependency(struct ast_module* module, struct ast_module* dep
 }
 
 struct ast_node* ast_module_get_symbol(struct ast_node* scope, struct token name) {
+    //TODO: support for static top-level fields/methods
     for (size_t i = 0; i < scope->children_count; i++) {
         struct ast_node* child = scope->children[i];
         if (child->type != AST_NODE_TYPE_VARIABLE &&

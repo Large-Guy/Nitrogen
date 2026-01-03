@@ -2,7 +2,6 @@
 
 static struct ast_node* type_declaration_struct(struct parser* parser) {
     struct ast_node* symbol = ast_node_new(AST_NODE_TYPE_STRUCT, parser->previous);
-    symbol->symbol = true;
     parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected struct name");
     if (parser->error)
         return false;
@@ -50,7 +49,6 @@ fail:
 
 static struct ast_node* type_declaration_interface(struct parser* parser) {
     struct ast_node* symbol = ast_node_new(AST_NODE_TYPE_INTERFACE, parser->previous);
-    symbol->symbol = true;
     parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected interface name");
     if (parser->error)
         goto fail;

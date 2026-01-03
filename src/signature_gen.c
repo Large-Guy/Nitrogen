@@ -246,7 +246,6 @@ static bool module_symbol_signature(struct parser* parser, bool is_static) {
     if (parser_match(parser, TOKEN_TYPE_LEFT_PAREN)) {
         //NOTE: is_static actually means the INVERSE here. interesting.
         struct ast_node* function = ast_node_new(is_static ? AST_NODE_TYPE_METHOD : AST_NODE_TYPE_FUNCTION, token_null);
-        function->symbol = true;
         struct ast_node* name = ast_node_new(AST_NODE_TYPE_NAME, identifier);
         ast_node_append_child(function, name);
         ast_node_append_child(function, type); // return
@@ -280,13 +279,8 @@ static bool module_symbol_signature(struct parser* parser, bool is_static) {
         return true;
     }
     
-    parser_consume(parser, TOKEN_TYPE_SEMICOLON, "expected semicolon after field definition");
-    if (parser->error)
-        return false;
-    
     //NOTE: is_static actually means the INVERSE here. interesting.
     struct ast_node* field = ast_node_new(is_static ? AST_NODE_TYPE_FIELD : AST_NODE_TYPE_VARIABLE, token_null);
-    field->symbol = true;
     struct ast_node* name = ast_node_new(AST_NODE_TYPE_NAME, identifier);
     ast_node_append_child(field, name);
     ast_node_append_child(field, type);
@@ -300,7 +294,7 @@ bool signature_gen(struct ast_module* module) {
     for (int i = 0; i < module->lexer_count; i++) {
         struct lexer* lexer = module->lexers[i];
         
-        struct parser* parser = parser_new(PARSER_STAGE_TYPE_DEFINITION, module, lexer);
+        struct parser* parser = parser_new(PARSER_STAGE_SIGNATURE_GENERATION, module, lexer);
         while (!parser_match(parser, TOKEN_TYPE_EOF)) {
             if (parser_match(parser, TOKEN_TYPE_STRUCT)) {
                 if (!signature_struct(parser)) {

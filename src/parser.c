@@ -48,8 +48,17 @@ void parser_pop_scope(struct parser* parser) {
     parser->scope_stack_count--;
 }
 
+const char* parser_stages[] = {
+    [PARSER_STAGE_MODULE_GENERATION] = "module pass",
+    [PARSER_STAGE_DEPENDENCY_GRAPH] = "dependency-graph pass",
+    [PARSER_STAGE_TYPE_DECLARATION] = "type-declarations pass",
+    [PARSER_STAGE_SIGNATURE_GENERATION] = "type-definition pass",
+    [PARSER_STAGE_SYMBOL_RESOLUTION_PASS] = "symbol-resolution pass",
+    [PARSER_STAGE_TREE_GENERATION] = "tree-generation pass"
+};
+
 void parser_error(struct parser* parser, struct token at, const char* message) {
-    fprintf(stderr, "[line %d] Error ", at.line);
+    fprintf(stderr, "[parser %s] [line %d] Error ", parser_stages[parser->stage], at.line);
     if (at.type == TOKEN_TYPE_EOF) {
         fprintf(stderr, "at end");
     } else if (at.type == TOKEN_TYPE_ERROR) {

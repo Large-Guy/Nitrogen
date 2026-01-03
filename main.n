@@ -1,6 +1,10 @@
 module program;
 
-i32 _main()
+i32 number = 10;
+f32 other = 20f;
+
+i32 main()
 {
-    return 0;
+    i32 value = 30;
+    return value;
 }

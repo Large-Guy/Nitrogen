@@ -751,6 +751,10 @@ static struct ast_node* region_statement(struct parser* parser) {
 
 static struct ast_node* statement(struct parser* parser)
 {
+    if (parser_match(parser, TOKEN_TYPE_LEFT_BRACE))
+    {
+        return block(parser);
+    }
     if (parser_match(parser, TOKEN_TYPE_RETURN))
     {
         return return_statement(parser);
@@ -783,10 +787,6 @@ static struct ast_node* statement(struct parser* parser)
     {
         return region_statement(parser);    
     }
-    if (parser_match(parser, TOKEN_TYPE_LEFT_BRACE))
-    {
-        return block(parser);
-    }
     return expression_statement(parser);
 }
 
@@ -811,16 +811,79 @@ static struct ast_node* declaration(struct parser* parser)
     return statement(parser);
 }
 
+static struct ast_node* implementation(struct parser* parser) {
+    struct ast_node* type = parser_build_type(parser);
+    parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected identifier after type");
+    struct token name = parser->previous;
+    //find the symbol
+    struct ast_node* symbol = ast_module_get_symbol(parser_scope(parser), name);
+    if (!symbol) {
+        parser_error(parser, parser->previous, "undefined symbol found at tree gen pass");
+        return NULL;
+    }
+    struct ast_node* implementation = ast_node_new(AST_NODE_TYPE_IMPLEMENTATION, token_null);
+    ast_node_append_child(implementation, symbol);
+    switch (symbol->type) {
+        case AST_NODE_TYPE_VARIABLE:
+        case AST_NODE_TYPE_FIELD: {
+            if (parser_match(parser, TOKEN_TYPE_EQUAL)) {
+                ast_node_append_child(implementation, expression(parser));
+            }
+            parser_consume(parser, TOKEN_TYPE_SEMICOLON, "expected semicolon after expression");
+            break;
+        }
+            
+        case AST_NODE_TYPE_FUNCTION:
+        case AST_NODE_TYPE_METHOD: {
+            parser_consume(parser, TOKEN_TYPE_LEFT_PAREN, "expected '(' after function definition");
+            if (!parser_check(parser, TOKEN_TYPE_RIGHT_PAREN)) {
+                do {
+                    //TODO: function variants will make this hack fail
+                    ast_node_free(parser_build_type(parser));
+                    parser_advance(parser); 
+                } while (parser_match(parser, TOKEN_TYPE_COMMA));
+            }
+            
+            parser_consume(parser, TOKEN_TYPE_RIGHT_PAREN, "expected ')' after function arguments");
+            ast_node_append_child(implementation, declaration(parser));
+            break;
+        }
+            
+        default:
+            parser_error(parser, parser->previous, "unimplementable symbol type");
+            return NULL;
+    }
+    
+    return implementation;
+}
+
 static bool ast_gen(struct ast_module* module) {
     for (int i = 0; i < module->lexer_count; i++) {
         struct lexer* lexer = module->lexers[i];
         struct parser* parser = parser_new(PARSER_STAGE_TREE_GENERATION, module, lexer);
             
         while (!parser_match(parser, TOKEN_TYPE_EOF)) {
-            //TODO: i'm not sure what to do here...   
-            parser_advance(parser);
+            if (parser_match_type(parser)) {
+                struct ast_node* impl = implementation(parser);
+                if (!impl) {
+                    goto fail;
+                }
+                ast_node_append_child(module->root, impl);
+            }
+            else {
+                parser_advance(parser);
+            }
+            
+            if (parser->error) {
+                goto fail;
+            }
         }
         parser_free(parser);
+        continue;
+        
+        fail:
+        parser_free(parser);
+        return false;
     }
     return true;
 }

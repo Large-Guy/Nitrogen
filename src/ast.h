@@ -57,6 +57,8 @@ enum ast_node_type
     AST_NODE_TYPE_ABSTRACT, //abstract method
     AST_NODE_TYPE_STRUCT,
     AST_NODE_TYPE_INTERFACE,
+    
+    AST_NODE_TYPE_IMPLEMENTATION, // implements a function
 
     //operators
     AST_NODE_TYPE_ASSIGN,
@@ -104,7 +106,6 @@ enum ast_node_type
 struct ast_node
 {
     enum ast_node_type type;
-    bool symbol;
     struct token token;
     struct ast_node* parent;
     struct ast_node** children;

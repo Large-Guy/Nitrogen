@@ -7,6 +7,19 @@ static struct ast_node* type_declaration_struct(struct parser* parser) {
         return false;
     struct ast_node* name = ast_node_new(AST_NODE_TYPE_NAME, parser->previous);
     ast_node_append_child(symbol, name);
+    struct ast_node* inherits = ast_node_new(AST_NODE_TYPE_SEQUENCE, token_null);
+    struct ast_node* statics = ast_node_new(AST_NODE_TYPE_SEQUENCE, token_null);
+    struct ast_node* members = ast_node_new(AST_NODE_TYPE_SEQUENCE, token_null);
+    ast_node_append_child(symbol, inherits);
+    ast_node_append_child(symbol, members);
+    ast_node_append_child(symbol, statics);
+    
+    if (parser_match(parser, TOKEN_TYPE_COLON)) {
+        do {
+            parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected identifier");
+        } while (parser_match(parser, TOKEN_TYPE_COMMA));
+    }
+    
     parser_consume(parser, TOKEN_TYPE_LEFT_BRACE, "expected brace after struct declaration");
     if (parser->error)
         goto fail;
@@ -42,6 +55,11 @@ static struct ast_node* type_declaration_interface(struct parser* parser) {
     
     struct ast_node* name = ast_node_new(AST_NODE_TYPE_NAME, parser->previous);
     ast_node_append_child(symbol, name);
+    struct ast_node* abstracts = ast_node_new(AST_NODE_TYPE_SEQUENCE, token_null);
+    struct ast_node* associations = ast_node_new(AST_NODE_TYPE_SEQUENCE, token_null);
+    ast_node_append_child(symbol, abstracts);
+    ast_node_append_child(symbol, associations);
+    
     
     return symbol;
     

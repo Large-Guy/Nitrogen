@@ -919,15 +919,25 @@ struct ast_module_list* parse(struct lexer** lexers, uint32_t count)
         goto fail;
     }
     
+    // create type symbols pass
     for (int i = 0; i < modules->module_count; i++) {
         struct ast_module* module = modules->modules[i];
         if (!type_declaration_gen(module)) {
             goto fail;
         }
-        
+    }
+    
+    // populate signatures of type symbols
+    for (int i = 0; i < modules->module_count; i++) {
+        struct ast_module* module = modules->modules[i];
         if (!signature_gen(module)) {
             goto fail;
         }
+    }
+    
+    // gen AST pass
+    for (int i = 0; i < modules->module_count; i++) {
+        struct ast_module* module = modules->modules[i];
     }
     
     return modules;

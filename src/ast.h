@@ -49,10 +49,12 @@ enum ast_node_type
     AST_NODE_TYPE_TYPE,
 
     //declarations OR implementations, depending on context
-    AST_NODE_TYPE_VARIABLE,
-    AST_NODE_TYPE_FUNCTION,
-    AST_NODE_TYPE_FIELD,
-    AST_NODE_TYPE_METHOD,
+    AST_NODE_TYPE_VARIABLE, // static
+    AST_NODE_TYPE_FUNCTION, // static
+    AST_NODE_TYPE_ASSOCIATED, //static abstract methods
+    AST_NODE_TYPE_FIELD, // field
+    AST_NODE_TYPE_METHOD, // method
+    AST_NODE_TYPE_ABSTRACT, //abstract method
     AST_NODE_TYPE_STRUCT,
     AST_NODE_TYPE_INTERFACE,
 

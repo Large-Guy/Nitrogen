@@ -1,23 +1,22 @@
 module program;
 
-struct Counter
+interface IMonster
 {
-    i32 _value;
-
-    void increment()
-    {
-        _value++;
-    }
-
-    static Counter new(i32 initial)
-    {
-        Counter counter;
-        counter._value = initial;
-        return counter;
-    }
+    void attack();
 }
+
+interface IHealth
+{
+    void deal(i32 amount);
+}
+
+struct Ghost : IMonster, IHealth
+{
+    i32 health;
+}
+
+static i32 global_variable;
 
 i32 _main()
 {
-    return 0;
 }

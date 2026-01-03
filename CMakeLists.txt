@@ -41,4 +41,5 @@ add_executable(compiler src/main.c
         src/type_declaration_gen.h
         src/signature_gen.c
         src/signature_gen.h
+        src/ast_layout.h
 )

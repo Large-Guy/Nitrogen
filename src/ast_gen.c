@@ -1,6 +1,7 @@
 #include "ast_gen.h"
 
 #include "dependency_graph_gen.h"
+#include "module_gen.h"
 #include "parser.h"
 #include "signature_gen.h"
 #include "type_declaration_gen.h"
@@ -552,8 +553,6 @@ static struct ast_node* expression(struct parser* parser)
 
 #pragma endregion
 
-#pragma region ast_gen
-
 static struct ast_node* statement(struct parser* parser);
 static struct ast_node* declaration(struct parser* parser);
 
@@ -621,70 +620,14 @@ static struct ast_node* definition_statement(struct parser* parser)
 
 static struct ast_node* struct_statement(struct parser* parser)
 {
-    struct token type = parser->previous;
-    parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected struct name");
-    struct token name = parser->previous;
-    struct ast_node* node = ast_node_new(AST_NODE_TYPE_STRUCT, type);
-    struct ast_node* symbol = ast_module_get_symbol(parser_scope(parser), name);
-    ast_node_append_child(node, symbol);
-
-    if (parser_match(parser, TOKEN_TYPE_COLON))
-    {
-        do
-        {
-            parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected identifier");
-            struct token interface = parser->previous;
-            ast_node_append_child(node, ast_module_get_symbol(parser->module->symbols, interface));
-        }
-        while (parser_match(parser, TOKEN_TYPE_COMMA));
-    }
-
-    parser_consume(parser, TOKEN_TYPE_LEFT_BRACE, "expected '{' after struct definition");
-
-    parser_push_scope(parser, symbol);
-
-    while (!parser_check(parser, TOKEN_TYPE_RIGHT_BRACE))
-    {
-        if (parser_match(parser, TOKEN_TYPE_STRUCT))
-        {
-            ast_node_append_child(node, struct_statement(parser));
-        }
-        else if (parser_match_type(parser))
-        {
-            printf("matched type");
-            ast_node_free(definition(parser, true, false, true));
-        }
-        else
-        {
-            parser_advance(parser);
-            parser_error(parser, parser->current, "expected type\n");
-        }
-    }
-
-    parser_consume(parser, TOKEN_TYPE_RIGHT_BRACE, "expected '}' after struct statement");
-
-    parser_pop_scope(parser);
-
-    return node;
+    //TODO: reimplement this
+    return NULL;
 }
 
 static struct ast_node* interface_statement(struct parser* parser)
 {
-    struct token type = parser->previous;
-    parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected interface name");
-    struct token name = parser->previous;
-    parser_consume(parser, TOKEN_TYPE_LEFT_BRACE, "expected '{' after interface definition");
-    struct ast_node* node = ast_node_new(AST_NODE_TYPE_INTERFACE, type);
-    ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, name));
-
-    while (!parser_check(parser, TOKEN_TYPE_RIGHT_BRACE))
-    {
-        parser_advance(parser);
-        ast_node_append_child(node, definition(parser, true, false, false));
-    }
-
-    parser_consume(parser, TOKEN_TYPE_RIGHT_BRACE, "expected '}' after struct statement");
-    return node;
+    //TODO: reimplement this
+    return NULL;
 }
 
 static struct ast_node* expression_statement(struct parser* parser)
@@ -868,44 +811,19 @@ static struct ast_node* declaration(struct parser* parser)
     return statement(parser);
 }
 
-#pragma endregion
-
-#pragma region passes
-
-static struct ast_module_list* modules_pass(struct lexer** lexers, uint32_t count) {
-    struct ast_module_list* modules = ast_module_list_new();
-    
-    for (int i = 0; i < count; i++) {
-        struct lexer* lexer = lexers[i];
-        
-        struct parser* parser = parser_new(PARSER_STAGE_MODULE_GENERATION, NULL, lexer);
-    
-        if (parser_match(parser, TOKEN_TYPE_MODULE)) {
-            parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected module name after 'module'");
-            struct token name = parser->previous;
+static bool ast_gen(struct ast_module* module) {
+    for (int i = 0; i < module->lexer_count; i++) {
+        struct lexer* lexer = module->lexers[i];
+        struct parser* parser = parser_new(PARSER_STAGE_TREE_GENERATION, module, lexer);
             
-            struct ast_module* module = ast_module_list_find(modules, name);
-            if (!module) {
-                module = ast_module_new(name);
-                ast_module_list_add(modules, module);
-            }
-            ast_module_add_source(module, lexer);
-            continue;
+        while (!parser_match(parser, TOKEN_TYPE_EOF)) {
+            //TODO: i'm not sure what to do here...   
+            parser_advance(parser);
         }
-    
-        parser_error(parser, parser->current, "file must begin with module definition");
-        
-        goto fail;
+        parser_free(parser);
     }
- 
-    return modules;
-    
-fail:
-    ast_module_list_free(modules);
-    return NULL;
+    return true;
 }
-
-#pragma endregion
 
 struct ast_module_list* parse(struct lexer** lexers, uint32_t count)
 {
@@ -938,6 +856,9 @@ struct ast_module_list* parse(struct lexer** lexers, uint32_t count)
     // gen AST pass
     for (int i = 0; i < modules->module_count; i++) {
         struct ast_module* module = modules->modules[i];
+        if (!ast_gen(module)) {
+            goto fail;
+        }
     }
     
     return modules;

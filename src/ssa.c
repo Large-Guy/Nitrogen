@@ -34,42 +34,42 @@ struct operand operand_unit(struct unit* unit)
 }
 struct operand operand_const_i8(int8_t value)
 {
-    static struct ast_node integer_node = {AST_NODE_TYPE_I8, {}, NULL, NULL, 0, 0};
+    static struct ast_node integer_node = {AST_NODE_TYPE_I8, false, {}, NULL, NULL, 0, 0};
 
     return (struct operand){OPERAND_TYPE_INTEGER, ssa_type_from_ast(NULL, &integer_node), {.integer = value}};
 }
 
 struct operand operand_const_i16(int16_t value)
 {
-    static struct ast_node integer_node = {AST_NODE_TYPE_I16, {}, NULL, NULL, 0, 0};
+    static struct ast_node integer_node = {AST_NODE_TYPE_I16, false, {}, NULL, NULL, 0, 0};
 
     return (struct operand){OPERAND_TYPE_INTEGER, ssa_type_from_ast(NULL, &integer_node), {.integer = value}};
 }
 
 struct operand operand_const_i32(int32_t value)
 {
-    static struct ast_node integer_node = {AST_NODE_TYPE_I32, {}, NULL, NULL, 0, 0};
+    static struct ast_node integer_node = {AST_NODE_TYPE_I32, false, {}, NULL, NULL, 0, 0};
 
     return (struct operand){OPERAND_TYPE_INTEGER, ssa_type_from_ast(NULL, &integer_node), {.integer = value}};
 }
 
 struct operand operand_const_i64(int64_t value)
 {
-    static struct ast_node integer_node = {AST_NODE_TYPE_I64, {}, NULL, NULL, 0, 0};
+    static struct ast_node integer_node = {AST_NODE_TYPE_I64, false, {}, NULL, NULL, 0, 0};
 
     return (struct operand){OPERAND_TYPE_INTEGER, ssa_type_from_ast(NULL, &integer_node), {.integer = value}};
 }
 
 struct operand operand_const_f32(float value)
 {
-    static struct ast_node float_node = {AST_NODE_TYPE_F32, {}, NULL, NULL, 0, 0};
+    static struct ast_node float_node = {AST_NODE_TYPE_F32, false, {}, NULL, NULL, 0, 0};
 
     return (struct operand){OPERAND_TYPE_FLOAT, ssa_type_from_ast(NULL, &float_node), {.floating = value}};
 }
 
 struct operand operand_const_f64(double value)
 {
-    static struct ast_node float_node = {AST_NODE_TYPE_F64, {}, NULL, NULL, 0, 0};
+    static struct ast_node float_node = {AST_NODE_TYPE_F64, false, {}, NULL, NULL, 0, 0};
 
     return (struct operand){OPERAND_TYPE_FLOAT, ssa_type_from_ast(NULL, &float_node), {.floating = value}};
 }

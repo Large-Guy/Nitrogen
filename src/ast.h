@@ -104,6 +104,7 @@ enum ast_node_type
 struct ast_node
 {
     enum ast_node_type type;
+    bool symbol;
     struct token token;
     struct ast_node* parent;
     struct ast_node** children;

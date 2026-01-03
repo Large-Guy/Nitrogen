@@ -42,4 +42,6 @@ add_executable(compiler src/main.c
         src/signature_gen.c
         src/signature_gen.h
         src/ast_layout.h
+        src/module_gen.c
+        src/module_gen.h
 )

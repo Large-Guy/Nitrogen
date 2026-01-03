@@ -10,6 +10,7 @@ struct ast_node* ast_node_new(enum ast_node_type type, struct token token)
     struct ast_node* node = malloc(sizeof(struct ast_node));
     assert(node);
     node->type = type;
+    node->symbol = false;
     node->token = token;
     node->parent = NULL;
     node->children_count = 0;

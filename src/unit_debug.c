@@ -287,7 +287,8 @@ void unit_build_graph(struct unit* chunk, FILE* out)
         block_build_graph(chunk->symbol, block, out);
     }
 
-    recursive_link(chunk->symbol, chunk->blocks[0], out);
+    if (chunk->block_count > 0)
+        recursive_link(chunk->symbol, chunk->blocks[0], out);
 
     fprintf(out, "    }\n");
 }

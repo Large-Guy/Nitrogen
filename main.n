@@ -1,10 +1,10 @@
 module program;
 
-i32 number = 10;
-f32 other = 20f;
-
-i32 main()
+i32 min(i32 a, i32 b)
 {
-    i32 value = 30;
-    return value;
+    if(a < b)
+    {
+        return a;
+    }
+    return b;
 }

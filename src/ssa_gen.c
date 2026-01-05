@@ -494,7 +494,7 @@ struct operand get_int(int64_t value) {
 }
 
 struct operand get_float(double value) {
-    if (value >= FLT_MIN && value <= FLT_MAX) {
+    if (value >= -FLT_MAX && value <= FLT_MAX) {
         return operand_const_f32((float) value);
     }
     return operand_const_f64(value);
@@ -908,13 +908,15 @@ static struct operand argument(struct compiler* compiler, struct ast_node* node)
     return operand_none();
 }
 
-static void definition(struct unit_module* unit_module, struct ast_module* module, struct ast_node* node) {
-    switch (node->type) {
+static void implementation(struct unit_module* unit_module, struct ast_module* module, struct ast_node* node) {
+    assert(node->type == AST_NODE_TYPE_IMPLEMENTATION);
+    struct ast_node* symbol = node->children[0];
+    struct ast_node* body = node->children[1];
+    switch (symbol->type) {
         case AST_NODE_TYPE_FUNCTION: {
-            struct unit* unit = unit_module_find(unit_module, node->children[0]->token);
-            struct ast_node* type = node->children[1]; //type
-            struct ast_node* args = node->children[2]; // args sequence
-            struct ast_node* body = node->children[3]; //function body
+            struct unit* unit = unit_module_find(unit_module, symbol->children[0]->token);
+            struct ast_node* type = symbol->children[1]; //type
+            struct ast_node* args = symbol->children[2]; // args sequence
             struct compiler* compiler = compiler_new(module, unit_module, unit, unit->return_type);
             compiler_begin(compiler);
 
@@ -937,9 +939,8 @@ static void definition(struct unit_module* unit_module, struct ast_module* modul
             break;
         }
         case AST_NODE_TYPE_VARIABLE: {
-            struct unit* unit = unit_module_find(unit_module, node->children[0]->token);
-            struct ast_node* type = node->children[0];
-            struct ast_node* value = node->children[1];
+            struct unit* unit = unit_module_find(unit_module, symbol->children[0]->token);
+            struct ast_node* type = symbol->children[1];
             //TODO: implement IR instructions for generating this stuff
             break;
         }
@@ -952,6 +953,6 @@ static void definition(struct unit_module* unit_module, struct ast_module* modul
 
 void unit_module_build(struct unit_module* module) {
     for (int i = 0; i < module->ast->root->children_count; i++) {
-        definition(module, module->ast, module->ast->root->children[i]);
+        implementation(module, module->ast, module->ast->root->children[i]);
     }
 }

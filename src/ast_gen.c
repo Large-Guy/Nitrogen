@@ -829,6 +829,10 @@ static struct ast_node* implementation(struct parser* parser) {
             if (parser_match(parser, TOKEN_TYPE_EQUAL)) {
                 ast_node_append_child(implementation, expression(parser));
             }
+            else {
+                struct ast_node* zero = ast_node_new(AST_NODE_TYPE_DEFAULT, token_null);
+                ast_node_append_child(implementation, zero);
+            }
             parser_consume(parser, TOKEN_TYPE_SEMICOLON, "expected semicolon after expression");
             break;
         }
@@ -836,12 +840,8 @@ static struct ast_node* implementation(struct parser* parser) {
         case AST_NODE_TYPE_FUNCTION:
         case AST_NODE_TYPE_METHOD: {
             parser_consume(parser, TOKEN_TYPE_LEFT_PAREN, "expected '(' after function definition");
-            if (!parser_check(parser, TOKEN_TYPE_RIGHT_PAREN)) {
-                do {
-                    //TODO: function variants will make this hack fail
-                    ast_node_free(parser_build_type(parser));
-                    parser_advance(parser); 
-                } while (parser_match(parser, TOKEN_TYPE_COMMA));
+            while (!parser_check(parser, TOKEN_TYPE_RIGHT_PAREN)) {
+                parser_advance(parser);
             }
             
             parser_consume(parser, TOKEN_TYPE_RIGHT_PAREN, "expected ')' after function arguments");

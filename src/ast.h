@@ -42,6 +42,7 @@ enum ast_node_type
     //constants
     AST_NODE_TYPE_INTEGER,
     AST_NODE_TYPE_FLOAT,
+    AST_NODE_TYPE_DEFAULT,
 
     //names
     AST_NODE_TYPE_MODULE_NAME,

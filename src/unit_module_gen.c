@@ -19,19 +19,24 @@ static struct unit* unit_symbol_new(struct token symbol, enum unit_type type)
 }
 
 static struct unit* forward(struct ast_module* module, struct ast_node* node) {
-    switch (node->type)
+    assert(node->type == AST_NODE_TYPE_IMPLEMENTATION);
+    struct ast_node* symbol = node->children[0];
+    switch (symbol->type)
     {
         case AST_NODE_TYPE_FUNCTION:
         {
-            struct unit* unit = unit_symbol_new(node->children[0]->token, CHUNK_TYPE_FUNCTION);
-            struct ast_node* type = node->children[1]; //type
-            unit->global = node->children[1]->token.start[0] != '_';
+            struct unit* unit = unit_symbol_new(symbol->children[0]->token, CHUNK_TYPE_FUNCTION);
+            unit->global = symbol->children[0]->token.start[0] != '_';
+            struct ast_node* type = symbol->children[1]; //type
             unit->return_type = ssa_type_from_ast(module, type);
             return unit;
         }
         case AST_NODE_TYPE_VARIABLE:
         {
-            struct unit* unit = unit_symbol_new(node->children[0]->token, CHUNK_TYPE_VARIABLE);
+            struct unit* unit = unit_symbol_new(symbol->children[0]->token, CHUNK_TYPE_VARIABLE);
+            unit->global = symbol->children[0]->token.start[0] != '_';
+            struct ast_node* type = symbol->children[1];
+            unit->return_type = ssa_type_from_ast(module, type);
             return unit;
         }
         default:

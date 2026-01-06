@@ -54,9 +54,9 @@ static void ast_node_type_debug(FILE* out, struct ast_node* node)
             ast_node_type_debug(out, node->children[0]);
             fprintf(out, "*");
             break;
-        case AST_NODE_TYPE_POINTER:
+        case AST_NODE_TYPE_OPTIONAL:
             ast_node_type_debug(out, node->children[0]);
-            fprintf(out, "*?");
+            fprintf(out, "?");
             break;
         case AST_NODE_TYPE_ARRAY:
             ast_node_type_debug(out, node->children[0]);

@@ -340,7 +340,7 @@ static struct ast_node* literal(struct parser* parser, bool canAssign)
     switch (token.type)
     {
         case TOKEN_TYPE_NULL:
-            return ast_node_new(AST_NODE_TYPE_POINTER, token_zero);
+            return ast_node_new(AST_NODE_TYPE_OPTIONAL, token_zero);
         case TOKEN_TYPE_FALSE:
             return ast_node_new(AST_NODE_TYPE_BOOL, token_zero);
         case TOKEN_TYPE_TRUE:

@@ -196,7 +196,7 @@ struct cast_rule {
 static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_COUNT] = {
     [AST_NODE_TYPE_VOID] = {},
     [AST_NODE_TYPE_REFERENCE] = {
-        [AST_NODE_TYPE_POINTER] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret},
+        [AST_NODE_TYPE_OPTIONAL] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret},
         
         [AST_NODE_TYPE_U8] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
         [AST_NODE_TYPE_U16] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
@@ -210,8 +210,8 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
         [AST_NODE_TYPE_F32] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
         [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
     },
-    [AST_NODE_TYPE_POINTER] = {
-        [AST_NODE_TYPE_POINTER] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret},
+    [AST_NODE_TYPE_OPTIONAL] = {
+        [AST_NODE_TYPE_OPTIONAL] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret},
         [AST_NODE_TYPE_BOOL] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret},
     },
     [AST_NODE_TYPE_ARRAY] = {}, //consider allowing explicit array casts?
@@ -387,7 +387,7 @@ static bool compare_types(struct ssa_type a, struct ssa_type b) {
 }
 
 static bool is_pointer(struct ssa_type a) {
-    return a.type->type == AST_NODE_TYPE_POINTER || a.type->type == AST_NODE_TYPE_REFERENCE;
+    return (a.type->type == AST_NODE_TYPE_OPTIONAL ? a.type->children[0]->type == AST_NODE_TYPE_REFERENCE : false) || a.type->type == AST_NODE_TYPE_REFERENCE;
 }
 
 static bool is_signed(struct ssa_type a) {
@@ -527,7 +527,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
             double immediate = strtod(node->token.start, NULL);
             return get_float(immediate); //TODO: implement polymorphic literals
         }
-        case AST_NODE_TYPE_POINTER: {
+        case AST_NODE_TYPE_OPTIONAL: {
             struct operand op = {};
             op.type = OPERAND_TYPE_REGISTER;
             op.typename = ssa_type_from_ast(compiler->ast_module, node);

@@ -1,10 +1,6 @@
 module program;
 
-i32 min(i32 a, i32 b)
+void main()
 {
-    if(a < b)
-    {
-        return a;
-    }
-    return b;
+    i32*? optional = null;
 }

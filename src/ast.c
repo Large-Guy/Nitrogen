@@ -117,7 +117,12 @@ size_t ast_node_symbol_size(struct ast_module* module, struct ast_node* node)
 
         case AST_NODE_TYPE_VOID: return 0;
 
-        case AST_NODE_TYPE_POINTER:
+        case AST_NODE_TYPE_OPTIONAL: {
+            if (node->children[0]->type == AST_NODE_TYPE_REFERENCE) {
+                return sizeof(void*); // special case for references
+            }
+            return ast_node_symbol_size(module, node->children[0]) + sizeof(bool); // boolean header
+        }
         case AST_NODE_TYPE_REFERENCE: return sizeof(void*); //TODO: research if you can really just assume this
 
         case AST_NODE_TYPE_ARRAY: return sizeof(void*) + sizeof(struct array_header);

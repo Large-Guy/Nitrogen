@@ -67,6 +67,9 @@ static void ast_node_type_debug(FILE* out, struct ast_node* node)
             fprintf(out, "<%.*s", (int)node->children[1]->token.length, node->children[1]->token.start);
             fprintf(out, ">");
             break;
+        case AST_NODE_TYPE_STRUCT:
+            fprintf(out, "struct %.*s", (int)node->children[0]->token.length, node->children[0]->token.start);
+            break;
         case AST_NODE_TYPE_NULL:
             fprintf(out, "null");
         default:

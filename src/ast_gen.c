@@ -811,7 +811,7 @@ static struct ast_node* declaration(struct parser* parser)
     return statement(parser);
 }
 
-static struct ast_node* implementation(struct parser* parser) {
+static bool implementation(struct parser* parser) {
     struct ast_node* type = parser_build_type(parser);
     parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected identifier after type");
     struct token name = parser->previous;
@@ -819,13 +819,12 @@ static struct ast_node* implementation(struct parser* parser) {
     struct ast_node* symbol = ast_module_get_symbol(parser_scope(parser), name);
     if (!symbol) {
         parser_error(parser, parser->previous, "undefined symbol found at tree gen pass");
-        return NULL;
+        return false;
     }
     struct ast_node* implementation = ast_node_new(AST_NODE_TYPE_IMPLEMENTATION, token_null);
     ast_node_append_child(implementation, symbol);
     switch (symbol->type) {
-        case AST_NODE_TYPE_VARIABLE:
-        case AST_NODE_TYPE_FIELD: {
+        case AST_NODE_TYPE_VARIABLE: {
             if (parser_match(parser, TOKEN_TYPE_EQUAL)) {
                 ast_node_append_child(implementation, expression(parser));
             }
@@ -837,8 +836,7 @@ static struct ast_node* implementation(struct parser* parser) {
             break;
         }
             
-        case AST_NODE_TYPE_FUNCTION:
-        case AST_NODE_TYPE_METHOD: {
+        case AST_NODE_TYPE_FUNCTION: {
             parser_consume(parser, TOKEN_TYPE_LEFT_PAREN, "expected '(' after function definition");
             while (!parser_check(parser, TOKEN_TYPE_RIGHT_PAREN)) {
                 parser_advance(parser);
@@ -851,10 +849,34 @@ static struct ast_node* implementation(struct parser* parser) {
             
         default:
             parser_error(parser, parser->previous, "unimplementable symbol type");
-            return NULL;
+            return false;
     }
     
-    return implementation;
+    ast_node_append_child(parser->module->root, implementation);
+    return true;
+}
+
+static bool struct_implementation(struct parser* parser) {
+    parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected identifier after type");
+    struct token name = parser->previous;
+    struct ast_node* symbol = ast_module_get_symbol(parser_scope(parser), name);
+    
+    if (!symbol) {
+        parser_error(parser, parser->previous, "undefined symbol found");
+        return false;
+    }
+    
+    if (parser_match(parser, TOKEN_TYPE_COLON)) {
+        do {
+            parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected interface name");
+        } while (parser_match(parser, TOKEN_TYPE_COMMA));
+    }
+    
+    parser_consume(parser, TOKEN_TYPE_LEFT_BRACE, "expected '{' after interface");
+    
+    skip_block(parser);
+    
+    return true;
 }
 
 static bool ast_gen(struct ast_module* module) {
@@ -864,11 +886,16 @@ static bool ast_gen(struct ast_module* module) {
             
         while (!parser_match(parser, TOKEN_TYPE_EOF)) {
             if (parser_match_type(parser)) {
-                struct ast_node* impl = implementation(parser);
+                bool impl = implementation(parser);
                 if (!impl) {
                     goto fail;
                 }
-                ast_node_append_child(module->root, impl);
+            }
+            else if (parser_match(parser, TOKEN_TYPE_STRUCT)) {
+                bool impl = struct_implementation(parser);
+                if (!impl) {
+                    goto fail;
+                }
             }
             else {
                 parser_advance(parser);

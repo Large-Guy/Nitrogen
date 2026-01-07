@@ -1,6 +1,21 @@
 module program;
 
+struct SpecialType
+{
+    struct SubStruct
+    {
+        u8* key;
+        i32 value;
+    }
+
+    i32 a;
+    i32 b;
+
+    SubStruct sub;
+}
+
 void main()
 {
-    i32*? optional = null;
+    SpecialType test;
+    SpecialType* ref = &test;
 }

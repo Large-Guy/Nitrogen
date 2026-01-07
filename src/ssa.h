@@ -50,7 +50,7 @@ enum ssa_instruction_code
 
 struct ssa_type
 {
-    size_t size;
+    int64_t size;
     struct ast_module* module;
     struct ast_node* type;
 };

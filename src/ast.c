@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ast_layout.h"
+
 
 struct ast_node* ast_node_new(enum ast_node_type type, struct token token)
 {
@@ -135,8 +137,8 @@ size_t ast_node_symbol_size(struct ast_module* module, struct ast_node* node)
                 node->children[1]->token.start, NULL, 10));
         case AST_NODE_TYPE_STRUCT: {
             size_t total = 0;
-            for (size_t i = 0; i < node->children_count; i++) {
-                struct ast_node* child = node->children[i];
+            for (size_t i = 0; i < node->children[STRUCT_LAYOUT_MEMBERS]->children_count; i++) {
+                struct ast_node* child = node->children[STRUCT_LAYOUT_MEMBERS]->children[i];
                 if (child->type == AST_NODE_TYPE_FIELD) {
                     struct ast_node* type = child->children[1];
                     total += ast_node_symbol_size(module, type);

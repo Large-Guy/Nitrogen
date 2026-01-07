@@ -8,6 +8,7 @@
 enum ast_node_type
 {
     //types
+    AST_NODE_TYPE_NULL,
     AST_NODE_TYPE_VOID,
     AST_NODE_TYPE_REFERENCE,
     AST_NODE_TYPE_OPTIONAL,

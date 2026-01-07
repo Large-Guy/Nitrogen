@@ -64,6 +64,7 @@ enum operand_type
     OPERAND_TYPE_REGISTER,
     OPERAND_TYPE_INTEGER,
     OPERAND_TYPE_FLOAT,
+    OPERAND_TYPE_NULL,
     OPERAND_TYPE_BLOCK,
     OPERAND_TYPE_IR,
 };
@@ -103,6 +104,8 @@ struct operand operand_block(struct block* block);
 struct operand operand_end();
 
 struct operand operand_unit(struct unit* unit);
+
+struct operand operand_null();
 
 #define MAX_OPERANDS 16
 

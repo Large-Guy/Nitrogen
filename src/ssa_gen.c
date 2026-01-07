@@ -178,6 +178,8 @@ static struct operand cast_emit_reinterpret(struct compiler* compiler, struct op
 
 static struct operand cast_emit_dereference(struct compiler* compiler, struct operand operand, struct ssa_type type);
 
+static  struct operand cast_emit_optional(struct compiler* compiler, struct operand operand, struct ssa_type type);
+
 static struct operand cast_emit_static(struct compiler* compiler, struct operand operand, struct ssa_type type);
 
 typedef struct operand (* cast_emit_fn)(struct compiler* compiler, struct operand operand, struct ssa_type);
@@ -213,6 +215,9 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
     [AST_NODE_TYPE_OPTIONAL] = {
         [AST_NODE_TYPE_OPTIONAL] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret},
         [AST_NODE_TYPE_BOOL] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret},
+    },
+    [AST_NODE_TYPE_NULL] = {
+        [AST_NODE_TYPE_OPTIONAL] = {CAST_TYPE_IMPLICIT, cast_emit_optional},
     },
     [AST_NODE_TYPE_ARRAY] = {}, //consider allowing explicit array casts?
     [AST_NODE_TYPE_SIMD] = {
@@ -347,6 +352,15 @@ static struct operand cast_emit_dereference(struct compiler* compiler, struct op
     load.operands[0] = operand;
     block_add(compiler->body, load);
     return load.result;
+}
+
+static struct operand cast_emit_optional(struct compiler* compiler, struct operand operand, struct ssa_type type) {
+    if (operand.typename.type->type == AST_NODE_TYPE_NULL) {
+        if (type.type->children[0]->type == AST_NODE_TYPE_REFERENCE) {
+            //NOTE: might be a bit of a hack
+            return operand_null();
+        }
+    }
 }
 
 static struct operand cast_emit_static(struct compiler* compiler, struct operand operand, struct ssa_type type) {
@@ -527,9 +541,9 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
             double immediate = strtod(node->token.start, NULL);
             return get_float(immediate); //TODO: implement polymorphic literals
         }
-        case AST_NODE_TYPE_OPTIONAL: {
+        case AST_NODE_TYPE_NULL: {
             struct operand op = {};
-            op.type = OPERAND_TYPE_REGISTER;
+            op.type = OPERAND_TYPE_NULL;
             op.typename = ssa_type_from_ast(compiler->ast_module, node);
             op.value.integer = 0;
             return op;

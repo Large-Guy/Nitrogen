@@ -73,3 +73,9 @@ struct operand operand_const_f64(double value)
 
     return (struct operand){OPERAND_TYPE_FLOAT, ssa_type_from_ast(NULL, &float_node), {.floating = value}};
 }
+
+struct operand operand_null() {
+    static struct ast_node null_node = {AST_NODE_TYPE_NULL, {}, NULL, NULL, 0, 0};
+    
+    return (struct operand){OPERAND_TYPE_NULL, ssa_type_from_ast(NULL, &null_node), {.integer = 0}};
+}

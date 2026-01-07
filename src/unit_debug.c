@@ -67,6 +67,8 @@ static void ast_node_type_debug(FILE* out, struct ast_node* node)
             fprintf(out, "<%.*s", (int)node->children[1]->token.length, node->children[1]->token.start);
             fprintf(out, ">");
             break;
+        case AST_NODE_TYPE_NULL:
+            fprintf(out, "null");
         default:
             fprintf(out, "unknown");
             break;
@@ -166,6 +168,8 @@ static void operand_debug(FILE* out, struct operand operand)
         case OPERAND_TYPE_BLOCK:
             fprintf(out, "[block &%d", operand.value.block->id);
             break;
+        case OPERAND_TYPE_NULL:
+            fprintf(out, "[null]");
         case OPERAND_TYPE_NONE:
             return;
         case OPERAND_TYPE_IR:

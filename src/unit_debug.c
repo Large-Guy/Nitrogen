@@ -166,7 +166,11 @@ static void operand_debug(FILE* out, struct operand operand)
             fprintf(out, "[");
             fprintf(out, "reg ");
 
-            fprintf(out, "%%%lu: ", operand.value.integer);
+            fprintf(out, "%%%llu", operand.value.integer);
+            if (operand.offset) {
+                fprintf(out, " + %llu", operand.offset);
+            }
+            fprintf(out, ": ");
             break;
         case OPERAND_TYPE_BLOCK:
             fprintf(out, "[block &%d", operand.value.block->id);

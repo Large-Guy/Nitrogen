@@ -81,6 +81,8 @@ struct operand
         struct block* block;
         struct unit* unit;
     } value;
+    
+    uint64_t offset;
 };
 
 struct operand operand_none();

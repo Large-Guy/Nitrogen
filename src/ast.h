@@ -131,4 +131,8 @@ size_t ast_node_symbol_size(struct ast_module* module, struct ast_node* node);
 
 struct ast_node* ast_node_symbol_sub(struct ast_node* parent_symbol, struct token name);
 
+uint32_t ast_node_symbol_offset(struct ast_module* module, struct ast_node* symbol, struct token field);
+
+struct ast_node* ast_node_symbol_field(struct ast_module* module, struct ast_node* symbol, struct token field);
+
 #endif //COMPILER_AST_H

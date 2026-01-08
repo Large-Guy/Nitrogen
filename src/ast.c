@@ -168,3 +168,43 @@ struct ast_node* ast_node_symbol_sub(struct ast_node* parent_symbol, struct toke
     }
     return NULL;
 }
+
+uint32_t ast_node_symbol_offset(struct ast_module* module, struct ast_node* symbol, struct token field) {
+    assert(symbol->type == AST_NODE_TYPE_STRUCT); // expects struct symbol
+    uint32_t offset = 0;
+    bool found = false;
+    struct ast_node* members = symbol->children[STRUCT_LAYOUT_MEMBERS];
+    for (size_t i = 0; i < members->children_count; i++) {
+        struct ast_node* member = members->children[i];
+        if (member->type != AST_NODE_TYPE_FIELD) {
+            continue;
+        }
+        struct ast_node* name = member->children[0];
+        if (name->token.length == field.length && memcmp(name->token.start, name->token.start, name->token.length) == 0) {
+            found = true;
+            break;
+        }
+        
+        struct ast_node* type = member->children[1];
+        offset += ast_node_symbol_size(module, type);
+    }
+    assert(found);
+    return offset;
+}
+
+struct ast_node* ast_node_symbol_field(struct ast_module* module, struct ast_node* symbol, struct token field) {
+    assert(symbol->type == AST_NODE_TYPE_STRUCT); // expects struct symbol
+    struct ast_node* members = symbol->children[STRUCT_LAYOUT_MEMBERS];
+    for (size_t i = 0; i < members->children_count; i++) {
+        struct ast_node* member = members->children[i];
+        if (member->type != AST_NODE_TYPE_FIELD) {
+            continue;
+        }
+        struct ast_node* name = member->children[0];
+        if (name->token.length == field.length && memcmp(name->token.start, field.start, field.length) == 0) {
+            return member;
+        }
+    }
+    return NULL;
+}
+

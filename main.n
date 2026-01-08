@@ -1,21 +1,14 @@
 module program;
 
-struct SpecialType
+struct Car
 {
-    struct SubStruct
-    {
-        u8* key;
-        i32 value;
-    }
-
-    i32 a;
-    i32 b;
-
-    SubStruct sub;
+    i8* name;
+    i8* brand;
+    i32 year;
 }
 
-void main()
+i32 main()
 {
-    SpecialType test;
-    SpecialType* ref = &test;
+    Car car;
+    return car.year;
 }

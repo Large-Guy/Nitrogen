@@ -39,6 +39,15 @@ static bool struct_symbol_signature(struct parser* parser, bool is_static) {
         ast_node_append_child(function, name);
         ast_node_append_child(function, type); // return
         struct ast_node* args = ast_node_new(AST_NODE_TYPE_SEQUENCE, parser->previous);
+        if (!is_static) {
+            //append self
+            struct ast_node* self = ast_node_new(AST_NODE_TYPE_VARIABLE, token_null);
+            struct ast_node* param_name = ast_node_new(AST_NODE_TYPE_NAME, (struct token){TOKEN_TYPE_IDENTIFIER, "self", 4});
+            struct ast_node* param_type = parser_scope(parser);
+            ast_node_append_child(self, param_name);
+            ast_node_append_child(self, param_type);
+            ast_node_append_child(args, self);
+        }
         ast_node_append_child(function, args);
         
         if (!parser_check(parser, TOKEN_TYPE_RIGHT_PAREN)) {

@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 4.0)
-project(compiler C)
+project(ncc C) # nitrogen code compiler
 
 #add_compile_options(-fsanitize=address)
 #add_link_options(-fsanitize=address)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(compiler src/main.c
+add_executable(ncc src/main.c
         src/unit.c
         src/unit.h
         src/lexer.c

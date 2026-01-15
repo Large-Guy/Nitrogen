@@ -14,9 +14,10 @@ struct Car
     i8* name;
     i8* brand;
     Time time;
+    f32<3> position; 
 }
 
-i32 main()
+f32 main()
 {
     Car car;
     car.time.year = 2001;
@@ -24,5 +25,5 @@ i32 main()
     car.time.day = 11;
     car.time.hour = 7;
     car.time.minute = 46;
-    return car.time.year;
+    return position[1];
 }

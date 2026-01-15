@@ -67,6 +67,8 @@ static struct ast_node* literal(struct parser* parser, bool canAssign);
 
 static struct ast_node* call(struct parser* parser, struct ast_node* left, bool canAssign);
 
+static struct ast_node* index(struct parser* parser, struct ast_node* left, bool canAssign);
+
 static struct ast_node* field(struct parser* parser, struct ast_node* left, bool canAssign);
 
 struct parse_rule rules[] = {
@@ -76,7 +78,7 @@ struct parse_rule rules[] = {
     [TOKEN_TYPE_RIGHT_PAREN] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_LEFT_BRACE] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_RIGHT_BRACE] = {NULL, NULL, PRECEDENCE_NONE},
-    [TOKEN_TYPE_LEFT_BRACKET] = {NULL, NULL, PRECEDENCE_NONE},
+    [TOKEN_TYPE_LEFT_BRACKET] = {NULL, index, PRECEDENCE_CALL},
     [TOKEN_TYPE_RIGHT_BRACKET] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_SEMICOLON] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_DOT] = {NULL, field, PRECEDENCE_CALL},
@@ -495,6 +497,15 @@ static struct ast_node* call(struct parser* parser, struct ast_node* left, bool 
     }
     parser_consume(parser, TOKEN_TYPE_RIGHT_PAREN, "Expect ')' after arguments");
 
+    return node;
+}
+
+static struct ast_node* index(struct parser* parser, struct ast_node* left, bool canAssign) {
+    struct token op_token = parser->previous;
+    struct ast_node* node = ast_node_new(AST_NODE_TYPE_INDEX, op_token);
+    ast_node_append_child(node, left);
+    ast_node_append_child(node, expression(parser));
+    parser_consume(parser, TOKEN_TYPE_RIGHT_BRACKET, "expected ']' after array index");
     return node;
 }
 

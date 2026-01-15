@@ -84,6 +84,7 @@ enum ast_node_type
     AST_NODE_TYPE_CALL,
 
     AST_NODE_TYPE_GET,
+    AST_NODE_TYPE_INDEX,
 
     AST_NODE_TYPE_EQUAL,
     AST_NODE_TYPE_NOT_EQUAL,

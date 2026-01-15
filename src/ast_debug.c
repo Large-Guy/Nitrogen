@@ -58,6 +58,7 @@ static const char* ast_node_type_names[] = {
     [AST_NODE_TYPE_BITWISE_RIGHT] = "bitwise-right",
     [AST_NODE_TYPE_CALL] = "call",
     [AST_NODE_TYPE_GET] = "get",
+    [AST_NODE_TYPE_INDEX] = "index",
     [AST_NODE_TYPE_EQUAL] = "equal",
     [AST_NODE_TYPE_NOT_EQUAL] = "not-equal",
     [AST_NODE_TYPE_GREATER_THAN] = "greater-than",

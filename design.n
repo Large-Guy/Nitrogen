@@ -1,0 +1,22 @@
+void main()
+{
+    i32 i = 10;
+    i32* ref = &i;
+    ref = 20;
+    // i == 20
+    i32** ref_to_ref = &ref;
+    ref_to_ref = 30;
+    // i == 30
+    
+    i32*? opt_ref = null;
+    opt_ref = &i;
+    
+    opt_ref = 12; // this is INVALID code!
+    
+    if(opt_ref)
+    {
+       // opt_ref MUST be null checked before "locking"
+       i32* lock = *opt_ref; // i use the dereference syntax from c for "locking" an optional
+       lock = 12;
+    }
+}

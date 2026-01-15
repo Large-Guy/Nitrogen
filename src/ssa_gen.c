@@ -170,7 +170,8 @@ static void compiler_free(struct compiler* compiler) {
     free(compiler);
 }
 
-static struct operand statement(struct compiler* compiler, struct ast_node* node);
+static struct operand lvalue_statement(struct compiler* compiler, struct ast_node* node);
+static struct operand rvalue_statement(struct compiler* compiler, struct ast_node* node);
 
 //casting rules
 
@@ -473,8 +474,8 @@ static struct operand binary(struct compiler* compiler, struct ast_node* node, e
     struct ast_node* right = node->children[1];
     struct ssa_instruction instruction = {};
     instruction.operator = type;
-    struct operand x = statement(compiler, left);
-    struct operand y = statement(compiler, right);
+    struct operand x = rvalue_statement(compiler, left);
+    struct operand y = rvalue_statement(compiler, right);
     instruction.type = promote_type(x.typename, y.typename);
     instruction.operands[0] = cast(compiler, x, instruction.type, CAST_TYPE_IMPLICIT);
     instruction.operands[1] = cast(compiler, y, instruction.type, CAST_TYPE_IMPLICIT);
@@ -487,7 +488,7 @@ static struct operand unary(struct compiler* compiler, struct ast_node* node, en
     struct ast_node* x = node->children[0];
     struct ssa_instruction instruction = {};
     instruction.operator = type;
-    instruction.operands[0] = statement(compiler, x);
+    instruction.operands[0] = rvalue_statement(compiler, x);
     instruction.type = instruction.operands[0].typename;
     instruction.result = register_table_alloc(compiler->regs, instruction.type);
     block_add(compiler->body, instruction);
@@ -514,7 +515,52 @@ struct operand get_float(double value) {
     return operand_const_f64(value);
 }
 
-static struct operand statement(struct compiler* compiler, struct ast_node* node) {
+//drill down to the final reference
+static struct operand drill(struct compiler* compiler, struct operand op) {
+    if (op.typename.type->children_count > 0 && op.typename.type->children[0]->type == AST_NODE_TYPE_REFERENCE) {
+        struct ssa_instruction load = {};
+        load.operator = OP_LOAD;
+        load.type = ssa_type_from_ast(compiler->ast_module, op.typename.type->children[0]);
+        load.operands[0] = op;
+        load.result = register_table_alloc(compiler->regs, load.type);
+        block_add(compiler->body, load);
+        return drill(compiler, load.result);
+    }
+    //no need to drill
+    return op;
+}
+
+//aka address statement
+static struct operand lvalue_statement(struct compiler* compiler, struct ast_node* node) {
+    struct block* current = compiler->body;
+    struct register_table* regs = compiler->regs;
+    switch (node->type) {
+        case AST_NODE_TYPE_LOCK: {
+            //NOTE: pointers need to be checked for null before being locked for safety!
+            struct ast_node* x = node->children[0];
+            //TODO: maybe strip the optional node??
+            return lvalue_statement(compiler, x);
+        }
+        case AST_NODE_TYPE_ADDRESS: {
+            struct ast_node* x = node->children[0];
+            struct variable* var = register_table_lookup(current->symbol_table, x->token);
+            return var->pointer;
+
+        }
+        case AST_NODE_TYPE_NAME: {
+            struct variable* var = register_table_lookup(current->symbol_table, node->token);
+            //NOTE: possible pointer for dereference here?
+            return drill(compiler, var->pointer);
+        }
+        default: {
+            fprintf(stderr, "unexpected node type: %s\n", ast_node_get_name(node));
+            return operand_none();
+        }
+    }
+}
+
+//aka value statement
+static struct operand rvalue_statement(struct compiler* compiler, struct ast_node* node) {
     struct block* current = compiler->body;
     struct register_table* regs = compiler->regs;
     switch (node->type) {
@@ -524,7 +570,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
             struct operand last_operand = {};
             for (int i = 0; i < node->children_count; i++) {
                 struct ast_node* child = node->children[i];
-                last_operand = statement(compiler, child);
+                last_operand = rvalue_statement(compiler, child);
                 if (last_operand.type == OPERAND_TYPE_END)
                     break;
             }
@@ -619,34 +665,15 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
         case AST_NODE_TYPE_STATIC_CAST: {
             struct ast_node* cast_type = node->children[0];
             struct ast_node* value = node->children[1];
-            struct operand x = statement(compiler, value);
+            struct operand x = rvalue_statement(compiler, value);
             return cast(compiler, x, ssa_type_from_ast(compiler->ast_module, cast_type), CAST_TYPE_EXPLICIT);
         }
         case AST_NODE_TYPE_REINTERPRET_CAST: {
             struct ast_node* cast_type = node->children[0];
             struct ast_node* value = node->children[1];
-            struct operand x = statement(compiler, value);
+            struct operand x = rvalue_statement(compiler, value);
             x.typename = ssa_type_from_ast(compiler->ast_module, cast_type);
             return x;
-        }
-        case AST_NODE_TYPE_ADDRESS: {
-            struct ast_node* x = node->children[0];
-            struct variable* var = register_table_lookup(regs, x->token);
-            if (var == NULL) {
-                fprintf(stderr, "cannot reference a temporary value\n");
-                return operand_none();
-            }
-            return var->pointer;
-        }
-        case AST_NODE_TYPE_LOCK: {
-            //NOTE: pointers need to be checked for null before being locked for safety!
-            struct ast_node* x = node->children[0];
-            struct variable* var = register_table_lookup(regs, x->token);
-            if (var == NULL) {
-                fprintf(stderr, "cannot lock a temporary value\n");
-                return operand_none();
-            }
-            return var->pointer;
         }
         case AST_NODE_TYPE_VARIABLE: {
             struct ast_node* name = node->children[0];
@@ -671,7 +698,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
 
             //store the value
             if (value) {
-                store.operands[1] = cast(compiler, statement(compiler, value), type, CAST_TYPE_IMPLICIT);
+                store.operands[1] = cast(compiler, rvalue_statement(compiler, value), type, CAST_TYPE_IMPLICIT);
             } else {
                 //TODO: allow lazy assignment
                 if (type.type->type == AST_NODE_TYPE_REFERENCE) {
@@ -685,45 +712,36 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
 
             return instruction.result;
         }
+        case AST_NODE_TYPE_ADDRESS: {
+            return lvalue_statement(compiler, node);
+        }
+        case AST_NODE_TYPE_NAME:
+        case AST_NODE_TYPE_GET_FIELD: {
+            struct operand addr = lvalue_statement(compiler, node);
+            
+            struct ssa_instruction load = {};
+            load.operator = OP_LOAD;
+            load.operands[0] = addr;
+            load.type = addr.typename;
+            load.result = register_table_alloc(compiler->regs, load.type);
+            block_add(current, load);
+            
+            return load.result;
+        }
         case AST_NODE_TYPE_ASSIGN: {
             struct ast_node* target = node->children[0];
             struct ast_node* value = node->children[1];
             struct ssa_instruction instruction = {};
             instruction.operator = OP_STORE;
-            struct variable* symbol = register_table_lookup(current->symbol_table, target->token);
+            struct operand lval = lvalue_statement(compiler, target);
             
-            instruction.type = symbol->type;
+            instruction.type = ssa_type_from_ast(compiler->ast_module, lval.typename.type->children[0]);
             instruction.result = operand_none();
-            instruction.operands[0] = symbol->pointer;
-            
-            // references can't be reassigned, so it's always assigning to it's underlying value
-            if (symbol->type.type->type == AST_NODE_TYPE_REFERENCE) {
-                // load in the address
-                struct ssa_instruction load = {};
-                load.operator = OP_LOAD;
-                load.result = register_table_alloc(compiler->regs, symbol->type);
-                load.type = symbol->type;
-                load.operands[0] = symbol->pointer;
-                block_add(current, load);
-                
-                instruction.operands[0] = load.result;
-                instruction.type = ssa_type_from_ast(compiler->ast_module, *symbol->type.type->children);
-            }
+            instruction.operands[0] = lval;
 
-            instruction.operands[1] = cast(compiler, statement(compiler, value), instruction.type, CAST_TYPE_IMPLICIT);
+            instruction.operands[1] = cast(compiler, rvalue_statement(compiler, value), instruction.type, CAST_TYPE_IMPLICIT);
             
             block_add(current, instruction);
-            return instruction.result;
-        }
-        case AST_NODE_TYPE_NAME: {
-            struct ssa_instruction instruction = {};
-            instruction.operator = OP_LOAD;
-            struct variable* var = register_table_lookup(current->symbol_table, node->token);
-            instruction.type = var->type;
-            instruction.operands[0] = var->pointer;
-            instruction.result = register_table_alloc(current->symbol_table, var->type);
-            block_add(current, instruction);
-
             return instruction.result;
         }
         case AST_NODE_TYPE_CALL: {
@@ -736,7 +754,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
             instruction.operands[0] = operand_unit(call);
 
             for (int i = 0; i < call->argument_count; i++) {
-                struct operand arg = statement(compiler, node->children[i + 1]);
+                struct operand arg = rvalue_statement(compiler, node->children[i + 1]);
                 instruction.operands[i + 1] = cast(compiler, arg,
                                                    call->arguments[i].typename, CAST_TYPE_IMPLICIT);
             }
@@ -752,7 +770,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
                 struct ssa_instruction return_store = {};
                 return_store.operator = OP_STORE;
                 return_store.operands[0] = compiler->return_value_ptr;
-                return_store.operands[1] = cast(compiler, statement(compiler, node->children[0]),
+                return_store.operands[1] = cast(compiler, rvalue_statement(compiler, node->children[0]),
                                                 compiler->return_type, CAST_TYPE_IMPLICIT);
                 block_add(current, return_store);
             }
@@ -775,7 +793,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
 
             instruction.operator = OP_IF;
             instruction.result = operand_end();
-            instruction.operands[0] = statement(compiler, condition);
+            instruction.operands[0] = rvalue_statement(compiler, condition);
             instruction.operands[2] = operand_block(after);
 
             struct ast_node* then = node->children[1];
@@ -787,7 +805,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
 
             compiler->body = then_block;
 
-            struct operand result = statement(compiler, then);
+            struct operand result = rvalue_statement(compiler, then);
 
             if (result.type != OPERAND_TYPE_END) {
                 struct ssa_instruction end = {};
@@ -805,7 +823,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
                 struct ast_node* else_node = node->children[2];
                 instruction.operands[2] = operand_block(else_block);
                 compiler->body = else_block;
-                result = statement(compiler, else_node);
+                result = rvalue_statement(compiler, else_node);
                 if (result.type != OPERAND_TYPE_END) {
                     struct ssa_instruction goto_instruction = {};
                     goto_instruction.operator = OP_GOTO;
@@ -851,7 +869,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
             struct ssa_instruction instruction = {};
             instruction.operator = OP_IF;
             instruction.result = operand_end();
-            instruction.operands[0] = statement(compiler, condition);
+            instruction.operands[0] = rvalue_statement(compiler, condition);
             instruction.operands[1] = operand_block(body_block);
             instruction.operands[2] = operand_block(after_block);
             block_add(loop_block, instruction);
@@ -862,7 +880,7 @@ static struct operand statement(struct compiler* compiler, struct ast_node* node
 
             //build the body of the loop
             compiler->body = body_block;
-            struct operand result = statement(compiler, body);
+            struct operand result = rvalue_statement(compiler, body);
             if (result.type != OPERAND_TYPE_END) {
                 block_link(body_block, loop_block);
                 block_add(body_block, jump);
@@ -936,7 +954,7 @@ static void implementation(struct unit_module* unit_module, struct ast_module* m
 
             argument(compiler, args);
 
-            struct operand operand = statement(compiler, body);
+            struct operand operand = rvalue_statement(compiler, body);
 
             if (operand.type != OPERAND_TYPE_END) {
                 struct ssa_instruction goto_instruction = {};

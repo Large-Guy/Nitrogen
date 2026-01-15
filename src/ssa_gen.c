@@ -238,6 +238,8 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
         [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_I8] = {
+        [AST_NODE_TYPE_F32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I16] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
@@ -247,6 +249,8 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
         [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_I16] = {
+        [AST_NODE_TYPE_F32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
@@ -256,6 +260,8 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
         [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_I32] = {
+        [AST_NODE_TYPE_F32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
@@ -265,6 +271,8 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
         [AST_NODE_TYPE_U64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_I64] = {
+        [AST_NODE_TYPE_F32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_I32] = {CAST_TYPE_EXPLICIT, cast_emit_static},
@@ -275,6 +283,8 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
     },
 
     [AST_NODE_TYPE_U8] = {
+        [AST_NODE_TYPE_F32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U16] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
@@ -284,6 +294,8 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
         [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_U16] = {
+        [AST_NODE_TYPE_F32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
@@ -293,6 +305,8 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
         [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_U32] = {
+        [AST_NODE_TYPE_F32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
@@ -302,6 +316,8 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
         [AST_NODE_TYPE_I64] = {CAST_TYPE_EXPLICIT, cast_emit_static},
     },
     [AST_NODE_TYPE_U64] = {
+        [AST_NODE_TYPE_F32] = {CAST_TYPE_IMPLICIT, cast_emit_static},
+        [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U16] = {CAST_TYPE_EXPLICIT, cast_emit_static},
         [AST_NODE_TYPE_U32] = {CAST_TYPE_EXPLICIT, cast_emit_static},

@@ -1,29 +1,11 @@
 module program;
 
-struct Time
-{
-    i32 year;
-    i32 month;
-    i32 day;
-    i32 hour;
-    i32 minute;
-}
-
-struct Car
-{
-    f32<3> position; 
-    i8* name;
-    i8* brand;
-    Time time;
-}
-
 void main()
 {
-    Car car;
-    //car.time.year = 2001;
-    //car.time.month = 9;
-    //car.time.day = 11;
-    //car.time.hour = 7;
-    //car.time.minute = 46;
-    f32<3> pos_swizzled = car.position.zyx;
+    f32<3> position;
+    position.x = 1;
+    position.y = 2;
+    position.z = 3;
+    
+    f32<2> swizzled = position.xz;
 }

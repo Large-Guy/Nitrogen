@@ -507,8 +507,12 @@ static struct ast_node* field(struct parser* parser, struct ast_node* left, bool
     {
         if (parser_match(parser, TOKEN_TYPE_EQUAL))
         {
+            struct ast_node* get = ast_node_new(AST_NODE_TYPE_GET, op_token);
+            ast_node_append_child(get, left);
+            ast_node_append_child(get, ast_node_new(AST_NODE_TYPE_NAME, field_name));
+
             struct ast_node* node = ast_node_new(AST_NODE_TYPE_ASSIGN, op_token);
-            ast_node_append_child(node, left);
+            ast_node_append_child(node, get);
             ast_node_append_child(node, expression(parser));
             return node;
         }

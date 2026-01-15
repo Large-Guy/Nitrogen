@@ -1,15 +1,23 @@
 module program;
 
+struct Time
+{
+    i32 year;
+    i32 day;
+    i32 hour;
+    i32 minute;
+}
+
 struct Car
 {
     i8* name;
     i8* brand;
-    i32 year;
+    Time time;
 }
 
 i32 main()
 {
     Car car;
-    i32* ref = &car.year;
-    return ref;
+    car.time.year = 10;
+    return car.time.year;
 }

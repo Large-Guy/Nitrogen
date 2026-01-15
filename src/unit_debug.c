@@ -97,6 +97,8 @@ static char* operator_name(enum ssa_instruction_code code)
             return "mul";
         case OP_DIV:
             return "div";
+        case OP_SHUFFLE:
+            return "shuffle";
         case OP_BITWISE_LEFT:
             return "bitwise-left";
         case OP_BITWISE_RIGHT:
@@ -184,6 +186,16 @@ static void operand_debug(FILE* out, struct operand operand)
             break;
     }
     type_code_name(out, operand.typename);
+    if (operand.swizzle_count > 0) {
+        fprintf(out, " swizzle (");
+        for (int i = 0; i < operand.swizzle_count; i++) {
+            fprintf(out, "%d", operand.swizzle_mask[i]);
+            if (i < operand.swizzle_count - 1) {
+                fprintf(out, ",");
+            }
+        }
+        fprintf(out, ")");
+    }
     fprintf(out, "] ");
 }
 

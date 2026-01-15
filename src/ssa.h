@@ -9,7 +9,7 @@ enum ssa_instruction_code
     OP_NONE,
     OP_RETURN,
 
-    //32-bit
+    OP_SHUFFLE,
     OP_CONST,
     OP_ADD,
     OP_SUB,
@@ -83,6 +83,9 @@ struct operand
     } value;
     
     uint64_t offset;
+    
+    uint32_t swizzle_mask[4];
+    uint32_t swizzle_count;
 };
 
 struct operand operand_none();

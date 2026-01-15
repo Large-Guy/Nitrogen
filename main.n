@@ -11,19 +11,19 @@ struct Time
 
 struct Car
 {
+    f32<3> position; 
     i8* name;
     i8* brand;
     Time time;
-    f32<3> position; 
 }
 
-f32 main()
+void main()
 {
     Car car;
-    car.time.year = 2001;
-    car.time.month = 9;
-    car.time.day = 11;
-    car.time.hour = 7;
-    car.time.minute = 46;
-    return car.position[1];
+    //car.time.year = 2001;
+    //car.time.month = 9;
+    //car.time.day = 11;
+    //car.time.hour = 7;
+    //car.time.minute = 46;
+    f32<3> pos_swizzled = car.position.zyx;
 }

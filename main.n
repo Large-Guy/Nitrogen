@@ -25,5 +25,5 @@ f32 main()
     car.time.day = 11;
     car.time.hour = 7;
     car.time.minute = 46;
-    return position[1];
+    return car.position[1];
 }

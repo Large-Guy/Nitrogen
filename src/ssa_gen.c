@@ -546,6 +546,29 @@ static struct operand lvalue_statement(struct compiler* compiler, struct ast_nod
             struct ast_node* x = node->children[0];
             return lvalue_statement(compiler, x);
         }
+        case AST_NODE_TYPE_INDEX: {
+            struct ast_node* array = node->children[0];
+            struct ast_node* index = node->children[1];
+            struct operand array_op = lvalue_statement(compiler, array);
+            struct operand index_op = rvalue_statement(compiler, index);
+            struct ssa_instruction mul = {};
+            mul.operator = OP_MUL;
+            mul.operands[0] = index_op;
+            assert(array_op.typename.type->children_count > 0);
+            struct ast_node* underlying_type = *array_op.typename.type->children; //skip the reference
+            assert(underlying_type->children_count > 0);
+            underlying_type = *underlying_type->children; //skip the array
+            //underlying type
+            mul.operands[1] = operand_const_i64((int64_t)ast_node_symbol_size(compiler->ast_module, underlying_type));
+            mul.type = ssa_type_from_ast(compiler->ast_module, ast_node_new(AST_NODE_TYPE_I32, token_null));
+            mul.result = register_table_alloc(regs, mul.type);
+            block_add(current, mul);
+            array_op.offset = 0; //TODO: change offset to an operator
+            struct ast_node* pointer = ast_node_new(AST_NODE_TYPE_REFERENCE, token_null);
+            ast_node_append_child(pointer, underlying_type);
+            array_op.typename = ssa_type_from_ast(compiler->ast_module, pointer);
+            return array_op;
+        }
         case AST_NODE_TYPE_NAME: {
             struct variable* var = register_table_lookup(current->symbol_table, node->token);
             //NOTE: possible pointer for dereference here?
@@ -731,6 +754,7 @@ static struct operand rvalue_statement(struct compiler* compiler, struct ast_nod
             return lvalue_statement(compiler, node);
         }
         case AST_NODE_TYPE_NAME:
+        case AST_NODE_TYPE_INDEX:
         case AST_NODE_TYPE_GET: {
             struct operand addr = drill(compiler, lvalue_statement(compiler, node));
             

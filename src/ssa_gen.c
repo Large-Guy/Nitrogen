@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ast_layout.h"
 #include "block.h"
 #include "parser.h"
 
@@ -543,14 +544,28 @@ static struct operand lvalue_statement(struct compiler* compiler, struct ast_nod
         }
         case AST_NODE_TYPE_ADDRESS: {
             struct ast_node* x = node->children[0];
-            struct variable* var = register_table_lookup(current->symbol_table, x->token);
-            return var->pointer;
-
+            return lvalue_statement(compiler, x);
         }
         case AST_NODE_TYPE_NAME: {
             struct variable* var = register_table_lookup(current->symbol_table, node->token);
             //NOTE: possible pointer for dereference here?
-            return drill(compiler, var->pointer);
+            return var->pointer;
+        }
+        case AST_NODE_TYPE_GET: {
+            struct ast_node* source = node->children[0];
+            struct ast_node* field = node->children[1];
+            struct token name = field->token;
+            struct operand source_op = lvalue_statement(compiler, source);
+            //convert pointer source to proper type
+            struct ast_node* underlying_type = *source_op.typename.type->children;
+            uint32_t offset = ast_node_symbol_offset(compiler->ast_module, underlying_type, name);
+            struct ast_node* field_node = ast_node_symbol_field(compiler->ast_module, underlying_type, name);
+            struct ast_node* pointer = ast_node_new(AST_NODE_TYPE_REFERENCE, token_null);
+            ast_node_append_child(pointer, field_node->children[VARIABLE_LAYOUT_TYPE]);
+
+            source_op.typename = ssa_type_from_ast(compiler->ast_module, pointer);
+            source_op.offset = offset;
+            return source_op;
         }
         default: {
             fprintf(stderr, "unexpected node type: %s\n", ast_node_get_name(node));
@@ -716,13 +731,13 @@ static struct operand rvalue_statement(struct compiler* compiler, struct ast_nod
             return lvalue_statement(compiler, node);
         }
         case AST_NODE_TYPE_NAME:
-        case AST_NODE_TYPE_GET_FIELD: {
-            struct operand addr = lvalue_statement(compiler, node);
+        case AST_NODE_TYPE_GET: {
+            struct operand addr = drill(compiler, lvalue_statement(compiler, node));
             
             struct ssa_instruction load = {};
             load.operator = OP_LOAD;
             load.operands[0] = addr;
-            load.type = addr.typename;
+            load.type = ssa_type_from_ast(compiler->ast_module, *addr.typename.type->children);
             load.result = register_table_alloc(compiler->regs, load.type);
             block_add(current, load);
             

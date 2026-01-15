@@ -7,13 +7,9 @@ struct Car
     i32 year;
 }
 
-void main()
+i32 main()
 {
-    i8 i = 10;
-    i8* ref = &i;
-    ref = 20;
-    // i == 20
-    i8** ref_to_ref = &ref;
-    ref_to_ref = 30; // drill to lowest reference
-    // i == 30
+    Car car;
+    i32* ref = &car.year;
+    return ref;
 }

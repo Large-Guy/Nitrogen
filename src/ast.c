@@ -180,7 +180,7 @@ uint32_t ast_node_symbol_offset(struct ast_module* module, struct ast_node* symb
             continue;
         }
         struct ast_node* name = member->children[0];
-        if (name->token.length == field.length && memcmp(name->token.start, name->token.start, name->token.length) == 0) {
+        if (name->token.length == field.length && memcmp(name->token.start, field.start, name->token.length) == 0) {
             found = true;
             break;
         }

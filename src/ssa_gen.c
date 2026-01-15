@@ -564,7 +564,7 @@ static struct operand lvalue_statement(struct compiler* compiler, struct ast_nod
             ast_node_append_child(pointer, field_node->children[VARIABLE_LAYOUT_TYPE]);
 
             source_op.typename = ssa_type_from_ast(compiler->ast_module, pointer);
-            source_op.offset = offset;
+            source_op.offset += offset;
             return source_op;
         }
         default: {

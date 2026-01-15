@@ -3,6 +3,7 @@ module program;
 struct Time
 {
     i32 year;
+    i32 month;
     i32 day;
     i32 hour;
     i32 minute;
@@ -18,6 +19,10 @@ struct Car
 i32 main()
 {
     Car car;
-    car.time.year = 10;
+    car.time.year = 2001;
+    car.time.month = 9;
+    car.time.day = 11;
+    car.time.hour = 7;
+    car.time.minute = 46;
     return car.time.year;
 }

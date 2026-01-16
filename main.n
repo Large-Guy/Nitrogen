@@ -2,7 +2,5 @@ module program;
 
 void main()
 {
-    i32 a;
-    i32& ref = &a;
-    ref = 20;
+    i32* a = [i32(24)];
 }

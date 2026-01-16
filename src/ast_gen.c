@@ -55,6 +55,8 @@ static struct ast_node* unary(struct parser* parser, bool canAssign);
 
 static struct ast_node* cast(struct parser* parser, bool canAssign);
 
+static struct ast_node* heap(struct parser* parser, bool canAssign);
+
 static struct ast_node* binary(struct parser* parser, struct ast_node* left, bool canAssign);
 
 static struct ast_node* variable(struct parser* parser, bool canAssign);
@@ -78,7 +80,7 @@ struct parse_rule rules[] = {
     [TOKEN_TYPE_RIGHT_PAREN] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_LEFT_BRACE] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_RIGHT_BRACE] = {NULL, NULL, PRECEDENCE_NONE},
-    [TOKEN_TYPE_LEFT_BRACKET] = {NULL, index, PRECEDENCE_CALL},
+    [TOKEN_TYPE_LEFT_BRACKET] = {heap, index, PRECEDENCE_CALL},
     [TOKEN_TYPE_RIGHT_BRACKET] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_SEMICOLON] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_DOT] = {NULL, field, PRECEDENCE_CALL},
@@ -272,6 +274,16 @@ static struct ast_node* grouping(struct parser* parser, bool canAssign)
     struct ast_node* node = expression(parser);
     parser_consume(parser, TOKEN_TYPE_RIGHT_PAREN, "expected ')' after grouping");
     return node;
+}
+
+static struct ast_node* heap(struct parser* parser, bool canAssign) {
+    struct ast_node* node = expression(parser);
+    parser_consume(parser, TOKEN_TYPE_RIGHT_BRACKET, "expected ']' after heap alloc expression");
+    
+    struct ast_node* alloc = ast_node_new(AST_NODE_TYPE_HEAP, token_null);
+    ast_node_append_child(alloc, node);
+    
+    return alloc;
 }
 
 static struct ast_node* unary(struct parser* parser, bool canAssign)

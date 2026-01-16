@@ -41,7 +41,8 @@ enum ssa_instruction_code
 
     //variables
     OP_CALL,
-    OP_ALLOC,
+    OP_SALLOC,
+    OP_HALLOC,
     OP_LOAD,
     OP_STORE,
     OP_MEMSET,

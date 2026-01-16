@@ -143,7 +143,7 @@ static char* operator_name(enum ssa_instruction_code code)
             return "return";
         case OP_CALL:
             return "call";
-        case OP_ALLOC:
+        case OP_SALLOC:
             return "alloc";
         case OP_STORE:
             return "store";

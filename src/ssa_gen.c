@@ -125,7 +125,7 @@ static void compiler_begin(struct compiler* compiler) {
                 pointer;
         struct ssa_instruction ret_val_variable = {};
         ret_val_variable.result = compiler->return_value_ptr;
-        ret_val_variable.operator = OP_ALLOC;
+        ret_val_variable.operator = OP_SALLOC;
         ret_val_variable.type = compiler->return_type;
         block_add(compiler->entry, ret_val_variable);
 
@@ -745,6 +745,28 @@ static struct operand rvalue_statement(struct compiler* compiler, struct ast_nod
             op.value.integer = immediate;
             return op;
         }
+        case AST_NODE_TYPE_HEAP: {
+            struct ast_node* x = node->children[0];
+            struct operand value = rvalue_statement(compiler, x);
+            
+            // allocate the heap memory
+            struct ssa_instruction halloc = {};
+            halloc.operator = OP_HALLOC;
+            halloc.operands[0] = operand_const_i64(value.typename.size);
+            struct ast_node* pointer = ast_node_new(AST_NODE_TYPE_OWNER, token_null);
+            ast_node_append_child(pointer, value.typename.type);
+            halloc.result = register_table_alloc(regs, ssa_type_from_ast(compiler->ast_module, pointer));
+            block_add(current, halloc);
+            
+            // store
+            struct ssa_instruction store = {};
+            store.operator = OP_STORE;
+            store.operands[0] = halloc.result;
+            store.operands[1] = value;
+            block_add(current, store);
+            
+            return halloc.result;
+        }
         case AST_NODE_TYPE_ADD: {
             return binary(compiler, node, OP_ADD);
         }
@@ -840,7 +862,7 @@ static struct operand rvalue_statement(struct compiler* compiler, struct ast_nod
                 type = ssa_type_from_ast(compiler->ast_module, type_node);
             }
             struct ssa_instruction instruction = {};
-            instruction.operator = OP_ALLOC;
+            instruction.operator = OP_SALLOC;
             instruction.type = type;
 
             instruction.result = register_table_add(current->symbol_table, name->token, type)->pointer;
@@ -1122,7 +1144,7 @@ static struct operand argument(struct compiler* compiler, struct ast_node* node)
 
             //make a local copy pointer to a variable
             struct ssa_instruction instruction = {};
-            instruction.operator = OP_ALLOC;
+            instruction.operator = OP_SALLOC;
             instruction.type = variable.typename;
             instruction.result = register_table_add(compiler->regs, name->token, variable.typename)->pointer;
             instruction.operands[0] = operand_const_i64(variable.typename.size);

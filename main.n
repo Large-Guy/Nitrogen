@@ -3,6 +3,7 @@ module program;
 struct Car
 {
     f32<3> position; 
+    f32<3> direction;
 }
 
 Car newCar(f32 x, f32 y, f32 z)
@@ -14,7 +15,15 @@ Car newCar(f32 x, f32 y, f32 z)
     return car; 
 }
 
+void drive(Car& car)
+{
+    car.position.x = car.position.x + car.direction.x;
+    car.position.y = car.position.y + car.direction.y;
+    car.position.z = car.position.z + car.direction.z;
+}
+
 void main()
 {
     Car* car = [newCar(10, 20, 30)];
+    drive(car);
 }

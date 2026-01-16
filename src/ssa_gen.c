@@ -899,7 +899,7 @@ static struct operand rvalue_statement(struct compiler* compiler, struct ast_nod
         case AST_NODE_TYPE_NAME:
         case AST_NODE_TYPE_INDEX:
         case AST_NODE_TYPE_GET: {
-            struct operand addr = drill(compiler, lvalue_statement(compiler, node));
+            struct operand addr = lvalue_statement(compiler, node);
             
             struct ssa_instruction load = {};
             load.operator = OP_LOAD;

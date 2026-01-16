@@ -1,14 +1,13 @@
 module program;
 
-void getSize(i32* w, i32* h)
+void getSize(i32<2>* size)
 {
-    w = 20;
-    h = 30;
+    size.x = 20;
+    size.y = 30;
 }
 
 void main()
 {
-    i32 w;
-    i32 h;
-    getSize(&w, &h);
+    i32<2> size;
+    getSize(&size);
 }

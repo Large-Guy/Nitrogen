@@ -614,7 +614,7 @@ static struct operand lvalue_statement(struct compiler* compiler, struct ast_nod
             struct ast_node* source = node->children[0];
             struct ast_node* field = node->children[1];
             struct token name = field->token;
-            struct operand source_op = lvalue_statement(compiler, source);
+            struct operand source_op = drill(compiler, lvalue_statement(compiler, source));
             //convert pointer source to proper type
             struct ast_node* underlying_type = *source_op.typename.type->children;
            switch (underlying_type->type) {

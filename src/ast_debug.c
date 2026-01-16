@@ -5,7 +5,7 @@
 static const char* ast_node_type_names[] = {
     [AST_NODE_TYPE_INFER] = "infer",
     [AST_NODE_TYPE_VOID] = "void",
-    [AST_NODE_TYPE_REFERENCE] = "reference",
+    [AST_NODE_TYPE_BORROW] = "reference",
     [AST_NODE_TYPE_OPTIONAL] = "optional",
     [AST_NODE_TYPE_ARRAY] = "array",
     [AST_NODE_TYPE_SIMD] = "simd",

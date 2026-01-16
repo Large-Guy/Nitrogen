@@ -66,7 +66,7 @@ struct variable* register_table_add(struct register_table* table, struct token n
     struct variable symbol = {};
     symbol.name = name;
     symbol.scope = table->current_scope;
-    struct ast_node* reference = ast_node_new(AST_NODE_TYPE_REFERENCE, token_null);
+    struct ast_node* reference = ast_node_new(AST_NODE_TYPE_OWNER, token_null);
     ast_node_append_child(reference, ast_node_clone(type.type));
     symbol.type = ssa_type_from_ast(type.module, ast_node_clone(type.type));
     symbol.pointer = register_table_alloc(table, ssa_type_from_ast(type.module, reference));

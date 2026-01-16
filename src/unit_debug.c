@@ -50,7 +50,11 @@ static void ast_node_type_debug(FILE* out, struct ast_node* node)
         case AST_NODE_TYPE_F64:
             fprintf(out, "f64");
             break;
-        case AST_NODE_TYPE_REFERENCE:
+        case AST_NODE_TYPE_BORROW:
+            ast_node_type_debug(out, node->children[0]);
+            fprintf(out, "&");
+            break;
+        case AST_NODE_TYPE_OWNER:
             ast_node_type_debug(out, node->children[0]);
             fprintf(out, "*");
             break;

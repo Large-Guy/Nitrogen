@@ -205,7 +205,14 @@ static struct ast_node* append_type_attribute(struct parser* parser, struct ast_
 {
     if (parser_match(parser, TOKEN_TYPE_STAR))
     {
-        enum ast_node_type type = AST_NODE_TYPE_REFERENCE;
+        enum ast_node_type type = AST_NODE_TYPE_OWNER;
+        struct ast_node* pointer = ast_node_new(type, parser->previous);
+        ast_node_append_child(pointer, current);
+        return append_type_attribute(parser, pointer);
+    }
+    if (parser_match(parser, TOKEN_TYPE_AND))
+    {
+        enum ast_node_type type = AST_NODE_TYPE_BORROW;
         struct ast_node* pointer = ast_node_new(type, parser->previous);
         ast_node_append_child(pointer, current);
         return append_type_attribute(parser, pointer);
@@ -218,10 +225,10 @@ static struct ast_node* append_type_attribute(struct parser* parser, struct ast_
     }
     if (parser_match(parser, TOKEN_TYPE_STAR_STAR))
     {
-        struct ast_node* base_pointer = ast_node_new(AST_NODE_TYPE_REFERENCE, parser->previous);
+        struct ast_node* base_pointer = ast_node_new(AST_NODE_TYPE_OWNER, parser->previous);
         ast_node_append_child(base_pointer, current);
 
-        enum ast_node_type type = AST_NODE_TYPE_REFERENCE;
+        enum ast_node_type type = AST_NODE_TYPE_OWNER;
         struct ast_node* pointer = ast_node_new(type, parser->previous);
         ast_node_append_child(pointer, base_pointer);
         return append_type_attribute(parser, pointer);

@@ -122,12 +122,13 @@ size_t ast_node_symbol_size(struct ast_module* module, struct ast_node* node)
         case AST_NODE_TYPE_OPTIONAL: {
             if (node->children_count == 0)
                 return sizeof(void*); // for 'null' keyword
-            if (node->children[0]->type == AST_NODE_TYPE_REFERENCE) {
+            if (node->children[0]->type == AST_NODE_TYPE_BORROW) {
                 return sizeof(void*); // special case for references
             }
             return ast_node_symbol_size(module, node->children[0]) + sizeof(bool); // boolean header
         }
-        case AST_NODE_TYPE_REFERENCE: return sizeof(void*); //TODO: research if you can really just assume this
+        case AST_NODE_TYPE_OWNER:
+        case AST_NODE_TYPE_BORROW: return sizeof(void*); //TODO: research if you can really just assume this
         
         case AST_NODE_TYPE_NULL: return 0;
             

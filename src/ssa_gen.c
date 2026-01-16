@@ -201,7 +201,23 @@ struct cast_rule {
 
 static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_COUNT] = {
     [AST_NODE_TYPE_VOID] = {},
-    [AST_NODE_TYPE_REFERENCE] = {
+    [AST_NODE_TYPE_OWNER] = {
+        [AST_NODE_TYPE_OPTIONAL] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret},
+        [AST_NODE_TYPE_BORROW] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret},
+        
+        [AST_NODE_TYPE_U8] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
+        [AST_NODE_TYPE_U16] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
+        [AST_NODE_TYPE_U32] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
+        [AST_NODE_TYPE_U64] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
+        [AST_NODE_TYPE_I8] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
+        [AST_NODE_TYPE_I16] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
+        [AST_NODE_TYPE_I32] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
+        [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
+        
+        [AST_NODE_TYPE_F32] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
+        [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
+    },
+    [AST_NODE_TYPE_BORROW] = {
         [AST_NODE_TYPE_OPTIONAL] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret},
         
         [AST_NODE_TYPE_U8] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
@@ -364,7 +380,7 @@ static struct operand cast_emit_reinterpret(struct compiler* compiler, struct op
 }
 
 static struct operand cast_emit_dereference(struct compiler* compiler, struct operand operand, struct ssa_type type) {
-    assert(operand.typename.type->type == AST_NODE_TYPE_REFERENCE);
+    assert(operand.typename.type->type == AST_NODE_TYPE_BORROW);
     assert(operand.typename.type->children[0]->type == type.type->type);
     struct ssa_instruction load = {};
     load.operator = OP_LOAD;
@@ -376,7 +392,7 @@ static struct operand cast_emit_dereference(struct compiler* compiler, struct op
 
 static struct operand cast_emit_optional(struct compiler* compiler, struct operand operand, struct ssa_type type) {
     if (operand.typename.type->type == AST_NODE_TYPE_NULL) {
-        if (type.type->children[0]->type == AST_NODE_TYPE_REFERENCE) {
+        if (type.type->children[0]->type == AST_NODE_TYPE_BORROW) {
             //NOTE: might be a bit of a hack
             return operand_null();
         }
@@ -431,7 +447,7 @@ static bool compare_types(struct ssa_type a, struct ssa_type b) {
 }
 
 static bool is_pointer(struct ssa_type a) {
-    return (a.type->type == AST_NODE_TYPE_OPTIONAL ? a.type->children[0]->type == AST_NODE_TYPE_REFERENCE : false) || a.type->type == AST_NODE_TYPE_REFERENCE;
+    return (a.type->type == AST_NODE_TYPE_OPTIONAL ? a.type->children[0]->type == AST_NODE_TYPE_BORROW : false) || a.type->type == AST_NODE_TYPE_BORROW;
 }
 
 static bool is_signed(struct ssa_type a) {
@@ -546,7 +562,9 @@ struct operand get_float(double value) {
 
 //drill down to the final reference
 static struct operand drill(struct compiler* compiler, struct operand op) {
-    if (op.typename.type->children_count > 0 && op.typename.type->children[0]->type == AST_NODE_TYPE_REFERENCE) {
+    if (op.typename.type->children_count > 0 && 
+        (op.typename.type->children[0]->type == AST_NODE_TYPE_BORROW ||
+            op.typename.type->children[0]->type == AST_NODE_TYPE_OWNER)) {
         struct ssa_instruction load = {};
         load.operator = OP_LOAD;
         load.type = ssa_type_from_ast(compiler->ast_module, op.typename.type->children[0]);
@@ -592,7 +610,7 @@ static struct operand lvalue_statement(struct compiler* compiler, struct ast_nod
             mul.result = register_table_alloc(regs, mul.type);
             block_add(current, mul);
             
-            struct ast_node* pointer = ast_node_new(AST_NODE_TYPE_REFERENCE, token_null);
+            struct ast_node* pointer = ast_node_new(AST_NODE_TYPE_BORROW, token_null);
             ast_node_append_child(pointer, underlying_type);
             
             struct ssa_instruction add = {};
@@ -621,7 +639,7 @@ static struct operand lvalue_statement(struct compiler* compiler, struct ast_nod
                case AST_NODE_TYPE_STRUCT: {
                    uint32_t offset = ast_node_symbol_offset(compiler->ast_module, underlying_type, name);
                    struct ast_node* field_node = ast_node_symbol_field(compiler->ast_module, underlying_type, name);
-                   struct ast_node* pointer = ast_node_new(AST_NODE_TYPE_REFERENCE, token_null);
+                   struct ast_node* pointer = ast_node_new(AST_NODE_TYPE_BORROW, token_null);
                    ast_node_append_child(pointer, field_node->children[VARIABLE_LAYOUT_TYPE]);
 
                    source_op.typename = ssa_type_from_ast(compiler->ast_module, pointer);
@@ -658,7 +676,7 @@ static struct operand lvalue_statement(struct compiler* compiler, struct ast_nod
                    
                    if (count == 1) {
                        uint32_t size = ast_node_symbol_size(compiler->ast_module, simd_type);
-                       struct ast_node* pointer = ast_node_new(AST_NODE_TYPE_REFERENCE, token_null);
+                       struct ast_node* pointer = ast_node_new(AST_NODE_TYPE_BORROW, token_null);
                        ast_node_append_child(pointer, simd_type);
                        source_op.offset += size * index[0];
                        source_op.typename = ssa_type_from_ast(compiler->ast_module, pointer);

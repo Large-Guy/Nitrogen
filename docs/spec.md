@@ -112,7 +112,7 @@ if (a != null)
 }
 
 i32 original = 10;
-i32* b = &original; // reference pointer assigned immediately
+i32& b = &original; // &stack_variable actually gives you a borrow, instead of a owning reference
 
 i32 other = 20;
 b = other; // assign to original

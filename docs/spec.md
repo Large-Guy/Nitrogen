@@ -30,11 +30,11 @@
   * [8. Interfaces](#8-interfaces)
   * [9. Casting](#9-casting)
   * [10. Memory Management](#10-memory-management)
-  * [11. Generics](#11-generics)
-    * [11.1 Single Generics](#111-single-generics)
-    * [11.2 Variadic Generics](#112-variadic-generics)
-    * [11.3 Structural Singular Generics](#113-structural-singular-generics)
-    * [11.4 Structural Variadic Generics](#114-structural-variadic-generics)
+  * [11. Templates](#11-templates)
+    * [11.1 Single Templates](#111-single-templates)
+    * [11.2 Variadic Templates](#112-variadic-templates)
+    * [11.3 Structural Singular Templates](#113-structural-singular-templates)
+    * [11.4 Structural Variadic Templates](#114-structural-variadic-templates)
   * [12. Styling](#12-styling)
     * [12.1 Casing](#121-casing)
     * [12.2 Braces](#122-braces)
@@ -303,12 +303,12 @@ b.b = a.b;
 
 TODO: This is unknown for now. Leaning towards manual C Style memory management. Likely with some safety features.
 
-## 11. Generics
+## 11. Templates
 
-Structs, interfaces, functions, and methods can be generic. Generics are designed to be as simple as possible, similar
+Structs, interfaces, functions, and methods can be templates. Templates are designed to be as simple as possible, similar
 to C# generics, but more powerful. The goal is to avoid metaprogramming that makes code hard to debug or understand.
 
-### 11.1 Single Generics
+### 11.1 Single Templates
 
 ```c++
 void swap<T>(T* a, T* b)
@@ -319,9 +319,9 @@ void swap<T>(T* a, T* b)
 }
 ```
 
-### 11.2 Variadic Generics
+### 11.2 Variadic Templates
 
-variadic generics are expanded automatically.
+variadic templates are expanded automatically.
 
 ```c++
 void printValues<T[]>(T[] values)
@@ -330,7 +330,7 @@ void printValues<T[]>(T[] values)
 }
 ```
 
-### 11.3 Structural Singular Generics
+### 11.3 Structural Singular Templates
 
 ```c++
 struct Pair<Key, Value>
@@ -340,7 +340,7 @@ struct Pair<Key, Value>
 }
 ```
 
-### 11.4 Structural Variadic Generics
+### 11.4 Structural Variadic Templates
 
 ```c++
 struct Tuple<T[]>

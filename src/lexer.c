@@ -289,6 +289,7 @@ static enum token_type type(struct lexer* lexer)
         case 'w': return check_keyword(lexer, 1, 4, "hile", TOKEN_TYPE_WHILE);
         case 'd': return check_keyword(lexer, 1, 1, "o", TOKEN_TYPE_DO);
         case 'o': return check_keyword(lexer, 1, 7, "perator", TOKEN_TYPE_OPERATOR);
+        case 'l': return check_keyword(lexer, 1, 2, "et", TOKEN_TYPE_LET);
         default: break;
     }
     return TOKEN_TYPE_IDENTIFIER;

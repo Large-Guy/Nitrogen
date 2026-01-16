@@ -803,8 +803,24 @@ static struct operand rvalue_statement(struct compiler* compiler, struct ast_nod
         case AST_NODE_TYPE_VARIABLE: {
             struct ast_node* name = node->children[0];
             struct ast_node* type_node = node->children[1];
-            struct ssa_type type = ssa_type_from_ast(compiler->ast_module, type_node);
             struct ast_node* value = node->children_count > 2 ? node->children[2] : NULL;
+
+            struct operand value_op;
+            //store the value
+            if (value) {
+                value_op = rvalue_statement(compiler, value);
+            } else {
+                value_op = operand_const_i64(0);
+            }
+
+            struct ssa_type type;
+
+            if (type_node->type == AST_NODE_TYPE_INFER) {
+                type = value_op.typename;
+            }
+            else {
+                type = ssa_type_from_ast(compiler->ast_module, type_node);
+            }
             struct ssa_instruction instruction = {};
             instruction.operator = OP_ALLOC;
             instruction.type = type;
@@ -816,22 +832,12 @@ static struct operand rvalue_statement(struct compiler* compiler, struct ast_nod
 
             block_add(compiler->entry, instruction);
 
-            //ZII
             struct ssa_instruction store = {};
             store.operator = OP_STORE;
             store.operands[0] = instruction.result;
+            store.operands[1] = cast(compiler, value_op, type, CAST_TYPE_IMPLICIT);
 
-            //store the value
-            if (value) {
-                store.operands[1] = cast(compiler, rvalue_statement(compiler, value), type, CAST_TYPE_IMPLICIT);
-            } else {
-                //TODO: allow lazy assignment
-                if (type.type->type == AST_NODE_TYPE_REFERENCE) {
-                    fprintf(stderr, "references MUST be assigned\n");
-                    return operand_none();
-                }
-                store.operands[1] = operand_const_i64(0);
-            }
+            //TODO: reference types need to be checked to make sure they are assigned before use!
 
             block_add(current, store);
 

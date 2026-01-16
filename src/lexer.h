@@ -93,6 +93,7 @@ enum token_type
     TOKEN_TYPE_SHARED,
 
     //Types
+    TOKEN_TYPE_LET,
 
     TOKEN_TYPE_VOID,
 

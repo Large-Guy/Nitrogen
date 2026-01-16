@@ -2,10 +2,6 @@ module program;
 
 void main()
 {
-    f32<3> position;
-    position.x = 1;
-    position.y = 2;
-    position.z = 3;
-    
-    f32<2> swizzled = position.xz;
+    let i = 512;
+    let f = 10f;
 }

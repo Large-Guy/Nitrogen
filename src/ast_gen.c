@@ -585,7 +585,13 @@ static struct ast_node* return_statement(struct parser* parser)
 
 static struct ast_node* definition(struct parser* parser, bool statement, bool canAssign, bool inlineDeclaration)
 {
-    struct ast_node* type_node = parser_build_type(parser);
+    struct ast_node* type_node = NULL;
+    if (parser->previous.type == TOKEN_TYPE_LET) {
+        type_node = ast_node_new(AST_NODE_TYPE_INFER, parser->previous);
+    }
+    else {
+        type_node = parser_build_type(parser);
+    }
     parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected variable name");
     struct token name = parser->previous;
     if (parser_match(parser, TOKEN_TYPE_LEFT_PAREN))
@@ -821,6 +827,9 @@ static struct ast_node* declaration(struct parser* parser)
     } //Types
     if (parser_match_type(parser))
     {
+        return definition_statement(parser);
+    }
+    if (parser_match(parser, TOKEN_TYPE_LET)) {
         return definition_statement(parser);
     }
     return statement(parser);

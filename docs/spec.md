@@ -14,7 +14,8 @@
   * [3. Types](#3-types)
     * [3.1 Primitives](#31-primitives)
     * [3.2 Pointer and Reference Types](#32-pointer-and-reference-types)
-    * [3.3 Array Types](#33-array-types)
+    * [3.3 Static Array Types and SIMD](#33-static-array-types-and-simd)
+    * [3.4 Dynamic Arrays/Lists](#34-dynamic-arrayslists)
   * [4. Expressions](#4-expressions)
     * [4.1 Literals](#41-literals)
     * [4.2 Null Checking](#42-null-checking)
@@ -30,6 +31,8 @@
   * [8. Interfaces](#8-interfaces)
   * [9. Casting](#9-casting)
   * [10. Memory Management](#10-memory-management)
+    * [10.1 Heap Allocations](#101-heap-allocations)
+    * [10.2 Reference Counting](#102-reference-counting)
   * [11. Templates](#11-templates)
     * [11.1 Single Templates](#111-single-templates)
     * [11.2 Variadic Templates](#112-variadic-templates)
@@ -97,7 +100,7 @@ Once assigned, the underlying pointer **cannot** change.
  - T&?: Nullable borrower, these are borrowed values that may not actually exist. A null check is required to access it.
 
 example:
-```c++
+```javascript
 i32*? a = getNullable();
 
 //assign value
@@ -119,8 +122,39 @@ b = &other; // invalid, cannot change the address of a reference
 // original == 20
 ```
 
-### 3.3 Array Types
-TODO: define this
+### 3.3 Static Array Types and SIMD
+Static arrays use SIMD types. There is no concept of a static array in the language.
+
+```
+f32<16> array = (1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
+
+f32 element = array[7]; // element == 8
+```
+
+SIMD types can also be used as vectors, similar to GLSL.
+
+```
+f32<3> vec3 = (1,2,3);
+
+vec3 *= 2;
+// vec3 == (2,4,6)
+
+vec3 = vec3.zyx; // swizzling!
+```
+
+### 3.4 Dynamic Arrays/Lists
+
+Dynamic arrays are a built-in type and are defined with `[]`
+
+```javascript
+f32[] list = (1,2,3); // lists can automatically consume SIMD types as their initializer list
+
+list.add(4); // can use add to append to the list
+
+list.add((5,6)); // can also append other SIMD types.
+
+// TODO: define other list functions
+```
 
 ## 4. Expressions
 
@@ -135,7 +169,7 @@ TODO: define this
 A null check is **required** to access a pointers value. You are not permitted to dereference the underlying variable 
 before null-checking.
 
-```c++
+```javascript
 i32*? a = getNullable();
 
 if (a != null)
@@ -168,7 +202,7 @@ Identical to Standard C.
 
 Identical to Standard C. Forward Declarations are unnecessary.
 
-```c++
+```javascript
 i32 function(i32 a, f32 b, bool c)
 {
     
@@ -185,7 +219,7 @@ arguments.
 Structures look identical to Standard C. Nitrogen does not have standard RAII, but does follow ZII.
 Functions can be placed in structs, static functions can act as constructors.
 
-```c++
+```javascript
 struct Point
 {
     f32 x; // assignment here is NOT permitted
@@ -212,7 +246,7 @@ Point p = Point.new(1f, 2f);
 
 Structures also support deconstructors allowing for safe cleanup when a variable goes out of scope. There name is `~`.
 
-```c++
+```javascript
 struct File
 {
     i32 _handle;
@@ -240,7 +274,7 @@ struct File
 
 All functions on an interface **must** be implemented. There are no defaults for functions.
 
-```c++
+```javascript
 interface IAnimal
 {
     void makeSound();
@@ -261,19 +295,19 @@ There are two types of casts, conversion, and reinterpret casting (or safe, and 
 denoted with the `!` prefix.
 
 **Conversion/Safe Cast**
-```c++
+```javascript
 f32 x = 3.14159f;
 i32 y = (i32)x;
 ```
 
 **Reinterpret/Unsafe Cast**
-```c++
+```javascript
 i32 bits = 0x40490FDB;
 f32 f = (!f32)bits;
 ```
 
 **Smart Cast**
-```c++
+```javascript
 struct A
 {
     i32 a;
@@ -301,7 +335,35 @@ b.b = a.b;
 
 ## 10. Memory Management
 
-TODO: This is unknown for now. Leaning towards manual C Style memory management. Likely with some safety features.
+### 10.1 Heap Allocations
+
+Heap allocations are inspired by Rust's `Box<T>` type. However their syntax has been simplified.
+
+```javascript
+i32* heap = [42]; // 42 will be allocated on the heap
+
+struct ComplexType
+{
+    i32 a;
+    i32 b;
+    
+    static ComplexType new()
+    {
+         ComplexType t;
+         t.a = 20;
+         t.b = 30;
+         return t;
+    }
+}
+
+ComplexType* complex = [ComplexType::new()]; // Complex type gets heap allocated
+```
+
+Heap allocations use the same `T*` type for storage, and will follow similar rules as well.
+
+### 10.2 Reference Counting
+
+idk yet.
 
 ## 11. Templates
 
@@ -310,7 +372,7 @@ to C# generics, but more powerful. The goal is to avoid metaprogramming that mak
 
 ### 11.1 Single Templates
 
-```c++
+```javascript
 void swap<T>(T* a, T* b)
 {
     T temp = *b;
@@ -323,7 +385,7 @@ void swap<T>(T* a, T* b)
 
 variadic templates are expanded automatically.
 
-```c++
+```javascript
 void printValues<T[]>(T[] values)
 {
     print(values); // implicitly expanded
@@ -332,7 +394,7 @@ void printValues<T[]>(T[] values)
 
 ### 11.3 Structural Singular Templates
 
-```c++
+```javascript
 struct Pair<Key, Value>
 {
     Key key;
@@ -342,7 +404,7 @@ struct Pair<Key, Value>
 
 ### 11.4 Structural Variadic Templates
 
-```c++
+```javascript
 struct Tuple<T[]>
 {
     T[] values;
@@ -381,7 +443,7 @@ Note: `_` makes anything private.
 
 Standard ordering / formatting for a program.
 
-```c++
+```javascript
 module program; // module is always on the first line
 
 // interfaces

@@ -144,7 +144,9 @@ static char* operator_name(enum ssa_instruction_code code)
         case OP_CALL:
             return "call";
         case OP_SALLOC:
-            return "alloc";
+            return "salloc";
+        case OP_HALLOC:
+            return "halloc";
         case OP_STORE:
             return "store";
         case OP_MEMSET:

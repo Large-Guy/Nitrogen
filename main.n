@@ -1,6 +1,20 @@
 module program;
 
+struct Car
+{
+    f32<3> position; 
+}
+
+Car newCar(f32 x, f32 y, f32 z)
+{
+    Car car;
+    car.position.x = x;
+    car.position.y = y;
+    car.position.z = z;
+    return car; 
+}
+
 void main()
 {
-    i32* a = [i32(24)];
+    Car* car = [newCar(10, 20, 30)];
 }

@@ -1,7 +1,14 @@
 module program;
 
+void getSize(i32* w, i32* h)
+{
+    w = 20;
+    h = 30;
+}
+
 void main()
 {
-    let i = 512;
-    let f = 10f;
+    i32 w;
+    i32 h;
+    getSize(&w, &h);
 }

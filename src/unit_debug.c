@@ -143,6 +143,8 @@ static char* operator_name(enum ssa_instruction_code code)
             return "alloc";
         case OP_STORE:
             return "store";
+        case OP_MEMSET:
+            return "memset";
         case OP_LOAD:
             return "load";
         case OP_CAST:

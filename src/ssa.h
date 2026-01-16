@@ -44,6 +44,7 @@ enum ssa_instruction_code
     OP_ALLOC,
     OP_LOAD,
     OP_STORE,
+    OP_MEMSET,
     OP_CAST,
 };
 

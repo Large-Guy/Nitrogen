@@ -810,7 +810,7 @@ static struct operand rvalue_statement(struct compiler* compiler, struct ast_nod
             if (value) {
                 value_op = rvalue_statement(compiler, value);
             } else {
-                value_op = operand_const_i64(0);
+                value_op = operand_none();
             }
 
             struct ssa_type type;
@@ -832,14 +832,24 @@ static struct operand rvalue_statement(struct compiler* compiler, struct ast_nod
 
             block_add(compiler->entry, instruction);
 
-            struct ssa_instruction store = {};
-            store.operator = OP_STORE;
-            store.operands[0] = instruction.result;
-            store.operands[1] = cast(compiler, value_op, type, CAST_TYPE_IMPLICIT);
+            if (value_op.type != OPERAND_TYPE_NONE) {
+                struct ssa_instruction store = {};
+                store.operator = OP_STORE;
+                store.operands[0] = instruction.result;
+                store.operands[1] = cast(compiler, value_op, type, CAST_TYPE_IMPLICIT);
 
-            //TODO: reference types need to be checked to make sure they are assigned before use!
+                //TODO: reference types need to be checked to make sure they are assigned before use!
 
-            block_add(current, store);
+                block_add(current, store);
+            }
+            else {
+                struct ssa_instruction memset = {};
+                memset.operator = OP_MEMSET;
+                memset.operands[0] = instruction.result;
+                memset.operands[1] = operand_const_i8(0);
+                memset.operands[2] = operand_const_i64(type.size);
+                block_add(current, memset);
+            }
 
             return instruction.result;
         }
@@ -910,7 +920,7 @@ static struct operand rvalue_statement(struct compiler* compiler, struct ast_nod
             struct ast_node* value = node->children[1];
             struct ssa_instruction instruction = {};
             instruction.operator = OP_STORE;
-            struct operand lval = lvalue_statement(compiler, target);
+            struct operand lval = drill(compiler, lvalue_statement(compiler, target));
             
             instruction.type = ssa_type_from_ast(compiler->ast_module, lval.typename.type->children[0]);
             instruction.result = operand_none();

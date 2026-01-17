@@ -272,6 +272,17 @@ static struct ast_node* number(struct parser* parser, bool canAssign)
 static struct ast_node* grouping(struct parser* parser, bool canAssign)
 {
     struct ast_node* node = expression(parser);
+    if (parser_check(parser, TOKEN_TYPE_COMMA)) {
+        struct ast_node* list = ast_node_new(AST_NODE_TYPE_LIST, parser->previous);
+        ast_node_append_child(list, node);
+        while (parser_match(parser, TOKEN_TYPE_COMMA)){
+            struct ast_node* next = expression(parser);
+            ast_node_append_child(list, next);
+        }
+        parser_consume(parser, TOKEN_TYPE_RIGHT_PAREN, "expected ')' after grouping");
+        return list;
+    }
+    
     parser_consume(parser, TOKEN_TYPE_RIGHT_PAREN, "expected ')' after grouping");
     return node;
 }

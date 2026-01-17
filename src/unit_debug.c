@@ -155,6 +155,10 @@ static char* operator_name(enum ssa_instruction_code code)
             return "load";
         case OP_CAST:
             return "cast";
+        case OP_BUILD_SIMD:
+            return "simd";
+        case OP_INDEX_SIMD:
+            return "index";
         default:
             return "unsupported";
     }
@@ -194,11 +198,11 @@ static void operand_debug(FILE* out, struct operand operand)
             break;
     }
     type_code_name(out, operand.typename);
-    if (operand.swizzle_count > 0) {
+    if (operand.vector_size > 0) {
         fprintf(out, " swizzle (");
-        for (int i = 0; i < operand.swizzle_count; i++) {
+        for (int i = 0; i < operand.vector_size; i++) {
             fprintf(out, "%d", operand.swizzle_mask[i]);
-            if (i < operand.swizzle_count - 1) {
+            if (i < operand.vector_size - 1) {
                 fprintf(out, ",");
             }
         }

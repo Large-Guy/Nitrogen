@@ -241,7 +241,7 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
     },
     [AST_NODE_TYPE_ARRAY] = {}, //consider allowing explicit array casts?
     [AST_NODE_TYPE_SIMD] = {
-        [AST_NODE_TYPE_SIMD] = {CAST_TYPE_EXPLICIT, cast_emit_simd}
+        [AST_NODE_TYPE_SIMD] = {CAST_TYPE_IMPLICIT, cast_emit_simd}
     },
     [AST_NODE_TYPE_BOOL] = {
         [AST_NODE_TYPE_I8] = {CAST_TYPE_EXPLICIT, cast_emit_static},
@@ -410,13 +410,51 @@ static struct operand cast_emit_static(struct compiler* compiler, struct operand
 }
 
 static struct operand cast_emit_simd(struct compiler* compiler, struct operand operand, struct ssa_type type) {
-    struct ssa_instruction instruction = {};
-    instruction.type = type;
-    instruction.operator = OP_CAST;
-    instruction.operands[0] = operand;
-    instruction.result = register_table_alloc(compiler->regs, type);
-    block_add(compiler->body, instruction);
-    return instruction.result;
+    //Get underlying simd types
+    struct ast_node* underlying_source = operand.typename.type->children[0];
+    uint64_t source_size = strtol(operand.typename.type->children[1]->token.start, NULL, 10);
+    
+    struct ast_node* underlying_target = type.type->children[0];
+    uint64_t target_size = strtol(type.type->children[1]->token.start, NULL, 10);
+    
+    if (source_size != target_size) {
+        ERROR(compiler, "source simd type size is not equal to target simd type");
+    }
+    
+    struct ssa_type underlying_type = ssa_type_from_ast(compiler->ast_module, underlying_source);
+    
+    struct operand* ops = malloc(sizeof(struct operand) * source_size);
+    
+    for (int i = 0; i < source_size; i++) {
+        struct ssa_instruction index = {};
+        index.operator = OP_INDEX_SIMD;
+        index.type = underlying_type;
+        index.operands[0] = operand;
+        index.operands[1] = operand_const_i64(i);
+        index.result = register_table_alloc(compiler->regs, type);
+        block_add(compiler->body, index);
+        
+        struct ssa_instruction instruction = {};
+        instruction.type = type;
+        instruction.operator = OP_CAST;
+        instruction.operands[0] = index.result;
+        instruction.result = register_table_alloc(compiler->regs, type);
+        block_add(compiler->body, instruction);    
+        
+        ops[i] = instruction.result;
+    }
+    
+    struct ssa_instruction simd = {};
+    simd.operator = OP_BUILD_SIMD;
+    simd.type = type;
+    for (int i = 0; i < source_size; i++) {
+        simd.operands[i] = ops[i];
+    }
+    simd.result = register_table_alloc(compiler->regs, type);
+    
+    block_add(compiler->body, simd);
+    
+    return simd.result;
 }
 
 static bool compare_nodes(struct ast_node* a, struct ast_node* b) {
@@ -686,7 +724,7 @@ static struct operand lvalue_statement(struct compiler* compiler, struct ast_nod
                    source_op.swizzle_mask[1] = index[1];
                    source_op.swizzle_mask[2] = index[2];
                    source_op.swizzle_mask[3] = index[3];
-                   source_op.swizzle_count = count;
+                   source_op.vector_size = count;
                    return source_op;
                }
                default: {
@@ -700,6 +738,15 @@ static struct operand lvalue_statement(struct compiler* compiler, struct ast_nod
             return operand_none();
         }
     }
+}
+
+static struct token generate_number_token(int n) {
+    struct token token = {};
+    token.length = 32;
+    token.start = malloc(32);
+    sprintf(token.start, "%d", n);
+    token.type = TOKEN_TYPE_INTEGER;
+    return token;
 }
 
 //aka value statement
@@ -725,6 +772,48 @@ static struct operand rvalue_statement(struct compiler* compiler, struct ast_nod
         case AST_NODE_TYPE_INTEGER: {
             int64_t immediate = strtoll(node->token.start, NULL, 10);
             return get_int(immediate); //TODO: implement polymorphic literals
+        }
+        case AST_NODE_TYPE_LIST: {
+            uint32_t size = node->children_count;
+            struct ast_node* simd = ast_node_new(AST_NODE_TYPE_SIMD, token_null);
+            struct ast_node* count = ast_node_new(AST_NODE_TYPE_INTEGER, generate_number_token((int)size));
+            
+            struct ssa_type type = {};
+            
+            struct operand* ops = malloc(sizeof(struct operand) * size);
+            
+            for (int i = 0; i < size; i++) {
+                struct operand op = rvalue_statement(compiler, node->children[i]);
+                ops[i] = op;
+                if (type.type == NULL) {
+                    type = op.typename;
+                }
+                else {
+                    type = promote_type(type, op.typename);
+                }
+            }
+            
+            for (int i = 0; i < size; i++) {
+                ops[i] = cast(compiler, ops[i], type, CAST_TYPE_IMPLICIT);
+            }
+            
+            // built the type nodes
+            ast_node_append_child(simd, type.type);
+            ast_node_append_child(simd, count);
+            
+            struct ssa_type vector_type = ssa_type_from_ast(compiler->ast_module, simd);
+            
+            struct ssa_instruction simd_build = {};
+            simd_build.operator = OP_BUILD_SIMD;
+            simd_build.type = vector_type;
+            simd_build.result = register_table_alloc(regs, vector_type);
+            for (int i = 0; i < size; i++)
+                simd_build.operands[i] = ops[i];
+            block_add(current, simd_build);
+            
+            free(ops);
+            
+            return simd_build.result;
         }
         case AST_NODE_TYPE_FLOAT: {
             double immediate = strtod(node->token.start, NULL);
@@ -906,42 +995,19 @@ static struct operand rvalue_statement(struct compiler* compiler, struct ast_nod
             load.operands[0] = addr;
             load.type = ssa_type_from_ast(compiler->ast_module, *addr.typename.type->children);
             load.result = register_table_alloc(compiler->regs, load.type);
-            load.result.swizzle_count = addr.swizzle_count;
-            for (int i = 0; i < addr.swizzle_count; i++)
+            load.result.vector_size = addr.vector_size;
+            for (int i = 0; i < addr.vector_size; i++)
                 load.result.swizzle_mask[i] = addr.swizzle_mask[i];
             block_add(current, load);
             
             //swizzling
-            if (addr.swizzle_count > 0) {
+            if (addr.vector_size > 0) {
                 struct ast_node* simd = addr.typename.type->children[0];
                 struct ast_node* sub_type = simd->children[0];
                 struct ast_node* new_simd = ast_node_new(AST_NODE_TYPE_SIMD, token_null);
                 ast_node_append_child(new_simd, sub_type);
-                struct token token = {};
-                token.length = 1;
-                switch (addr.swizzle_count) {
-                    case 1: {
-                        token.start = "1";
-                        break;
-                    }
-                    case 2: {
-                        token.start = "2";
-                        break;
-                    }
-                    case 3: {
-                        token.start = "3";
-                        break;
-                    }
-                    case 4: {
-                        token.start = "4";
-                        break;
-                    }
-                    default: {
-                        ERROR(compiler, "unsupported number of swizzle args");
-                    }
-                }
-                token.type = TOKEN_TYPE_INTEGER;
-                ast_node_append_child(new_simd, ast_node_new(AST_NODE_TYPE_INTEGER, token));
+                
+                ast_node_append_child(new_simd, ast_node_new(AST_NODE_TYPE_INTEGER, generate_number_token((int)addr.vector_size)));
                 
                 //emit shuffle ops
                 struct ssa_instruction shuffle = {};

@@ -1,29 +1,22 @@
 module program;
 
-struct Car
+struct Transform
 {
-    f32<3> position; 
-    f32<3> direction;
+    f32<3> position;
+    f32<3> rotation;
+    f32<3> scale;
 }
 
-Car newCar(f32 x, f32 y, f32 z)
+Transform newTransform(f32<3> position, f32<3> rotation, f32<3> scale)
 {
-    Car car;
-    car.position.x = x;
-    car.position.y = y;
-    car.position.z = z;
-    return car; 
-}
-
-void drive(Car& car)
-{
-    car.position.x = car.position.x + car.direction.x;
-    car.position.y = car.position.y + car.direction.y;
-    car.position.z = car.position.z + car.direction.z;
+    Transform transform;
+    transform.position = position;
+    transform.rotation = rotation;
+    transform.scale = scale;
+    return transform;
 }
 
 void main()
 {
-    Car* car = [newCar(10, 20, 30)];
-    drive(car);
+    let transform = newTransform((1,2,3), (0,0,0), (1,1,1));
 }

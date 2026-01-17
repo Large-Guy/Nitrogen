@@ -47,6 +47,8 @@ enum ssa_instruction_code
     OP_STORE,
     OP_MEMSET,
     OP_CAST,
+    OP_BUILD_SIMD,
+    OP_INDEX_SIMD,
 };
 
 
@@ -87,7 +89,7 @@ struct operand
     uint64_t offset;
     
     uint32_t swizzle_mask[4];
-    uint32_t swizzle_count;
+    uint32_t vector_size;
 };
 
 struct operand operand_none();

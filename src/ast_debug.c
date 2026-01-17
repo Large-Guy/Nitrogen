@@ -29,6 +29,7 @@ static const char* ast_node_type_names[] = {
     [AST_NODE_TYPE_RETURN_STATEMENT] = "return",
     [AST_NODE_TYPE_INTEGER] = "integer",
     [AST_NODE_TYPE_FLOAT] = "float",
+    [AST_NODE_TYPE_LIST] = "list",
     [AST_NODE_TYPE_MODULE_NAME] = "module-name",
     [AST_NODE_TYPE_NAME] = "name",
     [AST_NODE_TYPE_TYPE] = "type",

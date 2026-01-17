@@ -16,7 +16,43 @@ Transform newTransform(f32<3> position, f32<3> rotation, f32<3> scale)
     return transform;
 }
 
+struct Physics
+{
+    f32<3> velocity;
+    f32<3> angular_velocity;
+}
+
+Physics newPhysics()
+{
+    Physics physics;
+    return physics;
+}
+
+void updatePhysics(Physics& physics, f32 delta)
+{
+    physics.velocity.y = physics.velocity.y - 9.1f * delta;
+}
+
+void applyPhysics(Physics& physics, Transform& transform)
+{
+    transform.position.x = transform.position.x + physics.velocity.x;
+    transform.position.y = transform.position.y + physics.velocity.y;
+    transform.position.z = transform.position.z + physics.velocity.z;
+    
+    transform.rotation.x = transform.rotation.x + physics.angular_velocity.x;
+    transform.rotation.y = transform.rotation.y + physics.angular_velocity.y;
+    transform.rotation.z = transform.rotation.z + physics.angular_velocity.z;
+}
+
 void main()
 {
-    let transform = newTransform((1,2,3), (0,0,0), (1,1,1));
+    //Testing heap allocs too!
+    let transform = [newTransform((1,2,3), (0,0,0), (1,1,1))];
+    let physics = [newPhysics()];
+    
+    while(true)
+    {
+        updatePhysics(physics, 0.02f);
+        applyPhysics(physics, transform);
+    }
 }

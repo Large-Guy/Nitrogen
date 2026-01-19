@@ -42,18 +42,18 @@ struct unit_module* unit_module_new(char* name);
 
 void unit_module_free(struct unit_module* list);
 
-void unit_module_append(struct unit_module* list, struct unit* chunk);
+void unit_module_append(struct unit_module* list, struct unit* unit);
 
 struct unit* unit_module_find(struct unit_module* list, struct token symbol);
 
 struct unit* unit_new(char* symbol, bool global, enum unit_type type);
 
-void unit_free(struct unit* chunk);
+void unit_free(struct unit* unit);
 
-void unit_add(struct unit* chunk, struct block* block);
+void unit_add(struct unit* unit, struct block* block);
 
-void unit_arg(struct unit* chunk, struct operand arg);
+void unit_arg(struct unit* unit, struct operand arg);
 
-void unit_compile(struct backend* backend, struct unit* chunk);
+void unit_compile(struct backend* backend, struct unit* unit);
 
 #endif //COMPILER_CHUNK_H

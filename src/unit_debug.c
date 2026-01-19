@@ -257,13 +257,13 @@ static void block_debug(struct block* block)
     printf("\n");
 }
 
-void unit_debug(struct unit* chunk)
+void unit_debug(struct unit* unit)
 {
-    assert(chunk != NULL);
-    assert(chunk->blocks != NULL);
-    for (size_t i = 0; i < chunk->block_count; i++)
+    assert(unit != NULL);
+    assert(unit->blocks != NULL);
+    for (size_t i = 0; i < unit->block_count; i++)
     {
-        block_debug(chunk->blocks[i]);
+        block_debug(unit->blocks[i]);
     }
 }
 
@@ -296,34 +296,34 @@ static void recursive_link(char* name, struct block* block, FILE* out)
     }
 }
 
-void unit_build_graph(struct unit* chunk, FILE* out)
+void unit_build_graph(struct unit* unit, FILE* out)
 {
-    assert(chunk != NULL);
-    assert(chunk->blocks != NULL);
+    assert(unit != NULL);
+    assert(unit->blocks != NULL);
 
-    fprintf(out, "  subgraph cluster_%s {\n", chunk->symbol);
-    fprintf(out, "    label=\"%s(", chunk->symbol);
-    for (int i = 0; i < chunk->argument_count; i++)
+    fprintf(out, "  subgraph cluster_%s {\n", unit->symbol);
+    fprintf(out, "    label=\"%s(", unit->symbol);
+    for (int i = 0; i < unit->argument_count; i++)
     {
         if (i > 0)
         {
             fprintf(out, ", ");
         }
-        operand_debug(out, chunk->arguments[i]);
+        operand_debug(out, unit->arguments[i]);
     }
     fprintf(out, ")\";\n");
     fprintf(out, "    style=filled;\n");
     fprintf(out, "    color=lightgrey;\n");
     fprintf(out, "    node [style=filled, color=white];\n");
 
-    for (size_t i = 0; i < chunk->block_count; i++)
+    for (size_t i = 0; i < unit->block_count; i++)
     {
-        struct block* block = chunk->blocks[i];
-        block_build_graph(chunk->symbol, block, out);
+        struct block* block = unit->blocks[i];
+        block_build_graph(unit->symbol, block, out);
     }
 
-    if (chunk->block_count > 0)
-        recursive_link(chunk->symbol, chunk->blocks[0], out);
+    if (unit->block_count > 0)
+        recursive_link(unit->symbol, unit->blocks[0], out);
 
     fprintf(out, "    }\n");
 }

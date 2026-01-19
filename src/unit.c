@@ -11,29 +11,29 @@
 
 struct unit* unit_new(char* symbol, bool global, enum unit_type type)
 {
-    struct unit* chunk = malloc(sizeof(struct unit));
-    assert(chunk);
+    struct unit* unit = malloc(sizeof(struct unit));
+    assert(unit);
 
-    chunk->arguments = malloc(sizeof(struct operand));
-    assert(chunk->arguments);
-    chunk->argument_count = 0;
-    chunk->argument_capacity = 1;
+    unit->arguments = malloc(sizeof(struct operand));
+    assert(unit->arguments);
+    unit->argument_count = 0;
+    unit->argument_capacity = 1;
 
-    chunk->symbol = malloc(strlen(symbol) + 1);
-    assert(chunk->symbol);
-    strcpy(chunk->symbol, symbol);
-    chunk->symbol[strlen(symbol)] = '\0';
+    unit->symbol = malloc(strlen(symbol) + 1);
+    assert(unit->symbol);
+    strcpy(unit->symbol, symbol);
+    unit->symbol[strlen(symbol)] = '\0';
 
-    chunk->type = type;
+    unit->type = type;
 
-    chunk->global = global;
+    unit->global = global;
 
-    chunk->blocks = malloc(sizeof(struct block*));
-    assert(chunk->blocks);
-    chunk->block_count = 0;
-    chunk->block_capacity = 1;
+    unit->blocks = malloc(sizeof(struct block*));
+    assert(unit->blocks);
+    unit->block_count = 0;
+    unit->block_capacity = 1;
 
-    return chunk;
+    return unit;
 }
 
 struct unit_module* unit_module_new(char* name)
@@ -60,7 +60,7 @@ void unit_module_free(struct unit_module* list)
     free(list);
 }
 
-void unit_module_append(struct unit_module* list, struct unit* chunk)
+void unit_module_append(struct unit_module* list, struct unit* unit)
 {
     if (list->unit_count >= list->unit_capacity)
     {
@@ -68,27 +68,27 @@ void unit_module_append(struct unit_module* list, struct unit* chunk)
         list->units = realloc(list->units, list->unit_capacity * sizeof(struct unit*));
         assert(list->units);
     }
-    list->units[list->unit_count++] = chunk;
+    list->units[list->unit_count++] = unit;
 }
 
-void unit_free(struct unit* chunk)
+void unit_free(struct unit* unit)
 {
-    assert(chunk != NULL);
-    free(chunk->symbol);
-    for (int i = 0; i < chunk->block_count; i++)
+    assert(unit != NULL);
+    free(unit->symbol);
+    for (int i = 0; i < unit->block_count; i++)
     {
-        block_free(chunk->blocks[i]);
+        block_free(unit->blocks[i]);
     }
-    free(chunk->blocks);
-    free(chunk);
+    free(unit->blocks);
+    free(unit);
 }
 
 struct unit* unit_module_find(struct unit_module* module, struct token symbol)
 {
     for (int i = 0; i < module->unit_count; i++)
     {
-        struct unit* chunk = module->units[i];
-        if (symbol.length == strlen(chunk->symbol) && memcmp(chunk->symbol, symbol.start, symbol.length) == 0)
+        struct unit* unit = module->units[i];
+        if (symbol.length == strlen(unit->symbol) && memcmp(unit->symbol, symbol.start, symbol.length) == 0)
         {
             return module->units[i];
         }
@@ -96,38 +96,38 @@ struct unit* unit_module_find(struct unit_module* module, struct token symbol)
     return NULL;
 }
 
-void unit_add(struct unit* chunk, struct block* block)
+void unit_add(struct unit* unit, struct block* block)
 {
-    assert(chunk != NULL);
-    if (chunk->block_count >= chunk->block_capacity)
+    assert(unit != NULL);
+    if (unit->block_count >= unit->block_capacity)
     {
-        chunk->block_capacity *= 2;
-        chunk->blocks = realloc(chunk->blocks, chunk->block_capacity * sizeof(struct block*));
-        assert(chunk->blocks);
+        unit->block_capacity *= 2;
+        unit->blocks = realloc(unit->blocks, unit->block_capacity * sizeof(struct block*));
+        assert(unit->blocks);
     }
-    chunk->blocks[chunk->block_count++] = block;
-    block->id = chunk->block_count;
+    unit->blocks[unit->block_count++] = block;
+    block->id = unit->block_count;
 }
 
-void unit_arg(struct unit* chunk, struct operand arg)
+void unit_arg(struct unit* unit, struct operand arg)
 {
-    assert(chunk != NULL);
-    if (chunk->argument_count >= chunk->argument_capacity)
+    assert(unit != NULL);
+    if (unit->argument_count >= unit->argument_capacity)
     {
-        chunk->argument_capacity *= 2;
-        chunk->arguments = realloc(chunk->arguments, chunk->argument_capacity * sizeof(struct operand));
-        assert(chunk->arguments);
+        unit->argument_capacity *= 2;
+        unit->arguments = realloc(unit->arguments, unit->argument_capacity * sizeof(struct operand));
+        assert(unit->arguments);
     }
-    chunk->arguments[chunk->argument_count++] = arg;
+    unit->arguments[unit->argument_count++] = arg;
 }
 
-void unit_compile(struct backend *backend, struct unit *chunk) {
-    switch (chunk->type) {
+void unit_compile(struct backend *backend, struct unit *unit) {
+    switch (unit->type) {
         case UNIT_TYPE_FUNCTION:
-            backend->compile_function(backend, chunk);
+            backend->compile_function(backend, unit);
             break;
         case UNIT_TYPE_VARIABLE:
-            backend->compile_variable(backend, chunk);
+            backend->compile_variable(backend, unit);
             break;
     }
 }

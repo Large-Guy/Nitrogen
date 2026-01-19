@@ -2,9 +2,9 @@
 #define COMPILER_UNIT_DEBUG_H
 #include "unit.h"
 
-void unit_debug(struct unit* chunk);
+void unit_debug(struct unit* unit);
 
-void unit_build_graph(struct unit* chunk, FILE* out);
+void unit_build_graph(struct unit* unit, FILE* out);
 
 void unit_module_debug(struct unit_module* module);
 

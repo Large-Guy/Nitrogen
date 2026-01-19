@@ -126,6 +126,7 @@ static void compiler_begin(struct compiler* compiler) {
         struct ssa_instruction ret_val_variable = {};
         ret_val_variable.result = compiler->return_value_ptr;
         ret_val_variable.operator = OP_SALLOC;
+        ret_val_variable.operands[0] = operand_const_i64(compiler->return_type.size);
         ret_val_variable.type = compiler->return_type;
         block_add(compiler->entry, ret_val_variable);
 

@@ -125,7 +125,9 @@ void unit_compile(struct backend *backend, struct unit *chunk) {
     switch (chunk->type) {
         case UNIT_TYPE_FUNCTION:
             backend->compile_function(backend, chunk);
+            break;
         case UNIT_TYPE_VARIABLE:
             backend->compile_variable(backend, chunk);
+            break;
     }
 }

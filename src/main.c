@@ -84,11 +84,11 @@ int main(int argc, char** argv) {
         
         printf("--- COMPILED ---\n");
         unit_module_debug_graph(unit_module, cfgdot);
-        struct backend x86 = x86_64_backend; // default for now
-        x86.out = fopen("out.asm", "w");
+        struct backend x64 = x86_64_backend; // default for now
+        x64.out = fopen("out.asm", "w");
 
         for (int n = 0; n < unit_module->unit_count; n++) {
-            unit_compile(&x86, unit_module->units[n]);
+            unit_compile(&x64, unit_module->units[n]);
         }
 
         unit_module_free(unit_module);

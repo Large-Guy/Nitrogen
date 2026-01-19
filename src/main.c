@@ -11,6 +11,7 @@
 #include "io.h"
 #include "ssa_gen.h"
 #include "unit_debug.h"
+#include "x86_64.h"
 
 static double get_time_seconds() {
     struct timespec ts;
@@ -83,9 +84,13 @@ int main(int argc, char** argv) {
         
         printf("--- COMPILED ---\n");
         unit_module_debug_graph(unit_module, cfgdot);
+        struct backend x86 = x86_64_backend; // default for now
+        x86.out = fopen("out.asm", "w");
+
         for (int n = 0; n < unit_module->unit_count; n++) {
-            unit_compile(unit_module->units[n], stdout);
+            unit_compile(&x86, unit_module->units[n]);
         }
+
         unit_module_free(unit_module);
         
         fclose(cfgdot);

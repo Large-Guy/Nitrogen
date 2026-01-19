@@ -25,7 +25,7 @@ static struct unit* forward(struct ast_module* module, struct ast_node* node) {
     {
         case AST_NODE_TYPE_FUNCTION:
         {
-            struct unit* unit = unit_symbol_new(symbol->children[0]->token, CHUNK_TYPE_FUNCTION);
+            struct unit* unit = unit_symbol_new(symbol->children[0]->token, UNIT_TYPE_FUNCTION);
             unit->global = symbol->children[0]->token.start[0] != '_';
             struct ast_node* type = symbol->children[1]; //type
             unit->return_type = ssa_type_from_ast(module, type);
@@ -33,7 +33,7 @@ static struct unit* forward(struct ast_module* module, struct ast_node* node) {
         }
         case AST_NODE_TYPE_VARIABLE:
         {
-            struct unit* unit = unit_symbol_new(symbol->children[0]->token, CHUNK_TYPE_VARIABLE);
+            struct unit* unit = unit_symbol_new(symbol->children[0]->token, UNIT_TYPE_VARIABLE);
             unit->global = symbol->children[0]->token.start[0] != '_';
             struct ast_node* type = symbol->children[1];
             unit->return_type = ssa_type_from_ast(module, type);

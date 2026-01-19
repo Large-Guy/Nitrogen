@@ -44,4 +44,8 @@ add_executable(ncc src/main.c
         src/ast_layout.h
         src/module_gen.c
         src/module_gen.h
+        src/backend.c
+        src/backend.h
+        src/x86_64.c
+        src/x86_64.h
 )

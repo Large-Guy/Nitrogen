@@ -121,7 +121,11 @@ void unit_arg(struct unit* chunk, struct operand arg)
     chunk->arguments[chunk->argument_count++] = arg;
 }
 
-char* unit_compile(struct unit* chunk, FILE* out)
-{
-    //TODO: compile to ARM64
+void unit_compile(struct backend *backend, struct unit *chunk) {
+    switch (chunk->type) {
+        case UNIT_TYPE_FUNCTION:
+            backend->compile_function(backend, chunk);
+        case UNIT_TYPE_VARIABLE:
+            backend->compile_variable(backend, chunk);
+    }
 }

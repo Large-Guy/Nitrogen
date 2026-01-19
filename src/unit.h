@@ -6,10 +6,11 @@
 #include <stdio.h>
 #include "lexer.h"
 #include "ssa.h"
+#include "backend.h"
 
 enum unit_type {
-    CHUNK_TYPE_FUNCTION,
-    CHUNK_TYPE_VARIABLE,
+    UNIT_TYPE_FUNCTION,
+    UNIT_TYPE_VARIABLE,
 };
 
 struct unit {
@@ -53,6 +54,6 @@ void unit_add(struct unit* chunk, struct block* block);
 
 void unit_arg(struct unit* chunk, struct operand arg);
 
-char* unit_compile(struct unit* chunk, FILE* file);
+void unit_compile(struct backend* backend, struct unit* chunk);
 
 #endif //COMPILER_CHUNK_H

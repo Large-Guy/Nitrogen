@@ -282,11 +282,21 @@ interface IAnimal
 
 struct Dog : IAnimal
 {
+    static Dog new()
+    {
+        Dog dog;
+        return dog;
+    }
+    
     void makeSound()
     {
         print("Woof!");
     }
 }
+
+IAnimal* animal = [Dog.new()]; 
+// In order to store a object as an interface it must be turned into a 
+// reference, stack or heap
 ```
 
 ## 9. Casting
@@ -373,11 +383,11 @@ to C# generics, but more powerful. The goal is to avoid metaprogramming that mak
 ### 11.1 Single Templates
 
 ```javascript
-void swap<T>(T* a, T* b)
+void swap<T>(T& a, T& b)
 {
-    T temp = *b;
-    *b = *a;
-    *a = temp;
+    T temp = b;
+    b = a;
+    a = temp;
 }
 ```
 

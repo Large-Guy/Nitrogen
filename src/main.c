@@ -8,6 +8,7 @@
 #include "unit_module_gen.h"
 #include "lexer.h"
 #include "ast_gen.h"
+#include "chunk.h"
 #include "io.h"
 #include "ssa_gen.h"
 #include "unit_debug.h"
@@ -84,12 +85,17 @@ int main(int argc, char** argv) {
         
         printf("--- COMPILED ---\n");
         unit_module_debug_graph(unit_module, cfgdot);
+
         struct backend x64 = x86_64_backend; // default for now
-        x64.out = fopen("out.asm", "w");
+        x64.out = chunk_new();
 
         for (int n = 0; n < unit_module->unit_count; n++) {
             unit_compile(&x64, unit_module->units[n]);
         }
+
+        FILE* out = fopen("out.asm", "wb");
+        fwrite(x64.out->code, x64.out->count, 1, out);
+        fclose(out);
 
         unit_module_free(unit_module);
         

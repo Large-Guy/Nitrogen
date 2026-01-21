@@ -63,7 +63,7 @@ static void compile_operand(struct backend* backend, struct operand operand) {
     switch (operand.type) {
         case OPERAND_TYPE_INTEGER: {
             chunk_write(chunk, ASM_IMMEDIATE_64);
-            uint8_t buffer[8];
+            uint8_t buffer[8] = {};
             *(uint64_t* )buffer = operand.value.integer;
             chunk_bytes(chunk, buffer, 8);
             break;
@@ -82,6 +82,9 @@ static void compile_instruction(struct backend* backend, struct ssa_instruction 
             compile_operand(backend, instruction.operands[0]);
             break;
         }
+        case OP_STORE: {
+            
+        }
         default:
             break;
     }
@@ -90,7 +93,7 @@ static void compile_instruction(struct backend* backend, struct ssa_instruction 
 static void compile_block(struct backend* backend, struct block* block) {
     struct chunk* chunk = backend->out;
     chunk_write(chunk, ASM_LABEL);
-    char label[8];
+    char label[8] = {};
     sprintf(label, ".L%04d", block->id);
     chunk_string(chunk, label);
     for (int i = 0; i < block->instructions_count; i++) {
@@ -121,102 +124,101 @@ static int compile_variable(struct backend* backend, struct unit* unit) {
 
 const struct backend x86_64_backend = {compile_function, compile_variable};
 
-static void debug_x86_64_arg(struct chunk* bytecode, int* i) {
+static void debug_x86_64_arg(FILE* out, struct chunk* bytecode, int* i) {
     (*i)++;
     switch (bytecode->code[*i]) {
         case ASM_IMMEDIATE_64: {
             uint8_t* code = &bytecode->code[++*i];
-            printf("%llu", *(int64_t*)code);
-            *i += 8;
+            fprintf(out, "%llu", *(int64_t*)code);
+            *i += 7;
             break;
         }
         case ASM_IMMEDIATE_32: {
             uint8_t* code = &bytecode->code[++*i];
-            printf("%d", *(int32_t*)code);
-            *i += 4;
+            fprintf(out, "%d", *(int32_t*)code);
+            *i += 3;
             break;
         }
         case ASM_IMMEDIATE_16: {
             uint8_t* code = &bytecode->code[++*i];
-            printf("%d", *(int16_t*)code);
-            *i += 2;
+            fprintf(out, "%d", *(int16_t*)code);
+            *i += 1;
             break;
         }
         case ASM_IMMEDIATE_8: {
             uint8_t* code = &bytecode->code[++*i];
-            printf("%d ", *(int8_t*)code);
-            *i += 1;
+            fprintf(out, "%d ", *(int8_t*)code);
             break;
         }
         case ASM_REGISTER_64: {
             (*i)++;
             switch (bytecode->code[*i]) {
                 case 0: {
-                    printf("rax");
+                    fprintf(out, "rax");
                     break;
                 }
                 case 1: {
-                    printf("rbx");
+                    fprintf(out, "rbx");
                     break;
                 }
                 case 2: {
-                    printf("rcx");
+                    fprintf(out, "rcx");
                     break;
                 }
                 case 3: {
-                    printf("rdx");
+                    fprintf(out, "rdx");
                     break;
                 }
                 case 4: {
-                    printf("rsi");
+                    fprintf(out, "rsi");
                     break;
                 }
                 case 5: {
-                    printf("rdi");
+                    fprintf(out, "rdi");
                     break;
                 }
                 case 6: {
-                    printf("rbp");
+                    fprintf(out, "rbp");
                     break;
                 }
                 case 7: {
-                    printf("rsp");
+                    fprintf(out, "rsp");
                     break;
                 }
                 case 8: {
-                    printf("r8");
+                    fprintf(out, "r8");
                     break;
                 }
                 case 9: {
-                    printf("r9");
+                    fprintf(out, "r9");
                     break;
                 }
                 case 10: {
-                    printf("r10");
+                    fprintf(out, "r10");
                     break;
                 }
                 case 11: {
-                    printf("r11");
+                    fprintf(out, "r11");
                     break;
                 }
                 case 12: {
-                    printf("r12");
+                    fprintf(out, "r12");
                     break;
                 }
                 case 13: {
-                    printf("r13");
+                    fprintf(out, "r13");
                     break;
                 }
                 case 14: {
-                    printf("r14");
+                    fprintf(out, "r14");
                     break;
                 }
                 case 15: {
-                    printf("r15");
+                    fprintf(out, "r15");
                     break;
                 }
                 default: {
-                    printf("invalid register ");
+                    fprintf(out, "invalid register ");
                     break;
                 }
             }
@@ -227,71 +229,71 @@ static void debug_x86_64_arg(struct chunk* bytecode, int* i) {
             (*i)++;
             switch (bytecode->code[*i]) {
                 case 0: {
-                    printf("eax");
+                    fprintf(out, "eax");
                     break;
                 }
                 case 1: {
-                    printf("ebx");
+                    fprintf(out, "ebx");
                     break;
                 }
                 case 2: {
-                    printf("ecx");
+                    fprintf(out, "ecx");
                     break;
                 }
                 case 3: {
-                    printf("edx");
+                    fprintf(out, "edx");
                     break;
                 }
                 case 4: {
-                    printf("esi");
+                    fprintf(out, "esi");
                     break;
                 }
                 case 5: {
-                    printf("edi");
+                    fprintf(out, "edi");
                     break;
                 }
                 case 6: {
-                    printf("ebp");
+                    fprintf(out, "ebp");
                     break;
                 }
                 case 7: {
-                    printf("esp");
+                    fprintf(out, "esp");
                     break;
                 }
                 case 8: {
-                    printf("r8d");
+                    fprintf(out, "r8d");
                     break;
                 }
                 case 9: {
-                    printf("r9d");
+                    fprintf(out, "r9d");
                     break;
                 }
                 case 10: {
-                    printf("r10d");
+                    fprintf(out, "r10d");
                     break;
                 }
                 case 11: {
-                    printf("r11d");
+                    fprintf(out, "r11d");
                     break;
                 }
                 case 12: {
-                    printf("r12d");
+                    fprintf(out, "r12d");
                     break;
                 }
                 case 13: {
-                    printf("r13d");
+                    fprintf(out, "r13d");
                     break;
                 }
                 case 14: {
-                    printf("r14d");
+                    fprintf(out, "r14d");
                     break;
                 }
                 case 15: {
-                    printf("r15d");
+                    fprintf(out, "r15d");
                     break;
                 }
                 default: {
-                    printf("invalid register");
+                    fprintf(out, "invalid register");
                     break;
                 }
             }
@@ -303,71 +305,71 @@ static void debug_x86_64_arg(struct chunk* bytecode, int* i) {
             (*i)++;
             switch (bytecode->code[*i]) {
                 case 0: {
-                    printf("ax");
+                    fprintf(out, "ax");
                     break;
                 }
                 case 1: {
-                    printf("bx");
+                    fprintf(out, "bx");
                     break;
                 }
                 case 2: {
-                    printf("cx");
+                    fprintf(out, "cx");
                     break;
                 }
                 case 3: {
-                    printf("dx");
+                    fprintf(out, "dx");
                     break;
                 }
                 case 4: {
-                    printf("si");
+                    fprintf(out, "si");
                     break;
                 }
                 case 5: {
-                    printf("di");
+                    fprintf(out, "di");
                     break;
                 }
                 case 6: {
-                    printf("bp");
+                    fprintf(out, "bp");
                     break;
                 }
                 case 7: {
-                    printf("sp");
+                    fprintf(out, "sp");
                     break;
                 }
                 case 8: {
-                    printf("r8w");
+                    fprintf(out, "r8w");
                     break;
                 }
                 case 9: {
-                    printf("r9w");
+                    fprintf(out, "r9w");
                     break;
                 }
                 case 10: {
-                    printf("r10w");
+                    fprintf(out, "r10w");
                     break;
                 }
                 case 11: {
-                    printf("r11w");
+                    fprintf(out, "r11w");
                     break;
                 }
                 case 12: {
-                    printf("r12w");
+                    fprintf(out, "r12w");
                     break;
                 }
                 case 13: {
-                    printf("r13w");
+                    fprintf(out, "r13w");
                     break;
                 }
                 case 14: {
-                    printf("r14w");
+                    fprintf(out, "r14w");
                     break;
                 }
                 case 15: {
-                    printf("r15w");
+                    fprintf(out, "r15w");
                     break;
                 }
                 default: {
-                    printf("invalid register");
+                    fprintf(out, "invalid register");
                     break;
                 }
             }
@@ -379,71 +381,71 @@ static void debug_x86_64_arg(struct chunk* bytecode, int* i) {
             (*i)++;
             switch (bytecode->code[*i]) {
                 case 0: {
-                    printf("al");
+                    fprintf(out, "al");
                     break;
                 }
                 case 1: {
-                    printf("bl");
+                    fprintf(out, "bl");
                     break;
                 }
                 case 2: {
-                    printf("cl");
+                    fprintf(out, "cl");
                     break;
                 }
                 case 3: {
-                    printf("dl");
+                    fprintf(out, "dl");
                     break;
                 }
                 case 4: {
-                    printf("sil");
+                    fprintf(out, "sil");
                     break;
                 }
                 case 5: {
-                    printf("dil");
+                    fprintf(out, "dil");
                     break;
                 }
                 case 6: {
-                    printf("bpl");
+                    fprintf(out, "bpl");
                     break;
                 }
                 case 7: {
-                    printf("spl");
+                    fprintf(out, "spl");
                     break;
                 }
                 case 8: {
-                    printf("r8b");
+                    fprintf(out, "r8b");
                     break;
                 }
                 case 9: {
-                    printf("r9b");
+                    fprintf(out, "r9b");
                     break;
                 }
                 case 10: {
-                    printf("r10b");
+                    fprintf(out, "r10b");
                     break;
                 }
                 case 11: {
-                    printf("r11b");
+                    fprintf(out, "r11b");
                     break;
                 }
                 case 12: {
-                    printf("r12b");
+                    fprintf(out, "r12b");
                     break;
                 }
                 case 13: {
-                    printf("r13b");
+                    fprintf(out, "r13b");
                     break;
                 }
                 case 14: {
-                    printf("r14b");
+                    fprintf(out, "r14b");
                     break;
                 }
                 case 15: {
-                    printf("r15b");
+                    fprintf(out, "r15b");
                     break;
                 }
                 default: {
-                    printf("invalid register");
+                    fprintf(out, "invalid register");
                     break;
                 }
             }
@@ -453,60 +455,60 @@ static void debug_x86_64_arg(struct chunk* bytecode, int* i) {
     }
 }
 
-static void debug_x86_64_label(struct chunk* bytecode, int* i) {
+static void debug_x86_64_label(FILE* out, struct chunk* bytecode, int* i) {
     (*i)++;
     while (bytecode->code[*i] != 0) {
-        printf("%c", bytecode->code[(*i)++]);
+        fprintf(out, "%c", bytecode->code[(*i)++]);
     }
 }
 
-void debug_x86_64_bytecode(struct chunk* bytecode) {
+void debug_x86_64_bytecode(FILE* out, struct chunk* bytecode) {
     for (int i = 0; i < bytecode->count; i++) {
         switch (bytecode->code[i]) {
             case ASM_TEXT: {
-                printf("section .text\n");
+                fprintf(out, "section .text\n");
                 break;
             }
             case ASM_DATA: {
-                printf("section .data\n");
+                fprintf(out, "section .data\n");
                 break;
             }
             case ASM_GLOBAL:
-                printf("global ");
-                debug_x86_64_label(bytecode, &i);
-                printf("\n");
+                fprintf(out, "global ");
+                debug_x86_64_label(out, bytecode, &i);
+                fprintf(out, "\n");
                 break;
             case ASM_LABEL:
-                debug_x86_64_label(bytecode, &i);
-                printf(":\n");
+                debug_x86_64_label(out, bytecode, &i);
+                fprintf(out, ":\n");
                 break;
             case ASM_ADD:
-                printf("add ");
-                debug_x86_64_arg(bytecode, &i);
-                printf(", ");
-                debug_x86_64_arg(bytecode, &i);
-                printf("\n");
+                fprintf(out, "add ");
+                debug_x86_64_arg(out, bytecode, &i);
+                fprintf(out, ", ");
+                debug_x86_64_arg(out, bytecode, &i);
+                fprintf(out, "\n");
                 break;
             case ASM_SUB:
-                printf("sub ");
-                debug_x86_64_arg(bytecode, &i);
-                printf(", ");
-                debug_x86_64_arg(bytecode, &i);
-                printf("\n");
+                fprintf(out, "sub ");
+                debug_x86_64_arg(out, bytecode, &i);
+                fprintf(out, ", ");
+                debug_x86_64_arg(out, bytecode, &i);
+                fprintf(out, "\n");
                 break;
             case ASM_IMUL:
-                printf("imul ");
-                debug_x86_64_arg(bytecode, &i);
-                printf(", ");
-                debug_x86_64_arg(bytecode, &i);
-                printf("\n");
+                fprintf(out, "imul ");
+                debug_x86_64_arg(out, bytecode, &i);
+                fprintf(out, ", ");
+                debug_x86_64_arg(out, bytecode, &i);
+                fprintf(out, "\n");
                 break;
             case ASM_IDIV:
-                printf("idiv ");
-                debug_x86_64_arg(bytecode, &i);
-                printf(", ");
-                debug_x86_64_arg(bytecode, &i);
-                printf("\n");
+                fprintf(out, "idiv ");
+                debug_x86_64_arg(out, bytecode, &i);
+                fprintf(out, ", ");
+                debug_x86_64_arg(out, bytecode, &i);
+                fprintf(out, "\n");
                 break;
         }
     }

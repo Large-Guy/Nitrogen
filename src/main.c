@@ -93,7 +93,9 @@ int main(int argc, char** argv) {
             unit_compile(&x64, unit_module->units[n]);
         }
         
-        debug_x86_64_bytecode(x64.out);
+        FILE* out = fopen("out.asm", "w");
+        debug_x86_64_bytecode(out, x64.out);
+        fclose(out);
 
         unit_module_free(unit_module);
         

@@ -92,10 +92,8 @@ int main(int argc, char** argv) {
         for (int n = 0; n < unit_module->unit_count; n++) {
             unit_compile(&x64, unit_module->units[n]);
         }
-
-        FILE* out = fopen("out.asm", "wb");
-        fwrite(x64.out->code, x64.out->count, 1, out);
-        fclose(out);
+        
+        debug_x86_64_bytecode(x64.out);
 
         unit_module_free(unit_module);
         

@@ -16,6 +16,12 @@ static void build_operand(struct ir* ir, struct operand operand) {
             ir_write(ir, IR_OP_REGISTER_I64);
             ir_write(ir, (uint8_t)operand.value.integer);
         }
+        case OPERAND_TYPE_BLOCK: {
+            ir_write(ir, IR_OP_LABEL);
+            char buffer[7] = {};
+            sprintf(buffer, ".L%.4d", (int16_t)operand.value.integer);
+            ir_string(ir, buffer);
+        }
         default: {
             fprintf(stderr, "[ir] unsupported operand type\n");
         }
@@ -28,6 +34,11 @@ static void build_constant(struct ir* ir, int64_t value) {
 }
 
 static void build_block(struct ir* ir, struct block* block) {
+    ir_write(ir, IR_OP_LABEL);
+    char buffer[7] = {};
+    sprintf(buffer, ".L%.4d", (int16_t)block->id);
+    ir_string(ir, buffer);
+    
     for (int i = 0; i < block->instructions_count; i++) {
         struct ssa_instruction inst = block->instructions[i];
         switch (inst.operator) {

@@ -48,6 +48,8 @@ add_executable(ncc src/main.c
         src/backend.h
         src/x86_64.c
         src/x86_64.h
-        src/chunk.c
-        src/chunk.h
+        src/ir.c
+        src/ir.h
+        src/ir_gen.c
+        src/ir_gen.h
 )

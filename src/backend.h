@@ -11,7 +11,7 @@ struct backend {
     compile_unit_fn compile_function;
     compile_unit_fn compile_variable;
 
-    struct chunk* out;
+    struct ir* out;
 };
 
 #endif //NCC_BACKEND_H

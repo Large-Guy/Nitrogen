@@ -2,5 +2,6 @@ module program;
 
 i32 main()
 {
-    return 100000;
+    i32 a;
+    a = 32;
 }

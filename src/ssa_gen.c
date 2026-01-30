@@ -126,7 +126,6 @@ static void compiler_begin(struct compiler* compiler) {
         struct ssa_instruction ret_val_variable = {};
         ret_val_variable.result = compiler->return_value_ptr;
         ret_val_variable.operator = OP_SALLOC;
-        ret_val_variable.operands[0] = operand_const_i64(compiler->return_type.size);
         ret_val_variable.type = compiler->return_type;
         block_add(compiler->entry, ret_val_variable);
 
@@ -957,9 +956,6 @@ static struct operand rvalue_statement(struct compiler* compiler, struct ast_nod
 
             instruction.result = register_table_add(current->symbol_table, name->token, type)->pointer;
 
-            //node size
-            instruction.operands[0] = operand_const_i64(type.size);
-
             block_add(compiler->entry, instruction);
 
             if (value_op.type != OPERAND_TYPE_NONE) {
@@ -1214,7 +1210,6 @@ static struct operand argument(struct compiler* compiler, struct ast_node* node)
             instruction.operator = OP_SALLOC;
             instruction.type = variable.typename;
             instruction.result = register_table_add(compiler->regs, name->token, variable.typename)->pointer;
-            instruction.operands[0] = operand_const_i64(variable.typename.size);
 
             block_add(compiler->entry, instruction);
 

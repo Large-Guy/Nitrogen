@@ -19,8 +19,9 @@ enum ir_ops {
     IR_OP_REGISTER_F16,
     IR_OP_REGISTER_F32,
     IR_OP_REGISTER_F64,
-    IR_OP_ADDRESS,
+    IR_OP_ADDRESS, // [ADDRESS] [CONST I64] [N] [REG I64] [N] [OFFSET]
     IR_OP_MOV,
+    IR_OP_LEA,
     IR_OP_IADD,
     IR_OP_ISUB,
     IR_OP_IMUL,
@@ -69,7 +70,17 @@ enum ir_reg {
     IR_REG_31,
     
     IR_REG_RBP,
-    IR_REG_RSP
+    IR_REG_RSP,
+    
+    IR_REG_RET0,
+    IR_REG_RET1,
+    IR_REG_RET2,
+    IR_REG_RET3,
+    IR_REG_RET4,
+    IR_REG_RET5,
+    IR_REG_RET6,
+    IR_REG_RET7,
+    IR_REG_RET8,
 };
 
 struct ir {

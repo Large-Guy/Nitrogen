@@ -88,32 +88,32 @@ void ir_debug(struct ir* chunk) {
                 break;
             }
             case IR_OP_REGISTER_I8: {
-                int8_t r = chunk->code[ip++];
+                uint8_t r = chunk->code[ip++];
                 printf("[ir] reg(i8): %d\n", r);
                 break;
             }
             case IR_OP_REGISTER_I16: {
-                int8_t r = chunk->code[ip++];
+                uint8_t r = chunk->code[ip++];
                 printf("[ir] reg(i16): %d\n", r);
                 break;
             }
             case IR_OP_REGISTER_I32: {
-                int8_t r = chunk->code[ip++];
+                uint8_t r = chunk->code[ip++];
                 printf("[ir] reg(i32): %d\n", r);
                 break;
             }
             case IR_OP_REGISTER_I64: {
-                int8_t r = chunk->code[ip++];
+                uint8_t r = chunk->code[ip++];
                 printf("[ir] reg(i64): %d\n", r);
                 break;
             }
             case IR_OP_REGISTER_F32: {
-                int8_t r = chunk->code[ip++];
+                uint8_t r = chunk->code[ip++];
                 printf("[ir] reg(f32): %d\n", r);
                 break;
             }
             case IR_OP_REGISTER_F64: {
-                int8_t r = chunk->code[ip++];
+                uint8_t r = chunk->code[ip++];
                 printf("[ir] reg(f64): %d\n", r);
                 break;
             }

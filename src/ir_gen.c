@@ -22,7 +22,7 @@ static void build_operand(struct ir* ir, struct operand operand) {
         case OPERAND_TYPE_BLOCK: {
             ir_write(ir, IR_OP_LABEL);
             char buffer[7] = {};
-            sprintf(buffer, ".L%.4d", (int16_t)operand.value.integer);
+            sprintf(buffer, ".L%.4d", (int16_t)operand.value.block->id);
             ir_string(ir, buffer);
             break;
         }
@@ -107,6 +107,11 @@ static void build_block(struct ir* ir, struct block* block) {
                     
                     build_constant(ir, 0);
                 }
+                break;
+            }
+            case OP_GOTO: {
+                ir_write(ir, IR_OP_JUMP);
+                build_operand(ir, inst.operands[0]);
                 break;
             }
             case OP_LOAD: {

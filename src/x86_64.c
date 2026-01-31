@@ -162,7 +162,7 @@ static void compile_instruction(struct stack_usage* usage, struct backend* backe
             stack_usage_push(usage, (uint32_t)instruction.result.value.integer, stack_align(instruction.operands[0].value.integer));
             break;
         }
-        case OP_MEMSET: {
+        case OP_ZERO: {
             if (error(instruction.operands[0].type == OPERAND_TYPE_REGISTER, "unexpected operand type"))
                 return;
             struct register_offset* offset = stack_usage_get(usage, instruction.operands[0].value.integer);

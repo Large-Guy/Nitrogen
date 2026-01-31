@@ -969,12 +969,10 @@ static struct operand rvalue_statement(struct compiler* compiler, struct ast_nod
                 block_add(current, store);
             }
             else {
-                struct ssa_instruction memset = {};
-                memset.operator = OP_MEMSET;
-                memset.operands[0] = instruction.result;
-                memset.operands[1] = operand_const_i8(0);
-                memset.operands[2] = operand_const_i64(type.size);
-                block_add(current, memset);
+                struct ssa_instruction zero = {};
+                zero.operator = OP_ZERO;
+                zero.operands[0] = instruction.result;
+                block_add(current, zero);
             }
 
             return instruction.result;

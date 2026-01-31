@@ -91,6 +91,24 @@ static void build_block(struct ir* ir, struct block* block) {
                 
                 break;
             }
+            case OP_ZERO: {
+                for (int j = 0; j < inst.type.size; j++) {
+                    ir_write(ir, IR_OP_MOV);
+                    
+                    ir_write(ir, IR_OP_ADDRESS);
+                    build_constant(ir, 1);
+                    
+                    ir_write(ir, IR_OP_REGISTER_I64);
+                    ir_write(ir, IR_REG_RBP);
+                    
+                    ir_write(ir, IR_OP_IMMEDIATE_I64);
+                    uint64_t offset = inst.operands[0].offset + j;
+                    ir_bytes(ir, (uint8_t*)&(offset), 8);
+                    
+                    build_constant(ir, 0);
+                }
+                break;
+            }
             case OP_LOAD: {
                 break;
             }

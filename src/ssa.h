@@ -45,7 +45,7 @@ enum ssa_instruction_code
     OP_HALLOC,
     OP_LOAD,
     OP_STORE,
-    OP_MEMSET,
+    OP_ZERO,
     OP_CAST,
     OP_BUILD_SIMD,
     OP_INDEX_SIMD,

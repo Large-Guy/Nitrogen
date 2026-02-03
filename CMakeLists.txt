@@ -25,8 +25,8 @@ add_executable(ncc src/main.c
         src/ssa.h
         src/ast_gen.c
         src/ast_gen.h
-        src/register_table.c
-        src/register_table.h
+        src/ssa_register_table.c
+        src/ssa_register_table.h
         src/ssa_gen.c
         src/ssa_gen.h
         src/unit_debug.c

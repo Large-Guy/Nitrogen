@@ -73,7 +73,7 @@ enum operand_type
     OPERAND_TYPE_IR,
 };
 
-struct operand
+struct ssa_operand
 {
     enum operand_type type;
     struct ssa_type typename;
@@ -92,29 +92,29 @@ struct operand
     uint32_t vector_size;
 };
 
-struct operand operand_none();
+struct ssa_operand operand_none();
 
-struct operand operand_reg(uint32_t reg, struct ssa_type type);
+struct ssa_operand operand_reg(uint32_t reg, struct ssa_type type);
 
-struct operand operand_const_i8(int8_t value);
+struct ssa_operand operand_const_i8(int8_t value);
 
-struct operand operand_const_i16(int16_t value);
+struct ssa_operand operand_const_i16(int16_t value);
 
-struct operand operand_const_i32(int32_t value);
+struct ssa_operand operand_const_i32(int32_t value);
 
-struct operand operand_const_i64(int64_t value);
+struct ssa_operand operand_const_i64(int64_t value);
 
-struct operand operand_const_f32(float value);
+struct ssa_operand operand_const_f32(float value);
 
-struct operand operand_const_f64(double value);
+struct ssa_operand operand_const_f64(double value);
 
-struct operand operand_block(struct block* block);
+struct ssa_operand operand_block(struct block* block);
 
-struct operand operand_end();
+struct ssa_operand operand_end();
 
-struct operand operand_unit(struct unit* unit);
+struct ssa_operand operand_unit(struct unit* unit);
 
-struct operand operand_null();
+struct ssa_operand operand_null();
 
 #define MAX_OPERANDS 16
 
@@ -125,10 +125,10 @@ struct ssa_instruction
     struct ssa_type type;
 
     // this should always be a register
-    struct operand result;
+    struct ssa_operand result;
 
     // these could be a register or a constant depending on the operator
-    struct operand operands[MAX_OPERANDS];
+    struct ssa_operand operands[MAX_OPERANDS];
 };
 
 #endif //COMPILER_SSA_H

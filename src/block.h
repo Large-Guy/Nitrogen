@@ -3,13 +3,13 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "ssa.h"
-#include "register_table.h"
+#include "ssa_register_table.h"
 
 struct block {
     uint32_t id;
     bool entry;
     
-    struct register_table* symbol_table;
+    struct ssa_register_table* symbol_table;
 
     struct block** parents;
     uint32_t parents_count;
@@ -27,7 +27,7 @@ struct block {
     bool branches;
 };
 
-struct block* block_new(bool entry, struct register_table* symbol_table);
+struct block* block_new(bool entry, struct ssa_register_table* symbol_table);
 
 void block_free(struct block* node);
 

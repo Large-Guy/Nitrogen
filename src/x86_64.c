@@ -117,7 +117,7 @@ static void compile_constant_register(struct ir* chunk, enum x86_64_registers re
     ir_write(chunk, register_id);
 }
 
-static void compile_operand(struct backend* backend, struct operand operand) {
+static void compile_operand(struct backend* backend, struct ssa_operand operand) {
     struct ir* chunk = backend->out;
     switch (operand.type) {
         case OPERAND_TYPE_INTEGER: {

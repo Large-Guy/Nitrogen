@@ -2,7 +2,7 @@
 
 #include "block.h"
 
-static void build_operand(struct ir* ir, struct operand operand) {
+static void build_operand(struct ir* ir, struct ssa_operand operand) {
     switch (operand.type) {
         case OPERAND_TYPE_INTEGER: {
             ir_write(ir, IR_OP_IMMEDIATE_I64);
@@ -33,7 +33,7 @@ static void build_operand(struct ir* ir, struct operand operand) {
     }
 }
 
-static void consume_operand(struct ir* ir, struct operand operand, enum operand_type expected) {
+static void consume_operand(struct ir* ir, struct ssa_operand operand, enum operand_type expected) {
     if (operand.type != expected) {
         fprintf(stderr, "[ir] unsupported operand type\n");
         return;
@@ -41,7 +41,7 @@ static void consume_operand(struct ir* ir, struct operand operand, enum operand_
     build_operand(ir, operand);
 }
 
-static bool match_operand(struct ir* ir, struct operand operand, enum operand_type expected) {
+static bool match_operand(struct ir* ir, struct ssa_operand operand, enum operand_type expected) {
     if (operand.type != expected) {
         return false;
     }

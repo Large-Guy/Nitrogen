@@ -14,7 +14,7 @@ struct unit* unit_new(char* symbol, bool global, enum unit_type type)
     struct unit* unit = malloc(sizeof(struct unit));
     assert(unit);
 
-    unit->arguments = malloc(sizeof(struct operand));
+    unit->arguments = malloc(sizeof(struct ssa_operand));
     assert(unit->arguments);
     unit->argument_count = 0;
     unit->argument_capacity = 1;
@@ -109,13 +109,13 @@ void unit_add(struct unit* unit, struct block* block)
     block->id = unit->block_count;
 }
 
-void unit_arg(struct unit* unit, struct operand arg)
+void unit_arg(struct unit* unit, struct ssa_operand arg)
 {
     assert(unit != NULL);
     if (unit->argument_count >= unit->argument_capacity)
     {
         unit->argument_capacity *= 2;
-        unit->arguments = realloc(unit->arguments, unit->argument_capacity * sizeof(struct operand));
+        unit->arguments = realloc(unit->arguments, unit->argument_capacity * sizeof(struct ssa_operand));
         assert(unit->arguments);
     }
     unit->arguments[unit->argument_count++] = arg;

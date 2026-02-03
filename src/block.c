@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct block* block_new(bool entry, struct register_table* symbol_table) {
+struct block* block_new(bool entry, struct ssa_register_table* symbol_table) {
     struct block* node = malloc(sizeof(struct block));
     assert(node);
     node->id = 0;

@@ -164,7 +164,7 @@ static char* operator_name(enum ssa_instruction_code code)
     }
 }
 
-static void operand_debug(FILE* out, struct operand operand)
+static void operand_debug(FILE* out, struct ssa_operand operand)
 {
     switch (operand.type)
     {

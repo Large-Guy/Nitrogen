@@ -19,7 +19,7 @@ struct unit {
     struct ssa_type return_type;
     bool global;
 
-    struct operand* arguments;
+    struct ssa_operand* arguments;
     uint32_t argument_count;
     uint32_t argument_capacity;
 
@@ -52,7 +52,7 @@ void unit_free(struct unit* unit);
 
 void unit_add(struct unit* unit, struct block* block);
 
-void unit_arg(struct unit* unit, struct operand arg);
+void unit_arg(struct unit* unit, struct ssa_operand arg);
 
 void unit_compile(struct backend* backend, struct unit* unit);
 

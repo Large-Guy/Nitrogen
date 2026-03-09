@@ -59,6 +59,10 @@ static struct ast_node* heap(struct parser* parser, bool canAssign);
 
 static struct ast_node* binary(struct parser* parser, struct ast_node* left, bool canAssign);
 
+static struct ast_node* interval_expression(struct parser* parser, struct ast_node* left, bool canAssign);
+
+static struct ast_node* includes(struct parser* parser, struct ast_node* left, bool canAssign);
+
 static struct ast_node* variable(struct parser* parser, bool canAssign);
 
 static struct ast_node* and(struct parser* parser, struct ast_node* left, bool canAssign);
@@ -160,6 +164,7 @@ struct parse_rule rules[] = {
     [TOKEN_TYPE_WHILE] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_DO] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_FOR] = {NULL, NULL, PRECEDENCE_NONE},
+    [TOKEN_TYPE_IN] = {NULL, includes, PRECEDENCE_CALL}
 };
 
 static struct parse_rule* get_rule(enum token_type type)
@@ -486,6 +491,69 @@ static struct ast_node* binary(struct parser* parser, struct ast_node* left, boo
     ast_node_append_child(operator, left);
     ast_node_append_child(operator, right);
     return operator;
+}
+
+static struct ast_node* interval(struct parser* parser, struct ast_node* left) {
+    struct ast_node* entry = NULL;
+    if (parser_match(parser, TOKEN_TYPE_LEFT_BRACKET)) {
+        entry = ast_node_new(AST_NODE_TYPE_GREATER_THAN_EQUAL, parser->previous);
+    } else if (parser_match(parser, TOKEN_TYPE_LEFT_PAREN)) {
+        entry = ast_node_new(AST_NODE_TYPE_GREATER_THAN, parser->previous);
+    }
+    else {
+        parser_error(parser, parser->current, "expected '[' or '(' after interval group");
+    }
+    struct ast_node* a = expression(parser);
+    ast_node_append_child(entry, left);
+    ast_node_append_child(entry, a);
+    parser_consume(parser, TOKEN_TYPE_COMMA, "expected 2 values in interval group");
+    struct ast_node* b = expression(parser);
+    struct ast_node* exit = NULL;
+    if (parser_match(parser, TOKEN_TYPE_RIGHT_BRACKET)) {
+        exit = ast_node_new(AST_NODE_TYPE_LESS_THAN_EQUAL, parser->previous);
+    } else if (parser_match(parser, TOKEN_TYPE_RIGHT_PAREN)) {
+        exit = ast_node_new(AST_NODE_TYPE_LESS_THAN, parser->previous);
+    }
+    else {
+        parser_error(parser, parser->current, "expected ']' or ')' after interval group");
+    }
+    
+    ast_node_append_child(exit, left);
+    ast_node_append_child(exit, b);
+    
+    struct ast_node* and = ast_node_new(AST_NODE_TYPE_AND, token_null);
+    
+    ast_node_append_child(and, entry);
+    ast_node_append_child(and, exit);
+    
+    return and;
+}
+
+static struct ast_node* interval_expression(struct parser* parser, struct ast_node* left, bool canAssign) {
+    struct ast_node* root = interval(parser, left);
+    while (parser_match(parser, TOKEN_TYPE_IDENTIFIER)) {
+        if (parser->previous.length == 1 && parser->previous.start[0] == 'U' || parser->previous.start[0] == 'u') {
+            struct ast_node* or = ast_node_new(AST_NODE_TYPE_OR, token_null);
+            ast_node_append_child(or, root);
+            ast_node_append_child(or, interval(parser, left));
+            root = or;
+        }
+        else {
+            parser_error(parser, parser->current, "unexpected character in interval.");
+        }
+    }
+    parser_consume(parser, TOKEN_TYPE_RIGHT_BRACE, "expected '}' after interval statement");
+    
+    return root;
+}
+
+static struct ast_node* includes(struct parser* parser, struct ast_node* left, bool canAssign) {
+    if (parser_match(parser, TOKEN_TYPE_LEFT_BRACE)) {
+        return interval_expression(parser, left, canAssign);
+    }
+    else {
+        parser_error(parser, parser->current, "Not supported yet");
+    }
 }
 
 static struct ast_node* and(struct parser* parser, struct ast_node* left, bool canAssign)

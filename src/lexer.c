@@ -195,7 +195,16 @@ static enum token_type type(struct lexer* lexer)
                         case 's': return check_keyword(lexer, 2, 3, "ize", TOKEN_TYPE_ISIZE);
                         case 'm': return check_keyword(lexer, 2, 4, "port", TOKEN_TYPE_IMPORT);
                         case 'f': return check_keyword(lexer, 2, 0, "", TOKEN_TYPE_IF);
-                        case 'n': return check_keyword(lexer, 2, 7, "terface", TOKEN_TYPE_INTERFACE);
+                        case 'n': {
+                            if (lexer->current - lexer->start > 2) {
+                                switch (lexer->start[2]) {
+                                    case 't': return check_keyword(lexer, 3, 6, "erface", TOKEN_TYPE_INTERFACE);
+                                }
+                            }
+                            else {
+                                return TOKEN_TYPE_IN;
+                            }
+                        }
                         default: break;
                     }
                 }

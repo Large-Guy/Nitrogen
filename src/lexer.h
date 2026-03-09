@@ -60,6 +60,8 @@ enum token_type
     TOKEN_TYPE_TILDE,
     TOKEN_TYPE_TILDE_EQUAL,
     TOKEN_TYPE_QUESTION,
+    
+    TOKEN_TYPE_IN,
 
     //Special
     TOKEN_TYPE_MOVE,

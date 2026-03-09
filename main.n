@@ -1,9 +1,19 @@
 module program;
 
-i32 main()
+bool rect_contains(f32<4> rect, f32<2> point)
 {
-    i32 a = 2;
-    bool interval = input in {[0, 10]};
-    
-    return 0;
+    return point.x in {[rect.x, rect.x + rect.z]} && 
+            point.y in {[rect.y, rect.y + rect.w]};
+}
+
+void main()
+{
+    f32 i = 3.2f;
+    bool a = i in {(0f, 10f]}; // 0 < i <= 10
+}
+
+void other()
+{
+    f32 i = 4.6f;
+    bool b = i in {[0f, 10f)U(10f, 20f]}; // 0 <= i < 10, 10 < i <= 20
 }

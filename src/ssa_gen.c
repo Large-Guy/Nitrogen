@@ -240,6 +240,7 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
         [AST_NODE_TYPE_OPTIONAL] = {CAST_TYPE_IMPLICIT, cast_emit_optional},
     },
     [AST_NODE_TYPE_ARRAY] = {}, //consider allowing explicit array casts?
+    [AST_NODE_TYPE_MAP] = {},
     [AST_NODE_TYPE_SIMD] = {
         [AST_NODE_TYPE_SIMD] = {CAST_TYPE_IMPLICIT, cast_emit_simd}
     },

@@ -235,10 +235,17 @@ static struct ast_node* append_type_attribute(struct parser* parser, struct ast_
     }
     if (parser_match(parser, TOKEN_TYPE_LEFT_BRACKET))
     {
-        struct ast_node* array = ast_node_new(AST_NODE_TYPE_ARRAY, parser->previous);
+        struct ast_node* type = NULL;
+        if (parser_match_type(parser)) {
+            type = ast_node_new(AST_NODE_TYPE_MAP, parser->previous);
+            ast_node_append_child(type, parser_build_type(parser));
+        }
+        else {
+            type = ast_node_new(AST_NODE_TYPE_ARRAY, parser->previous);
+        }
 
-        ast_node_append_child(array, current);
-        struct ast_node* node = append_type_attribute(parser, array);
+        ast_node_append_child(type, current);
+        struct ast_node* node = append_type_attribute(parser, type);
         // add initial size option
 
         parser_consume(parser, TOKEN_TYPE_RIGHT_BRACKET, "forgotten closing bracket ']'");

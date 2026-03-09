@@ -140,7 +140,7 @@ static int error(int condition, const char* message) {
 }
 
 uint64_t stack_align(uint64_t size) {
-    return (uint64_t)(ceil((double)size / 8.0) * 8.0);
+    return (uint64_t)((double)(int)((double)size / 8.0 + 0.5) * 8.0);
 }
 
 static void compile_instruction(struct stack_usage* usage, struct backend* backend, struct ssa_instruction instruction) {

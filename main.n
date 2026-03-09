@@ -1,25 +1,9 @@
 module program;
 
-struct Tile
-{
-    u16 id;
-    u8 a;
-    u8 b;
-};
-
-struct Chunk
-{
-    Tile<4096> data;
-}
-
-struct Object
-{
-    Chunk*[i32<3>] chunks;
-}
-
 i32 main()
 {
-    i32[i32<3>] map;
-    i32<3> a = (1,2,3);
-    a.xy = (4, 5);
+    i32 a = 2;
+    bool interval = input in {[0, 10]};
+    
+    return 0;
 }

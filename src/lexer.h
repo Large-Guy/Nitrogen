@@ -114,6 +114,8 @@ enum token_type
     TOKEN_TYPE_USIZE,
 
     TOKEN_TYPE_STRING,
+    
+    TOKEN_TYPE_BOOL,
 
     //constants
     TOKEN_TYPE_NULL,

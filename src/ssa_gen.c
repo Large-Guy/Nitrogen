@@ -568,6 +568,25 @@ static struct ssa_operand binary(struct compiler* compiler, struct ast_node* nod
     return instruction.result;
 }
 
+static struct ssa_operand comparison(struct compiler* compiler, struct ast_node* node, enum ssa_instruction_code type) {
+    struct ast_node* left = node->children[0];
+    struct ast_node* right = node->children[1];
+    struct ssa_instruction instruction = {};
+    instruction.operator = type;
+    struct ssa_operand x = rvalue_statement(compiler, left);
+    struct ssa_operand y = rvalue_statement(compiler, right);
+    
+    static struct ast_node bool_node = {AST_NODE_TYPE_BOOL, {}, NULL, NULL, 0, 0};
+    instruction.type = ssa_type_from_ast(compiler->ast_module, &bool_node);
+    
+    struct ssa_type promotion = promote_type(x.typename, y.typename);
+    instruction.operands[0] = cast(compiler, x, promotion, CAST_TYPE_IMPLICIT);
+    instruction.operands[1] = cast(compiler, y, promotion, CAST_TYPE_IMPLICIT);
+    instruction.result = register_table_alloc(compiler->regs, instruction.type);
+    block_add(compiler->body, instruction);
+    return instruction.result;
+}
+
 static struct ssa_operand unary(struct compiler* compiler, struct ast_node* node, enum ssa_instruction_code type) {
     struct ast_node* x = node->children[0];
     struct ssa_instruction instruction = {};
@@ -827,10 +846,11 @@ static struct ssa_operand rvalue_statement(struct compiler* compiler, struct ast
             op.value.integer = 0;
             return op;
         }
-        case AST_NODE_TYPE_BOOL: {
+        case AST_NODE_TYPE_BOOLEAN: {
             struct ssa_operand op = {};
-            op.type = OPERAND_TYPE_REGISTER;
-            op.typename = ssa_type_from_ast(compiler->ast_module, node);
+            op.type = OPERAND_TYPE_INTEGER;
+            static struct ast_node bool_node = {AST_NODE_TYPE_BOOL, {}, NULL, NULL, 0, 0};
+            op.typename = ssa_type_from_ast(compiler->ast_module, &bool_node);
             int64_t immediate = strtoll(node->token.start, NULL, 10);
             op.value.integer = immediate;
             return op;
@@ -870,16 +890,16 @@ static struct ssa_operand rvalue_statement(struct compiler* compiler, struct ast
             return binary(compiler, node, OP_DIV);
         }
         case AST_NODE_TYPE_LESS_THAN: {
-            return binary(compiler, node, OP_LESS);
+            return comparison(compiler, node, OP_LESS);
         }
         case AST_NODE_TYPE_LESS_THAN_EQUAL: {
-            return binary(compiler, node, OP_LESS_EQUAL);
+            return comparison(compiler, node, OP_LESS_EQUAL);
         }
         case AST_NODE_TYPE_GREATER_THAN: {
-            return binary(compiler, node, OP_GREATER);
+            return comparison(compiler, node, OP_GREATER);
         }
         case AST_NODE_TYPE_GREATER_THAN_EQUAL: {
-            return binary(compiler, node, OP_GREATER_EQUAL);
+            return comparison(compiler, node, OP_GREATER_EQUAL);
         }
         case AST_NODE_TYPE_EQUAL: {
             return binary(compiler, node, OP_EQUAL);

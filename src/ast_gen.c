@@ -151,6 +151,7 @@ struct parse_rule rules[] = {
     [TOKEN_TYPE_ISIZE] = {cast, NULL, PRECEDENCE_UNARY},
     [TOKEN_TYPE_USIZE] = {cast, NULL, PRECEDENCE_UNARY},
     [TOKEN_TYPE_STRING] = {NULL, NULL, PRECEDENCE_NONE},
+    [TOKEN_TYPE_BOOL] = {cast, NULL, PRECEDENCE_UNARY},
     [TOKEN_TYPE_NULL] = {literal, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_TRUE] = {literal, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_FALSE] = {literal, NULL, PRECEDENCE_NONE},
@@ -367,9 +368,9 @@ static struct ast_node* literal(struct parser* parser, bool canAssign)
         case TOKEN_TYPE_NULL: {}
             return ast_node_new(AST_NODE_TYPE_NULL, token);
         case TOKEN_TYPE_FALSE:
-            return ast_node_new(AST_NODE_TYPE_BOOL, token_zero);
+            return ast_node_new(AST_NODE_TYPE_BOOLEAN, token_zero);
         case TOKEN_TYPE_TRUE:
-            return ast_node_new(AST_NODE_TYPE_BOOL, token_one);
+            return ast_node_new(AST_NODE_TYPE_BOOLEAN, token_one);
         default:
             parser_error(parser, token, "unexpected literal token type, this should never happen\n");
     }

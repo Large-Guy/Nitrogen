@@ -135,6 +135,7 @@ bool parser_match_type(struct parser* parser) {
             parser_match(parser, TOKEN_TYPE_STRING) ||
             parser_match(parser, TOKEN_TYPE_F32) ||
             parser_match(parser, TOKEN_TYPE_F64) ||
+            parser_match(parser, TOKEN_TYPE_BOOL) ||
             parser_match(parser, TOKEN_TYPE_VOID);
     
 
@@ -192,6 +193,8 @@ static struct ast_node* get_type_node(struct parser* parser, struct token token)
             return ast_node_new(AST_NODE_TYPE_F32, token);
         case TOKEN_TYPE_F64:
             return ast_node_new(AST_NODE_TYPE_F64, token);
+        case TOKEN_TYPE_BOOL:
+            return ast_node_new(AST_NODE_TYPE_BOOL, token);
         case TOKEN_TYPE_VOID:
             return ast_node_new(AST_NODE_TYPE_VOID, token);
         case TOKEN_TYPE_IDENTIFIER:

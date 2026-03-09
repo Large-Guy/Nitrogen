@@ -66,6 +66,12 @@ static void ast_node_type_debug(FILE* out, struct ast_node* node)
             ast_node_type_debug(out, node->children[0]);
             fprintf(out, "[]");
             break;
+        case AST_NODE_TYPE_MAP:
+            ast_node_type_debug(out, node->children[1]);
+            fprintf(out, "{");
+            ast_node_type_debug(out, node->children[0]);
+            fprintf(out, "}");
+            break;
         case AST_NODE_TYPE_SIMD:
             ast_node_type_debug(out, node->children[0]);
             fprintf(out, "<%.*s", (int)node->children[1]->token.length, node->children[1]->token.start);

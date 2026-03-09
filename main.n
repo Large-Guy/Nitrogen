@@ -1,7 +1,25 @@
 module program;
 
+struct Tile
+{
+    u16 id;
+    u8 a;
+    u8 b;
+};
+
+struct Chunk
+{
+    Tile<4096> data;
+}
+
+struct Object
+{
+    Chunk*[i32<3>] chunks;
+}
+
 i32 main()
 {
-    i8 a;
-    a = 32;
+    i32[i32<3>] map;
+    i32<3> a = (1,2,3);
+    a.xy = (4, 5);
 }

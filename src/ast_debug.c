@@ -9,6 +9,7 @@ static const char* ast_node_type_names[] = {
     [AST_NODE_TYPE_OWNER] = "owner",
     [AST_NODE_TYPE_OPTIONAL] = "optional",
     [AST_NODE_TYPE_ARRAY] = "array",
+    [AST_NODE_TYPE_MAP] = "map",
     [AST_NODE_TYPE_SIMD] = "simd",
     [AST_NODE_TYPE_BOOL] = "bool",
     [AST_NODE_TYPE_I8] = "i8",

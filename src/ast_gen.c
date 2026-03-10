@@ -175,18 +175,87 @@ static struct parse_rule* get_rule(enum token_type type)
 
 // prefix
 static struct ast_node* make_compound_assignment(struct parser* parser, enum ast_node_type type,
-                                                 struct ast_node* variable, struct ast_node* left)
+                                                 struct ast_node* variable)
 {
     struct ast_node* assignment = ast_node_new(AST_NODE_TYPE_ASSIGN, parser->previous);
     ast_node_append_child(assignment, variable);
 
     struct ast_node* addition = ast_node_new(type, parser->previous);
-    ast_node_append_child(addition, left);
+    ast_node_append_child(addition, variable);
     ast_node_append_child(addition, expression(parser));
 
     ast_node_append_child(assignment, addition);
 
     return assignment;
+}
+
+static struct ast_node* assign(struct parser* parser, struct ast_node* variable) {
+    if (parser_match(parser, TOKEN_TYPE_EQUAL))
+    {
+        struct ast_node* assignment = ast_node_new(AST_NODE_TYPE_ASSIGN, parser->previous);
+        ast_node_append_child(assignment, variable);
+        ast_node_append_child(assignment, expression(parser));
+        return assignment;
+    }
+
+    if (parser_match(parser, TOKEN_TYPE_PLUS_EQUAL))
+    {
+        return make_compound_assignment(parser, AST_NODE_TYPE_ADD, variable);
+    }
+    if (parser_match(parser, TOKEN_TYPE_MINUS_EQUAL))
+    {
+        return make_compound_assignment(parser, AST_NODE_TYPE_SUBTRACT, variable);
+    }
+    if (parser_match(parser, TOKEN_TYPE_STAR_EQUAL))
+    {
+        return make_compound_assignment(parser, AST_NODE_TYPE_MULTIPLY, variable);
+    }
+    if (parser_match(parser, TOKEN_TYPE_SLASH_EQUAL))
+    {
+        return make_compound_assignment(parser, AST_NODE_TYPE_DIVIDE, variable);
+    }
+    if (parser_match(parser, TOKEN_TYPE_PERCENT_EQUAL))
+    {
+        return make_compound_assignment(parser, AST_NODE_TYPE_MODULO, variable);
+    }
+    if (parser_match(parser, TOKEN_TYPE_AND_EQUAL))
+    {
+        return make_compound_assignment(parser, AST_NODE_TYPE_BITWISE_AND, variable);
+    }
+    if (parser_match(parser, TOKEN_TYPE_PIPE_EQUAL))
+    {
+        return make_compound_assignment(parser, AST_NODE_TYPE_BITWISE_OR, variable);
+    }
+    if (parser_match(parser, TOKEN_TYPE_CARET_EQUAL))
+    {
+        return make_compound_assignment(parser, AST_NODE_TYPE_BITWISE_XOR, variable);
+    }
+    if (parser_match(parser, TOKEN_TYPE_PLUS_PLUS))
+    {
+        struct ast_node* assignment = ast_node_new(AST_NODE_TYPE_ASSIGN, parser->previous);
+        ast_node_append_child(assignment, variable);
+
+        struct ast_node* addition = ast_node_new(AST_NODE_TYPE_ADD, parser->previous);
+        ast_node_append_child(addition, variable);
+        ast_node_append_child(addition, ast_node_new(AST_NODE_TYPE_INTEGER, token_one));
+
+        ast_node_append_child(assignment, addition);
+        return assignment;
+    }
+    if (parser_match(parser, TOKEN_TYPE_MINUS_MINUS))
+    {
+        struct ast_node* assignment = ast_node_new(AST_NODE_TYPE_ASSIGN, parser->previous);
+        ast_node_append_child(assignment, variable);
+
+        struct ast_node* addition = ast_node_new(AST_NODE_TYPE_SUBTRACT, parser->previous);
+        ast_node_append_child(addition, variable);
+        ast_node_append_child(addition, ast_node_new(AST_NODE_TYPE_INTEGER, token_one));
+
+        ast_node_append_child(assignment, addition);
+        return assignment;
+    }
+        
+    return variable;
 }
 
 static struct ast_node* variable(struct parser* parser, bool canAssign)
@@ -196,74 +265,7 @@ static struct ast_node* variable(struct parser* parser, bool canAssign)
 
     if (canAssign)
     {
-        if (parser_match(parser, TOKEN_TYPE_EQUAL))
-        {
-            struct ast_node* assignment = ast_node_new(AST_NODE_TYPE_ASSIGN, parser->previous);
-            ast_node_append_child(assignment, variable);
-            ast_node_append_child(assignment, expression(parser));
-            return assignment;
-        }
-
-        struct ast_node* left = ast_node_new(AST_NODE_TYPE_NAME, parser->previous);
-
-        if (parser_match(parser, TOKEN_TYPE_PLUS_EQUAL))
-        {
-            return make_compound_assignment(parser, AST_NODE_TYPE_ADD, variable, left);
-        }
-        if (parser_match(parser, TOKEN_TYPE_MINUS_EQUAL))
-        {
-            return make_compound_assignment(parser, AST_NODE_TYPE_SUBTRACT, variable, left);
-        }
-        if (parser_match(parser, TOKEN_TYPE_STAR_EQUAL))
-        {
-            return make_compound_assignment(parser, AST_NODE_TYPE_MULTIPLY, variable, left);
-        }
-        if (parser_match(parser, TOKEN_TYPE_SLASH_EQUAL))
-        {
-            return make_compound_assignment(parser, AST_NODE_TYPE_DIVIDE, variable, left);
-        }
-        if (parser_match(parser, TOKEN_TYPE_PERCENT_EQUAL))
-        {
-            return make_compound_assignment(parser, AST_NODE_TYPE_MODULO, variable, left);
-        }
-        if (parser_match(parser, TOKEN_TYPE_AND_EQUAL))
-        {
-            return make_compound_assignment(parser, AST_NODE_TYPE_BITWISE_AND, variable, left);
-        }
-        if (parser_match(parser, TOKEN_TYPE_PIPE_EQUAL))
-        {
-            return make_compound_assignment(parser, AST_NODE_TYPE_BITWISE_OR, variable, left);
-        }
-        if (parser_match(parser, TOKEN_TYPE_CARET_EQUAL))
-        {
-            return make_compound_assignment(parser, AST_NODE_TYPE_BITWISE_XOR, variable, left);
-        }
-        if (parser_match(parser, TOKEN_TYPE_PLUS_PLUS))
-        {
-            struct ast_node* assignment = ast_node_new(AST_NODE_TYPE_ASSIGN, parser->previous);
-            ast_node_append_child(assignment, variable);
-
-            struct ast_node* addition = ast_node_new(AST_NODE_TYPE_ADD, parser->previous);
-            ast_node_append_child(addition, left);
-            ast_node_append_child(addition, ast_node_new(AST_NODE_TYPE_INTEGER, token_one));
-
-            ast_node_append_child(assignment, addition);
-            return assignment;
-        }
-        if (parser_match(parser, TOKEN_TYPE_MINUS_MINUS))
-        {
-            struct ast_node* assignment = ast_node_new(AST_NODE_TYPE_ASSIGN, parser->previous);
-            ast_node_append_child(assignment, variable);
-
-            struct ast_node* addition = ast_node_new(AST_NODE_TYPE_SUBTRACT, parser->previous);
-            ast_node_append_child(addition, left);
-            ast_node_append_child(addition, ast_node_new(AST_NODE_TYPE_INTEGER, token_one));
-
-            ast_node_append_child(assignment, addition);
-            return assignment;
-        }
-
-        ast_node_free(left); //in case it doesn't match a case
+        return assign(parser, variable);
     }
     return variable;
 }
@@ -567,7 +569,11 @@ static struct ast_node* includes(struct parser* parser, struct ast_node* left, b
         return interval_expression(parser, left, canAssign);
     }
     else {
-        parser_error(parser, parser->current, "Not supported yet");
+        struct ast_node* contains = ast_node_new(AST_NODE_TYPE_CONTAINS, parser->previous);
+        struct ast_node* container = expression(parser);
+        ast_node_append_child(contains, left);
+        ast_node_append_child(contains, container);
+        return contains;
     }
 }
 
@@ -618,6 +624,10 @@ static struct ast_node* index(struct parser* parser, struct ast_node* left, bool
     ast_node_append_child(node, left);
     ast_node_append_child(node, expression(parser));
     parser_consume(parser, TOKEN_TYPE_RIGHT_BRACKET, "expected ']' after array index");
+    
+    if (canAssign) {
+        assign(parser, node);
+    }
     return node;
 }
 
@@ -626,25 +636,17 @@ static struct ast_node* field(struct parser* parser, struct ast_node* left, bool
     struct token op_token = parser->previous;
     parser_consume(parser, TOKEN_TYPE_IDENTIFIER, "expected identifier");
     struct token field_name = parser->previous;
+    
+    struct ast_node* get = ast_node_new(AST_NODE_TYPE_GET, op_token);
+    ast_node_append_child(get, left);
+    ast_node_append_child(get, ast_node_new(AST_NODE_TYPE_NAME, field_name));
+
     if (canAssign)
     {
-        if (parser_match(parser, TOKEN_TYPE_EQUAL))
-        {
-            struct ast_node* get = ast_node_new(AST_NODE_TYPE_GET, op_token);
-            ast_node_append_child(get, left);
-            ast_node_append_child(get, ast_node_new(AST_NODE_TYPE_NAME, field_name));
-
-            struct ast_node* node = ast_node_new(AST_NODE_TYPE_ASSIGN, op_token);
-            ast_node_append_child(node, get);
-            ast_node_append_child(node, expression(parser));
-            return node;
-        }
+        return assign(parser, get);
     }
 
-    struct ast_node* node = ast_node_new(AST_NODE_TYPE_GET, op_token);
-    ast_node_append_child(node, left);
-    ast_node_append_child(node, ast_node_new(AST_NODE_TYPE_NAME, field_name));
-    return node;
+    return get;
 }
 
 static struct ast_node* parse_precedence(struct parser* parser, enum precedence precedence)

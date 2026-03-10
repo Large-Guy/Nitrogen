@@ -1,11 +1,7 @@
 module program;
 
-struct test
-{
-    i32 a;
-}
-
 void main()
 {
-    
+    f32<16> a;
+    a[8] = 1;
 }

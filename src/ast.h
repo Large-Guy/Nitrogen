@@ -110,6 +110,9 @@ enum ast_node_type
     AST_NODE_TYPE_IF,
     AST_NODE_TYPE_WHILE,
     AST_NODE_TYPE_DO_WHILE,
+    
+    //complex
+    AST_NODE_TYPE_CONTAINS,
 };
 
 struct ast_node

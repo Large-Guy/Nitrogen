@@ -1,23 +1,11 @@
 module program;
 
-bool is_alpha(i8 char)
+struct test
 {
-    return char in { ['A', 'Z'] U ['a','z'] };
-}
-
-bool is_number(i8 char)
-{
-    return char in { ['0', '9'], '.'};
-}
-
-bool rect_contains(f32<4> rect, f32<2> point)
-{
-    return point.x in {[rect.x, rect.x + rect.z]} && 
-            point.y in {[rect.y, rect.y + rect.w]};
+    i32 a;
 }
 
 void main()
 {
-    f32 i = 3.2f;
-    bool a = i in {(0f, 10f]}; // 0 < i <= 10
+    
 }

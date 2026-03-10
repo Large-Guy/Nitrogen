@@ -41,7 +41,7 @@ struct ast_node* ast_node_clone(struct ast_node* node)
 
     for (size_t i = 0; i < node->children_count; i++)
     {
-        ast_node_append_child(copy, ast_node_clone(node->children[i]));
+        ast_node_append_child(copy, node->children[i]);
     }
 
     return copy;
@@ -193,15 +193,13 @@ uint32_t ast_node_symbol_offset(struct ast_module* module, struct ast_node* symb
     return offset;
 }
 
-struct ast_node* ast_node_symbol_field(struct ast_module* module, struct ast_node* symbol, struct token field) {
-    assert(symbol->type == AST_NODE_TYPE_STRUCT); // expects struct symbol
-    struct ast_node* members = symbol->children[STRUCT_LAYOUT_MEMBERS];
-    for (size_t i = 0; i < members->children_count; i++) {
-        struct ast_node* member = members->children[i];
+struct ast_node* ast_node_symbol_field(struct ast_module* module, struct ast_node* source, struct token field) {
+    for (size_t i = 0; i < source->children_count; i++) {
+        struct ast_node* member = source->children[i];
         if (member->type != AST_NODE_TYPE_FIELD) {
             continue;
         }
-        struct ast_node* name = member->children[0];
+        struct ast_node* name = member->children[VARIABLE_LAYOUT_NAME];
         if (name->token.length == field.length && memcmp(name->token.start, field.start, field.length) == 0) {
             return member;
         }
@@ -209,3 +207,16 @@ struct ast_node* ast_node_symbol_field(struct ast_module* module, struct ast_nod
     return NULL;
 }
 
+struct ast_node* ast_node_symbol_method(struct ast_module* module, struct ast_node* source, struct token field) {
+    for (size_t i = 0; i < source->children_count; i++) {
+        struct ast_node* member = source->children[i];
+        if (member->type != AST_NODE_TYPE_METHOD) {
+            continue;
+        }
+        struct ast_node* name = member->children[FUNCTION_LAYOUT_NAME];
+        if (name->token.length == field.length && memcmp(name->token.start, field.start, field.length) == 0) {
+            return member;
+        }
+    }
+    return NULL;
+}

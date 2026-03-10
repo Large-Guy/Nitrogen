@@ -594,6 +594,11 @@ static struct ast_node* call(struct parser* parser, struct ast_node* left, bool 
     struct token op_token = parser->previous;
     struct ast_node* node = ast_node_new(AST_NODE_TYPE_CALL, op_token);
     ast_node_append_child(node, left);
+    
+    if (left->type == AST_NODE_TYPE_GET) {
+        ast_node_append_child(node, left->children[0]);
+    }
+    
     if (!parser_check(parser, TOKEN_TYPE_RIGHT_PAREN))
     {
         do
@@ -603,7 +608,7 @@ static struct ast_node* call(struct parser* parser, struct ast_node* left, bool 
         while (parser_match(parser, TOKEN_TYPE_COMMA));
     }
     parser_consume(parser, TOKEN_TYPE_RIGHT_PAREN, "Expect ')' after arguments");
-
+    
     return node;
 }
 

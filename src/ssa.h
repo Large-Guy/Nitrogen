@@ -49,6 +49,9 @@ enum ssa_instruction_code
     OP_CAST,
     OP_BUILD_SIMD,
     OP_INDEX_SIMD,
+    
+    //complex ops
+    OP_APPEND,
 };
 
 

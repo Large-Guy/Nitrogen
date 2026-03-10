@@ -696,7 +696,7 @@ static struct ssa_operand lvalue_statement(struct compiler* compiler, struct ast
            switch (underlying_type->type) {
                case AST_NODE_TYPE_STRUCT: {
                    uint32_t offset = ast_node_symbol_offset(compiler->ast_module, underlying_type, name);
-                   struct ast_node* field_node = ast_node_symbol_field(compiler->ast_module, underlying_type, name);
+                   struct ast_node* field_node = ast_node_symbol_field(compiler->ast_module, underlying_type->children[STRUCT_LAYOUT_MEMBERS], name);
                    struct ast_node* pointer = ast_node_new(AST_NODE_TYPE_BORROW, token_null);
                    ast_node_append_child(pointer, field_node->children[VARIABLE_LAYOUT_TYPE]);
 

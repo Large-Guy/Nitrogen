@@ -115,6 +115,12 @@ static struct token string(struct lexer* lexer)
     return make_token(lexer, TOKEN_TYPE_STRING_LITERAL);
 }
 
+static struct token character(struct lexer* lexer) {
+    advance(lexer);
+    match(lexer, '\'');
+    return make_token(lexer, TOKEN_TYPE_CHARACTER);
+}
+
 static bool is_digit(char c)
 {
     return c >= '0' && c <= '9';
@@ -393,6 +399,7 @@ static struct token lexer_scan(struct lexer* lexer)
                                                : TOKEN_TYPE_PIPE);
 
         case '"': return string(lexer);
+        case '\'': return character(lexer);
         default: break;
     }
 

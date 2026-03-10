@@ -126,6 +126,7 @@ struct parse_rule rules[] = {
     [TOKEN_TYPE_MOVE] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_COPY] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_STRING_LITERAL] = {NULL, NULL, PRECEDENCE_NONE},
+    [TOKEN_TYPE_CHARACTER] = {number, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_INTEGER] = {number, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_FLOATING] = {number, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_IDENTIFIER] = {variable, NULL, PRECEDENCE_NONE},
@@ -270,6 +271,10 @@ static struct ast_node* variable(struct parser* parser, bool canAssign)
 static struct ast_node* number(struct parser* parser, bool canAssign)
 {
     struct token token = parser->previous;
+    if (parser->previous.type == TOKEN_TYPE_CHARACTER) {
+        struct ast_node* c = ast_node_new(AST_NODE_TYPE_CHARACTER, token); 
+        return c;
+    }
     if (parser->previous.type == TOKEN_TYPE_FLOATING)
         return ast_node_new(AST_NODE_TYPE_FLOAT, token);
     return ast_node_new(AST_NODE_TYPE_INTEGER, token);
@@ -542,6 +547,16 @@ static struct ast_node* interval_expression(struct parser* parser, struct ast_no
             parser_error(parser, parser->current, "unexpected character in interval.");
         }
     }
+    
+    while (parser_match(parser, TOKEN_TYPE_COMMA)) {
+        struct ast_node* or = ast_node_new(AST_NODE_TYPE_OR, token_null);
+        ast_node_append_child(or, root);
+        struct ast_node* equals = ast_node_new(AST_NODE_TYPE_EQUAL, token_null);
+        ast_node_append_child(equals, left);
+        ast_node_append_child(equals, expression(parser));
+        ast_node_append_child(or, equals);
+    }
+    
     parser_consume(parser, TOKEN_TYPE_RIGHT_BRACE, "expected '}' after interval statement");
     
     return root;

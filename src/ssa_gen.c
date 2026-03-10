@@ -793,6 +793,10 @@ static struct ssa_operand rvalue_statement(struct compiler* compiler, struct ast
             int64_t immediate = strtoll(node->token.start, NULL, 10);
             return get_int(immediate); //TODO: implement polymorphic literals
         }
+        case AST_NODE_TYPE_CHARACTER: {
+            int64_t immediate = (unsigned char)node->token.start[1]; // 'X'
+            return get_int(immediate); //TODO: implement polymorphic literals
+        }
         case AST_NODE_TYPE_LIST: {
             uint32_t size = node->children_count;
             struct ast_node* simd = ast_node_new(AST_NODE_TYPE_SIMD, token_null);

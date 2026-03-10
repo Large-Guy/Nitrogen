@@ -1,5 +1,15 @@
 module program;
 
+bool is_alpha(i8 char)
+{
+    return char in { ['A', 'Z'] U ['a','z'] };
+}
+
+bool is_number(i8 char)
+{
+    return char in { ['0', '9'], '.'};
+}
+
 bool rect_contains(f32<4> rect, f32<2> point)
 {
     return point.x in {[rect.x, rect.x + rect.z]} && 
@@ -10,10 +20,4 @@ void main()
 {
     f32 i = 3.2f;
     bool a = i in {(0f, 10f]}; // 0 < i <= 10
-}
-
-void other()
-{
-    f32 i = 4.6f;
-    bool b = i in {[0f, 10f)U(10f, 20f]}; // 0 <= i < 10, 10 < i <= 20
 }

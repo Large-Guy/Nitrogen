@@ -798,7 +798,7 @@ static struct ssa_operand rvalue_statement(struct compiler* compiler, struct ast
             return get_int(immediate); //TODO: implement polymorphic literals
         }
         case AST_NODE_TYPE_CHARACTER: {
-            int64_t immediate = (unsigned char) node->token.start[1]; // 'X'
+            int64_t immediate = (unsigned char) node->token.start[0]; // 'X'
             return get_int(immediate); //TODO: implement polymorphic literals
         }
         case AST_NODE_TYPE_LIST: {

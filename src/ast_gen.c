@@ -50,6 +50,8 @@ static struct ast_node* parse_precedence(struct parser* parser, enum precedence 
 
 static struct ast_node* number(struct parser* parser, bool canAssign);
 
+static struct ast_node* string(struct parser* parser, bool canAssign);
+
 static struct ast_node* grouping(struct parser* parser, bool canAssign);
 
 static struct ast_node* unary(struct parser* parser, bool canAssign);
@@ -128,7 +130,7 @@ struct parse_rule rules[] = {
     [TOKEN_TYPE_TILDE_EQUAL] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_MOVE] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_COPY] = {NULL, NULL, PRECEDENCE_NONE},
-    [TOKEN_TYPE_STRING_LITERAL] = {NULL, NULL, PRECEDENCE_NONE},
+    [TOKEN_TYPE_STRING_LITERAL] = {string, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_CHARACTER] = {number, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_INTEGER] = {number, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_FLOATING] = {number, NULL, PRECEDENCE_NONE},
@@ -278,12 +280,30 @@ static struct ast_node* number(struct parser* parser, bool canAssign)
 {
     struct token token = parser->previous;
     if (parser->previous.type == TOKEN_TYPE_CHARACTER) {
-        struct ast_node* c = ast_node_new(AST_NODE_TYPE_CHARACTER, token); 
+        struct token stripped = token;
+        stripped.start++;
+        stripped.length -= 2;
+        struct ast_node* c = ast_node_new(AST_NODE_TYPE_CHARACTER, stripped); 
         return c;
     }
     if (parser->previous.type == TOKEN_TYPE_FLOATING)
         return ast_node_new(AST_NODE_TYPE_FLOAT, token);
     return ast_node_new(AST_NODE_TYPE_INTEGER, token);
+}
+
+static struct ast_node* string(struct parser* parser, bool canAssign)
+{
+    struct token token = parser->previous;
+    
+    struct ast_node* list = ast_node_new(AST_NODE_TYPE_LIST, token);
+    for (int i = 1; i < token.length - 1; i++) {
+        struct token character = token;
+        character.start = token.start + i;
+        character.length = 1;
+        ast_node_append_child(list, ast_node_new(AST_NODE_TYPE_CHARACTER, character));
+    }
+    
+    return list;
 }
 
 static struct ast_node* grouping(struct parser* parser, bool canAssign)

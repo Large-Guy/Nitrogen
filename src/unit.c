@@ -30,6 +30,11 @@ struct unit* unit_new(char* symbol, bool global, enum unit_type type)
     assert(unit->blocks);
     unit->block_count = 0;
     unit->block_capacity = 1;
+    
+    unit->data = malloc(sizeof(struct ssa_operand));
+    assert(unit->data);
+    unit->data_count = 0;
+    unit->data_capacity = 1;
 
     return unit;
 }
@@ -128,4 +133,22 @@ void unit_compile(struct backend *backend, struct unit *unit) {
             backend->compile_variable(backend, unit);
             break;
     }
+}
+
+uint32_t unit_add_data(struct unit* unit, struct ssa_operand* data, uint32_t size) {
+    assert(unit != NULL);
+    uint32_t start = unit->data_count;
+    
+    unit->data_count += size;
+    
+    while (unit->data_count >= unit->data_capacity)
+        unit->data_capacity *= 2;
+    
+    unit->data = realloc(unit->data, unit->data_capacity * sizeof(struct ssa_operand));
+    
+    for (uint32_t i = 0; i < size; i++) {
+        unit->data[i + start] = data[i];
+    }
+    
+    return start;
 }

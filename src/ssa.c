@@ -30,7 +30,7 @@ struct ssa_operand operand_none()
 
 struct ssa_operand operand_unit(struct unit* unit)
 {
-    return (struct ssa_operand){OPERAND_TYPE_IR, {}, {.unit = unit}};
+    return (struct ssa_operand){OPERAND_TYPE_IR, {}, {.list = {unit, 0}}};
 }
 struct ssa_operand operand_const_i8(int8_t value)
 {
@@ -78,4 +78,9 @@ struct ssa_operand operand_null() {
     static struct ast_node null_node = {AST_NODE_TYPE_NULL, {}, NULL, NULL, 0, 0};
     
     return (struct ssa_operand){OPERAND_TYPE_NULL, ssa_type_from_ast(NULL, &null_node), {.integer = 0}};
+}
+
+struct ssa_operand operand_list(struct unit* unit, struct ssa_operand* operands, uint32_t count, struct ssa_type type) {
+    uint32_t list = unit_add_data(unit, operands, count);
+    return (struct ssa_operand){OPERAND_TYPE_LIST, type, {.list = {unit, list, count}}};
 }

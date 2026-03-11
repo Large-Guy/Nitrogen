@@ -2,7 +2,5 @@ module program;
 
 void main()
 {
-    f32 v = 3f;
-    
-    f32 result = v > 5 ? 1f : 2f;
+    i8<2> list = (1,2,3,4);
 }

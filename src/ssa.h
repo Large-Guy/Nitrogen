@@ -75,6 +75,7 @@ enum operand_type
     OPERAND_TYPE_NULL,
     OPERAND_TYPE_BLOCK,
     OPERAND_TYPE_IR,
+    OPERAND_TYPE_LIST,
 };
 
 struct ssa_operand
@@ -87,7 +88,11 @@ struct ssa_operand
         uint64_t integer;
         double floating;
         struct block* block;
-        struct unit* unit;
+        struct {
+            struct unit* unit;
+            uint32_t location;
+            uint32_t size;
+        } list;
     } value;
     
     uint64_t offset;
@@ -105,6 +110,8 @@ struct ssa_operand operand_const_i8(int8_t value);
 struct ssa_operand operand_const_i16(int16_t value);
 
 struct ssa_operand operand_const_i32(int32_t value);
+
+struct ssa_operand operand_list(struct unit* unit, struct ssa_operand* operands, uint32_t count, struct ssa_type type);
 
 struct ssa_operand operand_const_i64(int64_t value);
 

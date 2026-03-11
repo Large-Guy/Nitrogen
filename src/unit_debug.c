@@ -202,7 +202,14 @@ static void operand_debug(FILE* out, struct ssa_operand operand)
         case OPERAND_TYPE_NONE:
             return;
         case OPERAND_TYPE_IR:
-            fprintf(out, "[func @%s", operand.value.unit->symbol);
+            fprintf(out, "[func @%s", operand.value.list.unit->symbol);
+            break;
+        case OPERAND_TYPE_LIST:
+            fprintf(out, "[list (");
+            for (int i = 0; i < operand.value.list.size; i++) {
+                operand_debug(out, operand.value.list.unit->data[operand.value.list.location + i]);
+            }
+            fprintf(out, ")]");
             break;
     }
     type_code_name(out, operand.typename);

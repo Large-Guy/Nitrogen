@@ -26,6 +26,10 @@ struct unit {
     struct block** blocks;
     uint32_t block_count;
     uint32_t block_capacity;
+    
+    struct ssa_operand* data;
+    uint32_t data_count;
+    uint32_t data_capacity;
 };
 
 struct unit_module {
@@ -55,5 +59,7 @@ void unit_add(struct unit* unit, struct block* block);
 void unit_arg(struct unit* unit, struct ssa_operand arg);
 
 void unit_compile(struct backend* backend, struct unit* unit);
+
+uint32_t unit_add_data(struct unit* unit, struct ssa_operand* data, uint32_t size);
 
 #endif //COMPILER_CHUNK_H

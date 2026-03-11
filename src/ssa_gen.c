@@ -172,15 +172,19 @@ static void compiler_free(struct compiler* compiler) {
 }
 
 static struct ssa_operand lvalue_statement(struct compiler* compiler, struct ast_node* node);
+
 static struct ssa_operand rvalue_statement(struct compiler* compiler, struct ast_node* node);
 
 //casting rules
 
-static struct ssa_operand cast_emit_reinterpret(struct compiler* compiler, struct ssa_operand operand, struct ssa_type type);
+static struct ssa_operand cast_emit_reinterpret(struct compiler* compiler, struct ssa_operand operand,
+                                                struct ssa_type type);
 
-static struct ssa_operand cast_emit_dereference(struct compiler* compiler, struct ssa_operand operand, struct ssa_type type);
+static struct ssa_operand cast_emit_dereference(struct compiler* compiler, struct ssa_operand operand,
+                                                struct ssa_type type);
 
-static  struct ssa_operand cast_emit_optional(struct compiler* compiler, struct ssa_operand operand, struct ssa_type type);
+static struct ssa_operand cast_emit_optional(struct compiler* compiler, struct ssa_operand operand,
+                                             struct ssa_type type);
 
 static struct ssa_operand cast_emit_static(struct compiler* compiler, struct ssa_operand operand, struct ssa_type type);
 
@@ -204,7 +208,7 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
     [AST_NODE_TYPE_OWNER] = {
         [AST_NODE_TYPE_OPTIONAL] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret},
         [AST_NODE_TYPE_BORROW] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret},
-        
+
         [AST_NODE_TYPE_U8] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
         [AST_NODE_TYPE_U16] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
         [AST_NODE_TYPE_U32] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
@@ -213,13 +217,13 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
         [AST_NODE_TYPE_I16] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
         [AST_NODE_TYPE_I32] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
         [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
-        
+
         [AST_NODE_TYPE_F32] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
         [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
     },
     [AST_NODE_TYPE_BORROW] = {
         [AST_NODE_TYPE_OPTIONAL] = {CAST_TYPE_IMPLICIT, cast_emit_reinterpret},
-        
+
         [AST_NODE_TYPE_U8] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
         [AST_NODE_TYPE_U16] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
         [AST_NODE_TYPE_U32] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
@@ -228,7 +232,7 @@ static struct cast_rule cast_rules[AST_NODE_TYPE_TYPE_COUNT][AST_NODE_TYPE_TYPE_
         [AST_NODE_TYPE_I16] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
         [AST_NODE_TYPE_I32] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
         [AST_NODE_TYPE_I64] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
-        
+
         [AST_NODE_TYPE_F32] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
         [AST_NODE_TYPE_F64] = {CAST_TYPE_IMPLICIT, cast_emit_dereference},
     },
@@ -375,23 +379,27 @@ enum ast_node_type get_root_type(struct ast_node* node) {
 
 // implementations
 
-static struct ssa_operand cast_emit_reinterpret(struct compiler* compiler, struct ssa_operand operand, struct ssa_type type) {
+static struct ssa_operand cast_emit_reinterpret(struct compiler* compiler, struct ssa_operand operand,
+                                                struct ssa_type type) {
     operand.typename.type = ast_node_clone(type.type);
     return operand;
 }
 
-static struct ssa_operand cast_emit_dereference(struct compiler* compiler, struct ssa_operand operand, struct ssa_type type) {
+static struct ssa_operand cast_emit_dereference(struct compiler* compiler, struct ssa_operand operand,
+                                                struct ssa_type type) {
     assert(operand.typename.type->type == AST_NODE_TYPE_BORROW);
     assert(operand.typename.type->children[0]->type == type.type->type);
     struct ssa_instruction load = {};
     load.operator = OP_LOAD;
-    load.result = register_table_alloc(compiler->regs, ssa_type_from_ast(compiler->ast_module, operand.typename.type->children[0]));
+    load.result = register_table_alloc(compiler->regs,
+                                       ssa_type_from_ast(compiler->ast_module, operand.typename.type->children[0]));
     load.operands[0] = operand;
     block_add(compiler->body, load);
     return load.result;
 }
 
-static struct ssa_operand cast_emit_optional(struct compiler* compiler, struct ssa_operand operand, struct ssa_type type) {
+static struct ssa_operand cast_emit_optional(struct compiler* compiler, struct ssa_operand operand,
+                                             struct ssa_type type) {
     if (operand.typename.type->type == AST_NODE_TYPE_NULL) {
         if (type.type->children[0]->type == AST_NODE_TYPE_BORROW) {
             //NOTE: might be a bit of a hack
@@ -400,7 +408,8 @@ static struct ssa_operand cast_emit_optional(struct compiler* compiler, struct s
     }
 }
 
-static struct ssa_operand cast_emit_static(struct compiler* compiler, struct ssa_operand operand, struct ssa_type type) {
+static struct ssa_operand
+cast_emit_static(struct compiler* compiler, struct ssa_operand operand, struct ssa_type type) {
     struct ssa_instruction instruction = {};
     instruction.type = type;
     instruction.operator = OP_CAST;
@@ -414,18 +423,18 @@ static struct ssa_operand cast_emit_simd(struct compiler* compiler, struct ssa_o
     //Get underlying simd types
     struct ast_node* underlying_source = operand.typename.type->children[0];
     uint64_t source_size = strtol(operand.typename.type->children[1]->token.start, NULL, 10);
-    
+
     struct ast_node* underlying_target = type.type->children[0];
     uint64_t target_size = strtol(type.type->children[1]->token.start, NULL, 10);
-    
+
     if (source_size != target_size) {
         ERROR(compiler, "source simd type size is not equal to target simd type");
     }
-    
+
     struct ssa_type underlying_type = ssa_type_from_ast(compiler->ast_module, underlying_source);
-    
+
     struct ssa_operand* ops = malloc(sizeof(struct ssa_operand) * source_size);
-    
+
     for (int i = 0; i < source_size; i++) {
         struct ssa_instruction index = {};
         index.operator = OP_INDEX_SIMD;
@@ -434,28 +443,21 @@ static struct ssa_operand cast_emit_simd(struct compiler* compiler, struct ssa_o
         index.operands[1] = operand_const_i64(i);
         index.result = register_table_alloc(compiler->regs, type);
         block_add(compiler->body, index);
-        
+
         struct ssa_instruction instruction = {};
         instruction.type = type;
         instruction.operator = OP_CAST;
         instruction.operands[0] = index.result;
         instruction.result = register_table_alloc(compiler->regs, type);
-        block_add(compiler->body, instruction);    
-        
+        block_add(compiler->body, instruction);
+
         ops[i] = instruction.result;
     }
-    
-    struct ssa_instruction simd = {};
-    simd.operator = OP_BUILD_SIMD;
-    simd.type = type;
-    for (int i = 0; i < source_size; i++) {
-        simd.operands[i] = ops[i];
-    }
-    simd.result = register_table_alloc(compiler->regs, type);
-    
-    block_add(compiler->body, simd);
-    
-    return simd.result;
+
+    struct ssa_operand casted = operand_list(compiler->unit, ops, target_size, type);
+
+    free(ops);
+    return casted;
 }
 
 static bool compare_nodes(struct ast_node* a, struct ast_node* b) {
@@ -481,12 +483,13 @@ static bool compare_types(struct ssa_type a, struct ssa_type b) {
     if (a.size != b.size) {
         return false;
     }
-    
+
     return compare_nodes(a.type, b.type);
 }
 
 static bool is_pointer(struct ssa_type a) {
-    return (a.type->type == AST_NODE_TYPE_OPTIONAL ? a.type->children[0]->type == AST_NODE_TYPE_BORROW : false) || a.type->type == AST_NODE_TYPE_BORROW;
+    return (a.type->type == AST_NODE_TYPE_OPTIONAL ? a.type->children[0]->type == AST_NODE_TYPE_BORROW : false) || a.
+           type->type == AST_NODE_TYPE_BORROW;
 }
 
 static bool is_signed(struct ssa_type a) {
@@ -503,14 +506,14 @@ static bool is_signed(struct ssa_type a) {
 }
 
 static struct ssa_type promote_type(struct ssa_type a, struct ssa_type b) {
-    if (compare_types(a, b)) 
+    if (compare_types(a, b))
         return a;
-    
+
     if (is_pointer(a))
         return a;
     if (is_pointer(b))
         return b;
-    
+
     // float promotion
     if (a.type->type == AST_NODE_TYPE_FLOAT) {
         return a;
@@ -518,22 +521,22 @@ static struct ssa_type promote_type(struct ssa_type a, struct ssa_type b) {
     if (b.type->type == AST_NODE_TYPE_FLOAT) {
         return b;
     }
-    
+
     if (a.size > b.size)
         return a;
     if (b.size > a.size)
         return b;
-    
+
     if (is_signed(a))
         return a;
     if (is_signed(b))
         return b;
-    
+
     return b;
 }
 
 static struct ssa_operand cast(struct compiler* compiler, struct ssa_operand operand, struct ssa_type type,
-                           enum cast_type mode) {
+                               enum cast_type mode) {
     if (compare_types(operand.typename, type)) {
         return operand;
     }
@@ -541,9 +544,9 @@ static struct ssa_operand cast(struct compiler* compiler, struct ssa_operand ope
     enum ast_node_type to = get_root_type(type.type);
 
     struct cast_rule rule = cast_rules[from][to];
-    
+
     ERROR(rule.type != CAST_TYPE_INVALID, "invalid cast\n");
-    
+
     if (rule.fn != NULL && rule.type <= mode) {
         return rule.fn(compiler, operand, type);
     }
@@ -575,10 +578,10 @@ static struct ssa_operand comparison(struct compiler* compiler, struct ast_node*
     instruction.operator = type;
     struct ssa_operand x = rvalue_statement(compiler, left);
     struct ssa_operand y = rvalue_statement(compiler, right);
-    
+
     static struct ast_node bool_node = {AST_NODE_TYPE_BOOL, {}, NULL, NULL, 0, 0};
     instruction.type = ssa_type_from_ast(compiler->ast_module, &bool_node);
-    
+
     struct ssa_type promotion = promote_type(x.typename, y.typename);
     instruction.operands[0] = cast(compiler, x, promotion, CAST_TYPE_IMPLICIT);
     instruction.operands[1] = cast(compiler, y, promotion, CAST_TYPE_IMPLICIT);
@@ -620,9 +623,9 @@ struct ssa_operand get_float(double value) {
 
 //drill down to the final reference
 static struct ssa_operand drill(struct compiler* compiler, struct ssa_operand op) {
-    if (op.typename.type->children_count > 0 && 
+    if (op.typename.type->children_count > 0 &&
         (op.typename.type->children[0]->type == AST_NODE_TYPE_BORROW ||
-            op.typename.type->children[0]->type == AST_NODE_TYPE_OWNER)) {
+         op.typename.type->children[0]->type == AST_NODE_TYPE_OWNER)) {
         struct ssa_instruction load = {};
         load.operator = OP_LOAD;
         load.type = ssa_type_from_ast(compiler->ast_module, op.typename.type->children[0]);
@@ -663,14 +666,14 @@ static struct ssa_operand lvalue_statement(struct compiler* compiler, struct ast
             assert(underlying_type->children_count > 0);
             underlying_type = *underlying_type->children; //skip the array
             //underlying type
-            mul.operands[1] = operand_const_i64((int64_t)ast_node_symbol_size(compiler->ast_module, underlying_type));
+            mul.operands[1] = operand_const_i64((int64_t) ast_node_symbol_size(compiler->ast_module, underlying_type));
             mul.type = ssa_type_from_ast(compiler->ast_module, ast_node_new(AST_NODE_TYPE_I32, token_null));
             mul.result = register_table_alloc(regs, mul.type);
             block_add(current, mul);
-            
+
             struct ast_node* pointer = ast_node_new(AST_NODE_TYPE_BORROW, token_null);
             ast_node_append_child(pointer, underlying_type);
-            
+
             struct ssa_instruction add = {};
             add.operator = OP_ADD;
             add.type = array_op.typename;
@@ -678,7 +681,7 @@ static struct ssa_operand lvalue_statement(struct compiler* compiler, struct ast
             add.operands[1] = mul.result;
             add.result = register_table_alloc(regs, ssa_type_from_ast(compiler->ast_module, pointer));
             block_add(compiler->body, add);
-            
+
             return add.result;
         }
         case AST_NODE_TYPE_NAME: {
@@ -693,65 +696,66 @@ static struct ssa_operand lvalue_statement(struct compiler* compiler, struct ast
             struct ssa_operand source_op = drill(compiler, lvalue_statement(compiler, source));
             //convert pointer source to proper type
             struct ast_node* underlying_type = *source_op.typename.type->children;
-           switch (underlying_type->type) {
-               case AST_NODE_TYPE_STRUCT: {
-                   uint32_t offset = ast_node_symbol_offset(compiler->ast_module, underlying_type, name);
-                   struct ast_node* field_node = ast_node_symbol_field(compiler->ast_module, underlying_type->children[STRUCT_LAYOUT_MEMBERS], name);
-                   struct ast_node* pointer = ast_node_new(AST_NODE_TYPE_BORROW, token_null);
-                   ast_node_append_child(pointer, field_node->children[VARIABLE_LAYOUT_TYPE]);
+            switch (underlying_type->type) {
+                case AST_NODE_TYPE_STRUCT: {
+                    uint32_t offset = ast_node_symbol_offset(compiler->ast_module, underlying_type, name);
+                    struct ast_node* field_node = ast_node_symbol_field(
+                        compiler->ast_module, underlying_type->children[STRUCT_LAYOUT_MEMBERS], name);
+                    struct ast_node* pointer = ast_node_new(AST_NODE_TYPE_BORROW, token_null);
+                    ast_node_append_child(pointer, field_node->children[VARIABLE_LAYOUT_TYPE]);
 
-                   source_op.typename = ssa_type_from_ast(compiler->ast_module, pointer);
-                   source_op.offset += offset;
-                   return source_op;
-               }
-               case AST_NODE_TYPE_SIMD: {
-                   if (name.length > 4) {
-                       ERROR(compiler, "too many variables in swizzle notation\n");
-                   }
-                   
-                   int index[4] = {};
-                   uint32_t count = name.length;
-                   for (int i = 0; i < count; i++) {
-                       switch (name.start[i]) {
-                           case 'x':
-                               index[i] = 0;
-                               break;
-                           case 'y':
-                               index[i] = 1;
-                               break;
-                           case 'z':
-                               index[i] = 2;
-                               break;
-                           case 'w':
-                               index[i] = 3;
-                               break;
-                           default: 
-                               ERROR(compiler, "unknown swizzle field");
-                       }
-                   }
-                   
-                   struct ast_node* simd_type = underlying_type->children[0];
-                   
-                   if (count == 1) {
-                       uint32_t size = ast_node_symbol_size(compiler->ast_module, simd_type);
-                       struct ast_node* pointer = ast_node_new(AST_NODE_TYPE_BORROW, token_null);
-                       ast_node_append_child(pointer, simd_type);
-                       source_op.offset += size * index[0];
-                       source_op.typename = ssa_type_from_ast(compiler->ast_module, pointer);
-                       return source_op;
-                   }
-                   source_op.swizzle_mask[0] = index[0];
-                   source_op.swizzle_mask[1] = index[1];
-                   source_op.swizzle_mask[2] = index[2];
-                   source_op.swizzle_mask[3] = index[3];
-                   source_op.vector_size = count;
-                   return source_op;
-               }
-               default: {
-                   ERROR(compiler, "unindexable type\n");
-                   return operand_none();
-               }
-           }
+                    source_op.typename = ssa_type_from_ast(compiler->ast_module, pointer);
+                    source_op.offset += offset;
+                    return source_op;
+                }
+                case AST_NODE_TYPE_SIMD: {
+                    if (name.length > 4) {
+                        ERROR(compiler, "too many variables in swizzle notation\n");
+                    }
+
+                    int index[4] = {};
+                    uint32_t count = name.length;
+                    for (int i = 0; i < count; i++) {
+                        switch (name.start[i]) {
+                            case 'x':
+                                index[i] = 0;
+                                break;
+                            case 'y':
+                                index[i] = 1;
+                                break;
+                            case 'z':
+                                index[i] = 2;
+                                break;
+                            case 'w':
+                                index[i] = 3;
+                                break;
+                            default:
+                                ERROR(compiler, "unknown swizzle field");
+                        }
+                    }
+
+                    struct ast_node* simd_type = underlying_type->children[0];
+
+                    if (count == 1) {
+                        uint32_t size = ast_node_symbol_size(compiler->ast_module, simd_type);
+                        struct ast_node* pointer = ast_node_new(AST_NODE_TYPE_BORROW, token_null);
+                        ast_node_append_child(pointer, simd_type);
+                        source_op.offset += size * index[0];
+                        source_op.typename = ssa_type_from_ast(compiler->ast_module, pointer);
+                        return source_op;
+                    }
+                    source_op.swizzle_mask[0] = index[0];
+                    source_op.swizzle_mask[1] = index[1];
+                    source_op.swizzle_mask[2] = index[2];
+                    source_op.swizzle_mask[3] = index[3];
+                    source_op.vector_size = count;
+                    return source_op;
+                }
+                default: {
+                    ERROR(compiler, "unindexable type\n");
+                    return operand_none();
+                }
+            }
         }
         default: {
             fprintf(stderr, "unexpected node type: %s\n", ast_node_get_name(node));
@@ -775,7 +779,7 @@ static struct ssa_operand rvalue_statement(struct compiler* compiler, struct ast
     struct ssa_register_table* regs = compiler->regs;
     switch (node->type) {
         case AST_NODE_TYPE_SCOPE:
-            //TODO: begin a new scope
+        //TODO: begin a new scope
         case AST_NODE_TYPE_SEQUENCE: {
             struct ssa_operand last_operand = {};
             for (int i = 0; i < node->children_count; i++) {
@@ -794,50 +798,43 @@ static struct ssa_operand rvalue_statement(struct compiler* compiler, struct ast
             return get_int(immediate); //TODO: implement polymorphic literals
         }
         case AST_NODE_TYPE_CHARACTER: {
-            int64_t immediate = (unsigned char)node->token.start[1]; // 'X'
+            int64_t immediate = (unsigned char) node->token.start[1]; // 'X'
             return get_int(immediate); //TODO: implement polymorphic literals
         }
         case AST_NODE_TYPE_LIST: {
             uint32_t size = node->children_count;
             struct ast_node* simd = ast_node_new(AST_NODE_TYPE_SIMD, token_null);
-            struct ast_node* count = ast_node_new(AST_NODE_TYPE_INTEGER, generate_number_token((int)size));
-            
+            struct ast_node* count = ast_node_new(AST_NODE_TYPE_INTEGER, generate_number_token((int) size));
+
             struct ssa_type type = {};
-            
+
             struct ssa_operand* ops = malloc(sizeof(struct ssa_operand) * size);
-            
+
             for (int i = 0; i < size; i++) {
                 struct ssa_operand op = rvalue_statement(compiler, node->children[i]);
                 ops[i] = op;
                 if (type.type == NULL) {
                     type = op.typename;
-                }
-                else {
+                } else {
                     type = promote_type(type, op.typename);
                 }
             }
-            
+
             for (int i = 0; i < size; i++) {
                 ops[i] = cast(compiler, ops[i], type, CAST_TYPE_IMPLICIT);
             }
-            
+
             // built the type nodes
             ast_node_append_child(simd, type.type);
             ast_node_append_child(simd, count);
-            
+
             struct ssa_type vector_type = ssa_type_from_ast(compiler->ast_module, simd);
-            
-            struct ssa_instruction simd_build = {};
-            simd_build.operator = OP_BUILD_SIMD;
-            simd_build.type = vector_type;
-            simd_build.result = register_table_alloc(regs, vector_type);
-            for (int i = 0; i < size; i++)
-                simd_build.operands[i] = ops[i];
-            block_add(current, simd_build);
-            
+
+            struct ssa_operand op = operand_list(compiler->unit, ops, size, vector_type);
+
             free(ops);
-            
-            return simd_build.result;
+
+            return op;
         }
         case AST_NODE_TYPE_FLOAT: {
             double immediate = strtod(node->token.start, NULL);
@@ -862,7 +859,7 @@ static struct ssa_operand rvalue_statement(struct compiler* compiler, struct ast
         case AST_NODE_TYPE_HEAP: {
             struct ast_node* x = node->children[0];
             struct ssa_operand value = rvalue_statement(compiler, x);
-            
+
             // allocate the heap memory
             struct ssa_instruction halloc = {};
             halloc.operator = OP_HALLOC;
@@ -871,14 +868,14 @@ static struct ssa_operand rvalue_statement(struct compiler* compiler, struct ast
             ast_node_append_child(pointer, value.typename.type);
             halloc.result = register_table_alloc(regs, ssa_type_from_ast(compiler->ast_module, pointer));
             block_add(current, halloc);
-            
+
             // store
             struct ssa_instruction store = {};
             store.operator = OP_STORE;
             store.operands[0] = halloc.result;
             store.operands[1] = value;
             block_add(current, store);
-            
+
             return halloc.result;
         }
         case AST_NODE_TYPE_ADD: {
@@ -945,18 +942,18 @@ static struct ssa_operand rvalue_statement(struct compiler* compiler, struct ast
             struct ast_node* condition = node->children[0];
             struct ast_node* on_true = node->children[1];
             struct ast_node* on_false = node->children[2];
-            
+
             struct ssa_instruction instruction = {};
-            
+
             instruction.operator = OP_TERNARY;
             instruction.operands[0] = rvalue_statement(compiler, condition);
             struct ssa_operand a = rvalue_statement(compiler, on_true);
             struct ssa_operand b = rvalue_statement(compiler, on_false);
-            struct ssa_type promotion = promote_type(a.typename,b.typename);
+            struct ssa_type promotion = promote_type(a.typename, b.typename);
             instruction.operands[1] = cast(compiler, a, promotion, CAST_TYPE_IMPLICIT);
             instruction.operands[2] = cast(compiler, b, promotion, CAST_TYPE_IMPLICIT);
             instruction.result = register_table_alloc(compiler->regs, promotion);
-           
+
             block_add(current, instruction);
             return instruction.result;
         }
@@ -990,8 +987,7 @@ static struct ssa_operand rvalue_statement(struct compiler* compiler, struct ast
 
             if (type_node->type == AST_NODE_TYPE_INFER) {
                 type = value_op.typename;
-            }
-            else {
+            } else {
                 type = ssa_type_from_ast(compiler->ast_module, type_node);
             }
             struct ssa_instruction instruction = {};
@@ -1011,8 +1007,7 @@ static struct ssa_operand rvalue_statement(struct compiler* compiler, struct ast
                 //TODO: reference types need to be checked to make sure they are assigned before use!
 
                 block_add(current, store);
-            }
-            else {
+            } else {
                 struct ssa_instruction zero = {};
                 zero.operator = OP_ZERO;
                 zero.operands[0] = instruction.result;
@@ -1028,7 +1023,7 @@ static struct ssa_operand rvalue_statement(struct compiler* compiler, struct ast
         case AST_NODE_TYPE_INDEX:
         case AST_NODE_TYPE_GET: {
             struct ssa_operand addr = lvalue_statement(compiler, node);
-            
+
             struct ssa_instruction load = {};
             load.operator = OP_LOAD;
             load.operands[0] = addr;
@@ -1038,16 +1033,17 @@ static struct ssa_operand rvalue_statement(struct compiler* compiler, struct ast
             for (int i = 0; i < addr.vector_size; i++)
                 load.result.swizzle_mask[i] = addr.swizzle_mask[i];
             block_add(current, load);
-            
+
             //swizzling
             if (addr.vector_size > 0) {
                 struct ast_node* simd = addr.typename.type->children[0];
                 struct ast_node* sub_type = simd->children[0];
                 struct ast_node* new_simd = ast_node_new(AST_NODE_TYPE_SIMD, token_null);
                 ast_node_append_child(new_simd, sub_type);
-                
-                ast_node_append_child(new_simd, ast_node_new(AST_NODE_TYPE_INTEGER, generate_number_token((int)addr.vector_size)));
-                
+
+                ast_node_append_child(
+                    new_simd, ast_node_new(AST_NODE_TYPE_INTEGER, generate_number_token((int) addr.vector_size)));
+
                 //emit shuffle ops
                 struct ssa_instruction shuffle = {};
                 shuffle.operator = OP_SHUFFLE;
@@ -1057,7 +1053,7 @@ static struct ssa_operand rvalue_statement(struct compiler* compiler, struct ast
                 block_add(current, shuffle);
                 return shuffle.result;
             }
-            
+
             return load.result;
         }
         case AST_NODE_TYPE_ASSIGN: {
@@ -1066,13 +1062,14 @@ static struct ssa_operand rvalue_statement(struct compiler* compiler, struct ast
             struct ssa_instruction instruction = {};
             instruction.operator = OP_STORE;
             struct ssa_operand lval = drill(compiler, lvalue_statement(compiler, target));
-            
+
             instruction.type = ssa_type_from_ast(compiler->ast_module, lval.typename.type->children[0]);
             instruction.result = operand_none();
             instruction.operands[0] = lval;
 
-            instruction.operands[1] = cast(compiler, rvalue_statement(compiler, value), instruction.type, CAST_TYPE_IMPLICIT);
-            
+            instruction.operands[1] = cast(compiler, rvalue_statement(compiler, value), instruction.type,
+                                           CAST_TYPE_IMPLICIT);
+
             block_add(current, instruction);
             return instruction.result;
         }
@@ -1243,7 +1240,7 @@ static struct ssa_operand argument(struct compiler* compiler, struct ast_node* n
 
             //this is special and does not get alloc
             struct ssa_operand variable = register_table_alloc(compiler->regs,
-                                                           ssa_type_from_ast(compiler->ast_module, type));
+                                                               ssa_type_from_ast(compiler->ast_module, type));
 
             unit_arg(compiler->unit, variable);
 

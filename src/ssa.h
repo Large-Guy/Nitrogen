@@ -38,6 +38,7 @@ enum ssa_instruction_code
 
     OP_GOTO,
     OP_IF,
+    OP_TERNARY,
 
     //variables
     OP_CALL,

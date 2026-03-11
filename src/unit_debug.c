@@ -145,6 +145,8 @@ static char* operator_name(enum ssa_instruction_code code)
             return "goto";
         case OP_IF:
             return "if";
+        case OP_TERNARY:
+            return "ternary";
         case OP_RETURN:
             return "return";
         case OP_CALL:

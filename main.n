@@ -2,6 +2,7 @@ module program;
 
 void main()
 {
-    f32<16> a;
-    a[8] = 1;
+    f32 v = 3f;
+    
+    f32 result = v > 5 ? 1f : 2f;
 }

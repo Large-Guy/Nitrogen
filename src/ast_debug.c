@@ -76,6 +76,7 @@ static const char* ast_node_type_names[] = {
     [AST_NODE_TYPE_STATIC_CAST] = "static-cast",
     [AST_NODE_TYPE_REINTERPRET_CAST] = "reinterpret-cast",
     [AST_NODE_TYPE_IF] = "if",
+    [AST_NODE_TYPE_TERNARY] = "ternary",
     [AST_NODE_TYPE_WHILE] = "while",
     [AST_NODE_TYPE_DO_WHILE] = "do-while",
     [AST_NODE_TYPE_CONTAINS] = "contains",

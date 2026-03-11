@@ -108,6 +108,7 @@ enum ast_node_type
 
     //control flow
     AST_NODE_TYPE_IF,
+    AST_NODE_TYPE_TERNARY,
     AST_NODE_TYPE_WHILE,
     AST_NODE_TYPE_DO_WHILE,
     

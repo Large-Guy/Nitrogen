@@ -20,6 +20,7 @@ enum precedence
     PRECEDENCE_ASSIGNMENT, // =
     PRECEDENCE_OR, // or
     PRECEDENCE_AND, // and
+    PRECEDENCE_TERNARY,
     PRECEDENCE_BITWISE_OR, // |
     PRECEDENCE_BITWISE_XOR, // ^
     PRECEDENCE_BITWISE_AND, // &
@@ -76,6 +77,8 @@ static struct ast_node* call(struct parser* parser, struct ast_node* left, bool 
 static struct ast_node* index(struct parser* parser, struct ast_node* left, bool canAssign);
 
 static struct ast_node* field(struct parser* parser, struct ast_node* left, bool canAssign);
+
+static struct ast_node* ternary(struct parser* parser, struct ast_node* left, bool canAssign);
 
 struct parse_rule rules[] = {
     [TOKEN_TYPE_ERROR] = {NULL, NULL, PRECEDENCE_NONE},
@@ -165,7 +168,8 @@ struct parse_rule rules[] = {
     [TOKEN_TYPE_WHILE] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_DO] = {NULL, NULL, PRECEDENCE_NONE},
     [TOKEN_TYPE_FOR] = {NULL, NULL, PRECEDENCE_NONE},
-    [TOKEN_TYPE_IN] = {NULL, includes, PRECEDENCE_CALL}
+    [TOKEN_TYPE_IN] = {NULL, includes, PRECEDENCE_CALL},
+    [TOKEN_TYPE_QUESTION] = {NULL, ternary, PRECEDENCE_TERNARY},
 };
 
 static struct parse_rule* get_rule(enum token_type type)
@@ -647,6 +651,18 @@ static struct ast_node* field(struct parser* parser, struct ast_node* left, bool
     }
 
     return get;
+}
+
+static struct ast_node* ternary(struct parser* parser, struct ast_node* left, bool canAssign)
+{
+    struct ast_node* branch = ast_node_new(AST_NODE_TYPE_TERNARY, parser->previous);
+    ast_node_append_child(branch, left);
+    struct ast_node* true_result = expression(parser);
+    parser_consume(parser, TOKEN_TYPE_COLON, "expected ':' after ternary operation");
+    struct ast_node* false_result = expression(parser);
+    ast_node_append_child(branch, true_result);
+    ast_node_append_child(branch, false_result);
+    return branch;
 }
 
 static struct ast_node* parse_precedence(struct parser* parser, enum precedence precedence)

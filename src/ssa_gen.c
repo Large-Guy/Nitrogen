@@ -941,6 +941,25 @@ static struct ssa_operand rvalue_statement(struct compiler* compiler, struct ast
         case AST_NODE_TYPE_NOT: {
             return unary(compiler, node, OP_NOT);
         }
+        case AST_NODE_TYPE_TERNARY: {
+            struct ast_node* condition = node->children[0];
+            struct ast_node* on_true = node->children[1];
+            struct ast_node* on_false = node->children[2];
+            
+            struct ssa_instruction instruction = {};
+            
+            instruction.operator = OP_TERNARY;
+            instruction.operands[0] = rvalue_statement(compiler, condition);
+            struct ssa_operand a = rvalue_statement(compiler, on_true);
+            struct ssa_operand b = rvalue_statement(compiler, on_false);
+            struct ssa_type promotion = promote_type(a.typename,b.typename);
+            instruction.operands[1] = cast(compiler, a, promotion, CAST_TYPE_IMPLICIT);
+            instruction.operands[2] = cast(compiler, b, promotion, CAST_TYPE_IMPLICIT);
+            instruction.result = register_table_alloc(compiler->regs, promotion);
+           
+            block_add(current, instruction);
+            return instruction.result;
+        }
         case AST_NODE_TYPE_STATIC_CAST: {
             struct ast_node* cast_type = node->children[0];
             struct ast_node* value = node->children[1];

@@ -602,12 +602,6 @@ static struct ssa_operand unary(struct compiler* compiler, struct ast_node* node
 }
 
 struct ssa_operand get_int(int64_t value) {
-    if (value >= INT8_MIN && value <= INT8_MAX) {
-        return operand_const_i8((int8_t) value);
-    }
-    if (value >= INT16_MIN && value <= INT16_MAX) {
-        return operand_const_i16((int16_t) value);
-    }
     if (value >= INT32_MIN && value <= INT32_MAX) {
         return operand_const_i32((int32_t) value);
     }
